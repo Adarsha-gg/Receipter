@@ -33,3 +33,7 @@ Implemented run history and receipt download support. Added `GET /api/runs` for 
 ### 2026-06-18 15:56:13 - Milestone
 
 Implemented a real Opportunity Scout worker so paid tasks produce outside-world results instead of canned text. Added `src/agents/opportunityScout.ts` to extract a query from the safe task, search public Hacker News and GitHub APIs, deduplicate results, and render a link-backed report. Wired embedded live worker delivery, standalone `npm run worker`, and mock/dry-run approval to use the scout. Verification passed: `npm test` (63 tests), `npm run typecheck`, `npm run demo`, and `npm audit --audit-level=low`.
+
+### 2026-06-18 16:49:00 - Milestone
+
+Added submission-facing docs and proof export tooling. Root `README.md` now explains the project, live setup, and commands. Added `SUBMISSION.md` for DoraHacks copy and `DEMO_VIDEO_SCRIPT.md` for a 2–3 minute demo video. Added `src/live/proof.ts`, `src/cli/exportProof.ts`, and `npm run proof:latest` to convert the latest receipt JSON into a judge-readable markdown proof. Verification passed: `npm test` (64 tests), `npm run typecheck`, `npm run demo`, and `npm audit --audit-level=low`.

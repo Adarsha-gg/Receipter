@@ -311,3 +311,16 @@ npm run typecheck         # passed
 npm run demo              # passed
 npm audit --audit-level=low # found 0 vulnerabilities
 ```
+
+## 2026-06-18 — Slice 23: Submission docs and proof exporter
+
+Added hackathon-facing docs and proof export tooling. Root `README.md` explains TenderBoard, live setup, and run commands. `SUBMISSION.md` contains DoraHacks submission copy. `DEMO_VIDEO_SCRIPT.md` contains a 2–3 minute video script. Added `src/live/proof.ts` and `src/cli/exportProof.ts` with `npm run proof:latest` to turn the latest receipt JSON into a judge-readable markdown proof file under `proof/`.
+
+Verification:
+
+```text
+npm test                  # 64 tests passed
+npm run typecheck         # passed
+npm run demo              # passed
+npm audit --audit-level=low # found 0 vulnerabilities
+```

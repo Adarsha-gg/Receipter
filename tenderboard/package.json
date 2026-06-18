@@ -7,7 +7,6 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "demo": "tsx src/cli/demo.ts",
     "start": "tsx src/server/httpServer.ts",
     "worker": "tsx src/agents/workerAgent.ts",
     "proof:latest": "tsx src/cli/exportProof.ts",

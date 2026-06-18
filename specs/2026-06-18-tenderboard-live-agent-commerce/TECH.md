@@ -12,18 +12,20 @@ Current project root:
 C:/Users/adars/Coding/hackathon/tenderboard
 ```
 
-Current implementation is a TypeScript package with pure workflow modules and generated demo outputs. It is not yet a product server.
+Current implementation is now a TypeScript product app with a local API server, browser UI, live/dry-run/mock modes, receipt storage, proof export, a CROO SDK runtime path, and an Opportunity Scout worker.
 
 Relevant current files:
 
-- `package.json` — scripts are currently `test`, `typecheck`, and `demo`; dependencies are TypeScript/Vitest/tsx only.
-- `src/domain/types.ts` — existing RFP, bid, award, order, and event types.
-- `src/rfp/sanitizeRfp.ts` — existing privacy sanitizer that should be reused.
-- `src/policy/bidPolicy.ts` and `src/policy/secretPatterns.ts` — existing safety checks for forbidden private data.
-- `src/orders/CrooSdkAdapter.ts` — current guarded CROO adapter skeleton.
-- `src/orders/MockCrooAdapter.ts` — current test/mock lifecycle.
-- `src/workflows/launchKitDemo.ts` — current demo workflow; useful for tests, not the live product path.
-- `src/outputs/simpleAppHtml.ts` — generated HTML; should not remain the primary product surface.
+- `package.json` — scripts include `test`, `typecheck`, `start`, `worker`, `live:preflight`, `live:start`, `live:worker`, and `proof:latest`.
+- `src/server/httpServer.ts` — product API server and static UI server.
+- `src/client/` — browser UI for task creation, safe preview, timeline, receipts, and run history.
+- `src/live/crooRuntime.ts` — live CROO requester/worker runtime using `@croo-network/sdk`.
+- `src/live/runStore.ts` — receipt persistence and run history.
+- `src/live/proof.ts` — receipt-to-markdown proof renderer.
+- `src/live/sanitizeTask.ts` — worker-facing task sanitization.
+- `src/policy/secretPatterns.ts` — forbidden secret/data pattern detection.
+- `src/agents/workerAgent.ts` — standalone worker process.
+- `src/agents/opportunityScout.ts` — real public-source worker task using Hacker News and GitHub APIs.
 
 CROO SDK facts from research:
 

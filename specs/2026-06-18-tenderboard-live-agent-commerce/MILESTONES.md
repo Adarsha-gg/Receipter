@@ -37,3 +37,7 @@ Implemented a real Opportunity Scout worker so paid tasks produce outside-world 
 ### 2026-06-18 16:49:00 - Milestone
 
 Added submission-facing docs and proof export tooling. Root `README.md` now explains the project, live setup, and commands. Added `SUBMISSION.md` for DoraHacks copy and `DEMO_VIDEO_SCRIPT.md` for a 2–3 minute demo video. Added `src/live/proof.ts`, `src/cli/exportProof.ts`, and `npm run proof:latest` to convert the latest receipt JSON into a judge-readable markdown proof. Verification passed: `npm test` (64 tests), `npm run typecheck`, `npm run demo`, and `npm audit --audit-level=low`.
+
+### 2026-06-18 17:18:00 - Milestone
+
+Removed obsolete prototype/demo code from the `work/tenderboard-submission-polish` worktree. Deleted the old static demo output pipeline, first-pass RFP/bid prototype, old mock/CROO adapter skeletons, and their tests. Kept the real product server, browser UI, live CROO runtime, standalone worker, Opportunity Scout, receipt store, proof exporter, and secret-pattern policy. Reduced tracked source/doc footprint from 8,474 lines across 79 files to 6,697 lines across 52 files. Verification passed in the cleanup worktree: `npm test` (7 files, 16 tests), `npm run typecheck`, `npm audit --audit-level=low`, and product server smoke test with Opportunity Scout delivery and no private-note leak.

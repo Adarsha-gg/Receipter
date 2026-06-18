@@ -324,3 +324,25 @@ npm run typecheck         # passed
 npm run demo              # passed
 npm audit --audit-level=low # found 0 vulnerabilities
 ```
+
+## 2026-06-18 — Slice 24: Remove obsolete prototype/demo code
+
+Cleaned up the old static demo and first-pass RFP/bid prototype now that TenderBoard has a real API-backed product app and CROO runtime path. Removed generated-output code, the old mock RFP/bid workflow, old adapter skeletons, and their tests. Kept the live product server, browser app, CROO runtime, standalone worker, Opportunity Scout, receipt store, proof exporter, and secret-pattern policy.
+
+Impact:
+
+```text
+Before cleanup: 8,474 tracked source/doc lines across 79 files
+After cleanup:  6,697 tracked source/doc lines across 52 files
+Removed:        1,777 lines and 27 files
+```
+
+Verification from the isolated `work/tenderboard-submission-polish` worktree:
+
+```text
+npm install                # installed worktree-local dependencies
+npm test                   # 7 test files, 16 tests passed
+npm run typecheck          # passed
+npm audit --audit-level=low # found 0 vulnerabilities
+server smoke test           # UI served, task created, scout delivery returned real report shape, private notes absent
+```

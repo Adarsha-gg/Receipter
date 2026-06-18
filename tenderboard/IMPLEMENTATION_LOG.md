@@ -298,3 +298,16 @@ npm run demo              # passed
 npm audit --audit-level=low # found 0 vulnerabilities
 server smoke test          # UI served, run created/approved, history listed it, receipt downloaded, private notes absent
 ```
+
+## 2026-06-18 — Slice 22: Real Opportunity Scout worker
+
+Changed the worker from canned output to real outside-world work. Added `src/agents/opportunityScout.ts`, which extracts a query from the paid task, searches public Hacker News and GitHub APIs, deduplicates results, and renders a link-backed report. Wired both embedded live worker delivery and standalone `npm run worker` delivery to use the scout. Mock/dry-run approval also uses the scout so the product can demonstrate real retrieval without CROO credentials.
+
+Verification:
+
+```text
+npm test                  # 63 tests passed
+npm run typecheck         # passed
+npm run demo              # passed
+npm audit --audit-level=low # found 0 vulnerabilities
+```

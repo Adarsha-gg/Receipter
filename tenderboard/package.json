@@ -10,6 +10,7 @@
     "demo": "tsx src/cli/demo.ts",
     "start": "tsx src/server/httpServer.ts",
     "worker": "tsx src/agents/workerAgent.ts",
+    "proof:latest": "tsx src/cli/exportProof.ts",
     "live:preflight": "tsx src/cli/livePreflight.ts",
     "live:start": "tsx src/cli/startLive.ts",
     "live:worker": "tsx src/cli/startWorkerLive.ts"

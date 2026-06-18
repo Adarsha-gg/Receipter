@@ -8,6 +8,7 @@ coverage/
 # TenderBoard generated/local artifacts
 tenderboard/outputs/
 tenderboard/data/
+tenderboard/proof/
 
 # local env/secrets
 .env

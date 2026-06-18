@@ -3,6 +3,7 @@ dist/
 coverage/
 /outputs/
 /data/
+/proof/
 .env
 .env.*
 !.env.example

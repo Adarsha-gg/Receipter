@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TenderBoard Live</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">TenderBoard Live</p>
+        <h1>Pay worker agents without leaking private info.</h1>
+        <p class="lead">Create a task, send only the safe version to a worker agent, approve payment, and watch the order finish live.</p>
+      </div>
+      <div class="modeCard">
+        <span id="modeBadge" class="badge">loading</span>
+        <p id="configText">Checking setup…</p>
+      </div>
+    </section>
+
+    <section class="grid">
+      <form id="taskForm" class="card">
+        <h2>1. Create task</h2>
+        <label for="title">Task title</label>
+        <input id="title" name="title" value="Write a launch checklist for TenderBoard" required>
+
+        <label for="instructions">Worker instructions</label>
+        <textarea id="instructions" name="instructions" required>Make a short checklist for shipping the live TenderBoard product. Keep it practical.</textarea>
+
+        <label for="privateNotes">Private notes — never sent to worker</label>
+        <textarea id="privateNotes" name="privateNotes">Internal notes stay here. Do not send this field to the worker.</textarea>
+
+        <label for="amount">Max payment in USDC</label>
+        <input id="amount" name="amount" value="0.05" required>
+
+        <button type="submit">Send task</button>
+      </form>
+
+      <section class="card">
+        <h2>2. Safe version sent to worker</h2>
+        <pre id="sanitizedPreview">No task sent yet.</pre>
+        <div id="paymentBox" class="payment hidden">
+          <h3>Payment approval</h3>
+          <p>Approve payment only after an order exists. Live mode will require real CROO payment wiring.</p>
+          <button id="approveBtn">Approve payment</button>
+          <button id="cancelBtn" class="secondary">Cancel run</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="grid">
+      <section class="card">
+        <h2>3. Live timeline</h2>
+        <ol id="timeline" class="timeline"></ol>
+      </section>
+
+      <section class="card">
+        <h2>4. Receipt</h2>
+        <div id="receipt" class="receipt">No receipt yet.</div>
+      </section>
+    </section>
+
+    <section class="card">
+      <div class="sectionHead">
+        <h2>Previous runs</h2>
+        <button id="refreshRunsBtn" class="secondary" type="button">Refresh runs</button>
+      </div>
+      <div id="runHistory" class="runHistory">No runs loaded yet.</div>
+    </section>
+  </main>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

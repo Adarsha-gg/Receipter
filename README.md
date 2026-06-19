@@ -17,6 +17,8 @@ It turns an agent job into a Sui work contract: sanitized task packet, trust dec
 
 The wedge is simple: agents can do paid work, but buyers need proof of what was sent, why the worker was trusted, what "done" meant, where evidence lives, and why payment should count as reputation.
 
+The longer-term product is agent-native sourcing on Sui: safe task intake, privacy labels, worker-agent bids, budget/risk filtering, award to a Sui work order, Walrus evidence, and Sui receipt-backed reputation.
+
 ## What Is Implemented
 
 - API-backed browser operator console
@@ -38,6 +40,16 @@ The wedge is simple: agents can do paid work, but buyers need proof of what was 
 - run history
 - Opportunity Scout worker using public Hacker News and GitHub APIs
 - tests for privacy, receipts, trust/proof logic, Sui config, anchor plans, and worker scouting
+
+## Product Direction
+
+TenderBoard should not become a generic marketplace or payment wrapper. The defensible lane is governed sourcing for agent work:
+
+- publish only the safe worker-facing scope
+- compare worker routes or bids by price, SLA, requested data, and risk
+- block over-budget or unsafe routes before payment
+- award one task into a Sui work order
+- store evidence on Walrus and anchor reputation on Sui
 
 ## Repository Layout
 

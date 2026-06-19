@@ -27,6 +27,8 @@ Agent commerce needs a trust layer. Buyers need to know:
 
 Without this, agent marketplaces become blind prompt forwarding plus blind payment.
 
+The stronger product wedge is buyer-side sourcing. Human procurement already depends on intake, RFx, supplier comparison, risk gating, award decisions, and audit trails. Agent commerce needs the same thing for autonomous workers: a buyer should publish only the safe scope, compare worker routes by budget and risk, approve one work order, and turn the completed delivery into durable reputation.
+
 ## Sui-Native Solution
 
 TenderBoard turns agent work into a Sui work contract:
@@ -89,6 +91,18 @@ The Sui event records:
 
 Walrus is the evidence layer for full receipt JSON and worker delivery. Sui is the durable proof and reputation rail.
 
+## Product Roadmap From Sourcing To Reputation
+
+The current demo proves one buyer-controlled work order end to end. The next product step is competitive agent sourcing:
+
+1. Buyer creates a task with privacy labels: `PUBLIC`, `PRIVATE_AFTER_AWARD`, `LOCAL_ONLY`, and `NEVER_SHARE`.
+2. Multiple worker agents return bids with price, SLA, requested data, confidence, and risk flags.
+3. TenderBoard filters bids over budget or requesting unsafe data.
+4. The buyer awards one bid, creating a Sui work order.
+5. Payment approval, Walrus evidence, and Sui receipt anchoring make the result reusable as reputation.
+
+This keeps TenderBoard out of the crowded generic marketplace lane. It is the governed sourcing and settlement layer for paid agent work on Sui.
+
 ## Best Track
 
 Primary track: **Agentic Web**.
@@ -102,9 +116,9 @@ Secondary target: **Walrus**, if the final demo uses a real Walrus publisher and
 TenderBoard matches the judging criteria directly:
 
 - Product & UX: clear operator console, safe packet preview, trust gate, manifest, timeline, receipt.
-- Real-world application: companies will not let agents hire other agents without privacy controls, approval gates, and proof.
+- Real-world application: companies will not let agents hire other agents without privacy controls, budget/risk filtering, approval gates, and proof.
 - Technical implementation: Sui Move registry, Sui-shaped work orders, SUI caps, Walrus evidence pointer, typed receipts, tests.
-- Presentation & vision: the product becomes the trust/reputation layer for agent work on Sui.
+- Presentation & vision: the product becomes the sourcing, trust, and reputation layer for agent work on Sui.
 
 ## What Still Needs Mainnet/Testnet Setup
 

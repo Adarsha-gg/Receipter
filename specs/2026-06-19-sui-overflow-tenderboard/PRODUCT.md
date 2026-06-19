@@ -20,6 +20,28 @@ TenderBoard becomes a Sui trust-gated work desk for agent commerce:
 6. Full receipt/evidence JSON is stored on Walrus through the product flow.
 7. A compact proof pointer is anchored to Sui through a Move receipt registry.
 
+## Salvaged Product Thesis From Retired Branches
+
+The retired commerce branches had useful product strategy even though their old non-Sui implementation path is no longer correct for Sui Overflow.
+
+Keep these ideas:
+
+- TenderBoard is buyer-side sourcing, not a generic marketplace.
+- The valuable workflow is intake -> safe scope -> worker selection -> budget/risk gate -> award -> paid work order -> evidence -> reputation.
+- Privacy labels matter: `PUBLIC`, `PRIVATE_AFTER_AWARD`, `LOCAL_ONLY`, and `NEVER_SHARE`.
+- Competitive bids should eventually show price, SLA, requested data, risk flags, accept/reject reason, and award recommendation.
+- A malicious or overreaching worker route should be blocked before it receives private data or payment authority.
+- The demo story should make three things obvious: competition saves money, data minimization prevents leakage, and the awarded job becomes a Sui work contract.
+
+Do not keep the retired implementation details:
+
+- old non-Sui runtime
+- non-Sui payment assumptions
+- non-Sui token-specific config
+- old mode language
+
+Those are replaced by Sui work orders, SUI caps, Walrus evidence, and Sui receipt anchoring.
+
 ## Sui Role
 
 Sui is the durable proof and reputation rail:
@@ -38,6 +60,14 @@ Walrus stores the larger evidence payload:
 - optional judge/demo artifacts
 
 Sui stores only the compact pointer and hashes.
+
+## Roadmap
+
+1. Current: one buyer-approved Sui work order with trust scoring, Walrus evidence, and Sui receipt anchoring.
+2. Next: multi-worker bid table with price, SLA, requested data, and risk flags.
+3. Next: privacy-labeled task fields so only awarded agents can receive approved context.
+4. Next: Sui object model for work orders, bid commitments, escrow/payment references, and receipt reputation.
+5. Next: searchable reputation over `ReceiptAnchored` events and Walrus evidence bundles.
 
 ## Non-Claims
 

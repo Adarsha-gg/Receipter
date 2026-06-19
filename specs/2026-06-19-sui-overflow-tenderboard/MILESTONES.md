@@ -2,7 +2,7 @@
 
 ## 2026-06-19 - Sui gap identified
 
-TenderBoard had a useful agent-commerce product shape, but its live chain path was CROO/Base-oriented. For Sui Overflow, that was not enough. Decision: keep the trust/proof product, but make Sui the receipt anchor and Walrus the evidence layer.
+TenderBoard had a useful agent-commerce product shape, but its live chain path was not Sui-oriented. For Sui Overflow, that was not enough. Decision: keep the trust/proof product, but make Sui the receipt anchor and Walrus the evidence layer.
 
 ## 2026-06-19 - Sui proof package added
 
@@ -44,6 +44,28 @@ Added first-class product actions after worker delivery:
 - show the four-step Sui dependency map in the UI
 
 In `sui-dev`, the flow produces deterministic dev blob/object ids and dev Sui digests for local demo. In `sui`, the Walrus step uses the configured HTTP publisher and the anchor step requires the real Sui receipt-registry transaction digest.
+
+## 2026-06-19 - Retired branch product salvage
+
+Reviewed the deleted branch backup refs before final cleanup.
+
+Kept from the retired commerce branches:
+
+- buyer-side sourcing positioning
+- competitive bid roadmap
+- privacy labels
+- budget/risk filtering
+- malicious worker/data-request gating
+- award-to-work-order demo story
+
+Did not keep:
+
+- old non-Sui runtime
+- old non-Sui payment path
+- obsolete mode/config language
+- old chain-specific specs
+
+Decision: Sui remains the vertical product rail, while the salvaged product strategy becomes the roadmap for multi-agent sourcing on Sui.
 
 ## Next
 

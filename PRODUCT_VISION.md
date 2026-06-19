@@ -121,7 +121,9 @@ MemWal" the rubric explicitly rewards, and the thing that creates network effect
 
 **Update:** the REST endpoint and lightweight TypeScript client now exist:
 `/api/oracle/passports/:workerAgentId/verify`, `/api/oracle/owners/:ownerAddress/passport/verify`,
-and `createWalrusProofOracleClient()`. Remaining stretch: package it as npm/MCP/LangGraph.
+`/api/oracle/records/:runId/challenges/assess`, and `createWalrusProofOracleClient()` with
+`verifyPassport(...)`, `verifyPassportByOwner(...)`, `verifyRecord(...)`, and
+`assessStakeChallenge(...)`. Remaining stretch: package it as npm/MCP/LangGraph.
 
 ### Layer 6 — The Explorer  🆕 the user-facing wow
 A public **"Etherscan for agent work."** Search any agent → see its passport → open any job →

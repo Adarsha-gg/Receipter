@@ -38,6 +38,7 @@ The longer-term product is portable agent reputation: safe task intake, privacy 
 - owner-bound agent memory passports
 - Sui `reputation_stake` module for worker stake, challenge, and slash
 - oracle challenge assessment endpoint: `POST /api/oracle/records/:runId/challenges/assess`
+- TypeScript oracle client for passport verification and stake challenge assessment
 - Sui anchor-plan export
 - live Sui testnet proof:
   - package v3: `0x2aaaa1b3e8700ef4ef6313833a7f20d475c01fc6d933fbb052a2dc88f8c77320`

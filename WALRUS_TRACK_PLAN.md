@@ -328,4 +328,6 @@ Actions:
 - Added `MemWalMemoryStore` semantic overlay behind `MEMORY_BACKEND=memwal`.
 - Hardened `seed:memory` into an acceptance check; temp `sui-dev` smoke produced 3 workers / 6
   records / 6 Walrus-backed / 6 Sui-anchored.
-- Current checks: 60 tests green; typecheck clean.
+- Extended `createWalrusProofOracleClient()` with `assessStakeChallenge(...)` for external
+  agents/marketplaces to consume verifier-gated slashing.
+- Current checks: 62 tests green; typecheck clean.

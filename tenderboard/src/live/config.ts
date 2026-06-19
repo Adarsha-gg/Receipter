@@ -13,6 +13,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
   const receiptsDir = path.resolve(env.TENDERBOARD_RECEIPTS_DIR ?? DEFAULT_RECEIPTS_DIR);
   const workerAgentId = blankToUndefined(env.TENDERBOARD_WORKER_AGENT_ID) ?? DEFAULT_WORKER_AGENT_ID;
   const suiNetwork = blankToUndefined(env.SUI_NETWORK) ?? 'testnet';
+  const suiRpcUrl = blankToUndefined(env.SUI_RPC_URL) ?? defaultSuiRpcUrl(suiNetwork);
   const suiPackageId = blankToUndefined(env.SUI_PACKAGE_ID);
   const suiReceiptRegistryId = blankToUndefined(env.SUI_RECEIPT_REGISTRY_ID);
   const suiOperatorAddress = blankToUndefined(env.SUI_OPERATOR_ADDRESS);
@@ -35,6 +36,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     workerAgentId,
     sui: {
       network: suiNetwork,
+      rpcUrlConfigured: Boolean(suiRpcUrl),
       packageIdConfigured: Boolean(suiPackageId),
       receiptRegistryIdConfigured: Boolean(suiReceiptRegistryId),
       operatorAddressConfigured: Boolean(suiOperatorAddress),
@@ -52,6 +54,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     receiptsDir,
     workerAgentId,
     suiNetwork,
+    suiRpcUrl,
     suiPackageId,
     suiReceiptRegistryId,
     suiOperatorAddress,
@@ -60,6 +63,16 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     missingSuiSettings,
     safe,
   };
+}
+
+function defaultSuiRpcUrl(network: string): string | undefined {
+  if (network === 'mainnet' || network === 'testnet' || network === 'devnet') {
+    return `https://fullnode.${network}.sui.io:443`;
+  }
+  if (network.startsWith('http://') || network.startsWith('https://')) {
+    return network;
+  }
+  return undefined;
 }
 
 function parseMode(value: string): TenderBoardMode {

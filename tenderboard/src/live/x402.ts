@@ -57,6 +57,7 @@ export function buildX402SuiPaymentResponse(receipt: LiveRunReceipt): X402Paymen
     objectType: 'suiproof.x402_sui_payment_response.v1',
     x402Version: 1,
     settlement: 'sui-payment-kit',
+    facilitator: 'suiproof-sui-x402',
     network: `sui:${paymentIntentPlan.expectedNetwork}`,
     transaction: receipt.suiPaymentDigest,
     paymentIntentId: paymentIntentPlan.intentId,

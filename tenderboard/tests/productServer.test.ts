@@ -5,6 +5,8 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { loadTenderBoardConfig } from '../src/live/config.js';
 import { RunStore } from '../src/live/runStore.js';
+import { makeSuiDevDigest } from '../src/live/suiRuntime.js';
+import type { LiveRunReceipt, X402SuiPaymentPayload } from '../src/live/types.js';
 import { createTenderBoardServer } from '../src/server/httpServer.js';
 import { fakeScoutFetch } from './helpers/fakeScoutFetch.js';
 
@@ -221,6 +223,155 @@ describe('SuiProof Market product server', () => {
       expect(response.status).toBe(400);
       expect(body.error).toContain('No safe worker bid is available');
       expect(body.error).toContain('buyer-private');
+    } finally {
+      await close();
+    }
+  });
+
+  it('verifies Sui dev x402 payment payloads and blocks mismatches and replay', async () => {
+    const { baseUrl, close } = await startTestServer({
+      TENDERBOARD_MODE: 'sui-dev',
+      TENDERBOARD_RECEIPTS_DIR: tempDir,
+    });
+
+    try {
+      const created = await postJson(`${baseUrl}/api/runs`, {
+        title: 'Pay worker through x402',
+        instructions: 'Use public sources only.',
+        maxPayment: { amount: '0.050', currency: 'SUI' },
+      });
+      const receipt = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
+      const payload = buildX402Payload(receipt, {
+        transaction: makeSuiDevDigest('payment', created.runId),
+      });
+
+      const mismatchResponse = await fetch(`${baseUrl}/api/x402/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, paymentNonce: 'wrong_nonce' }),
+      });
+      const mismatch = await mismatchResponse.json();
+      expect(mismatchResponse.status).toBe(402);
+      expect(mismatch.error).toContain('payment nonce mismatch');
+
+      const paidWorkerTaskResponse = await fetch(`${baseUrl}/api/runs/${created.runId}/worker-task`, {
+        headers: { 'X-Payment': JSON.stringify(payload) },
+      });
+      const paidWorkerTask = await paidWorkerTaskResponse.json();
+      const xPaymentResponse = JSON.parse(paidWorkerTaskResponse.headers.get('x-payment-response') ?? '{}');
+
+      expect(paidWorkerTaskResponse.status).toBe(200);
+      expect(paidWorkerTask.status).toBe('working');
+      expect(paidWorkerTask.agentHandoff.status).toBe('working');
+      expect(xPaymentResponse).toMatchObject({
+        facilitator: 'suiproof-sui-x402',
+        transaction: payload.transaction,
+        paymentNonce: payload.paymentNonce,
+      });
+
+      const after = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
+      expect(after.suiPaymentDigest).toBe(payload.transaction);
+      expect(after.receiptPlan.paymentDigest).toBe(payload.transaction);
+      expect(JSON.stringify(after.events)).toContain('x402_payment_verified');
+      expect(JSON.stringify(after.events)).toContain('sui_dev_x402_payment_settled');
+
+      const replayResponse = await fetch(`${baseUrl}/api/x402/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const replay = await replayResponse.json();
+      expect(replayResponse.status).toBe(409);
+      expect(replay.error).toContain('already been verified');
+    } finally {
+      await close();
+    }
+  });
+
+  it('verifies real Sui x402 payments through Sui JSON-RPC', async () => {
+    const rpcCalls: Array<{ input: RequestInfo | URL; init: RequestInit | undefined }> = [];
+    let currentSuiNonce = '';
+    const suiRpcFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      rpcCalls.push({ input, init });
+      const request = JSON.parse(String(init?.body));
+      return new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            digest: request.params[0],
+            effects: {
+              status: { status: 'success' },
+            },
+            balanceChanges: [
+              {
+                owner: { AddressOwner: '0xoperator' },
+                coinType: '0x2::sui::SUI',
+                amount: '35000000',
+              },
+            ],
+            events: [
+              {
+                type: '0xpayment::PaymentReceipt',
+                parsedJson: {
+                  nonce: 'filled-after-create',
+                },
+              },
+            ],
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    };
+    const { baseUrl, close } = await startTestServer(
+      {
+        TENDERBOARD_MODE: 'sui',
+        TENDERBOARD_RECEIPTS_DIR: tempDir,
+        SUI_NETWORK: 'testnet',
+        SUI_RPC_URL: 'https://sui-rpc.test',
+        SUI_OPERATOR_ADDRESS: '0xoperator',
+        SUI_PACKAGE_ID: '0xpackage',
+        SUI_RECEIPT_REGISTRY_ID: '0xregistry',
+        WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
+        WALRUS_AGGREGATOR_URL: 'https://aggregator.walrus.testnet.example',
+      },
+      { suiRpcFetch: async (input, init) => {
+        const response = await suiRpcFetch(input, init);
+        const request = JSON.parse(String(init?.body));
+        const body = await response.json();
+        body.result.events[0].parsedJson.nonce = currentSuiNonce;
+        body.result.digest = request.params[0];
+        return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      } },
+    );
+
+    try {
+      const created = await postJson(`${baseUrl}/api/runs`, {
+        title: 'Verify on Sui RPC',
+        instructions: 'Use public sources only.',
+        maxPayment: { amount: '0.050', currency: 'SUI' },
+      });
+      const receipt = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
+      currentSuiNonce = receipt.paymentIntentPlan.paymentNonce;
+      const payload = buildX402Payload(receipt, { transaction: '0xsui_payment_digest' });
+
+      const verified = await postJson(`${baseUrl}/api/x402/verify`, payload);
+
+      expect(verified.verification).toMatchObject({
+        facilitator: 'suiproof-sui-x402',
+        ok: true,
+        transaction: '0xsui_payment_digest',
+        checks: {
+          suiSettlementVerified: true,
+          replayProtected: true,
+        },
+      });
+      expect(verified.receipt.status).toBe('working');
+      expect(verified.receipt.suiPaymentDigest).toBe('0xsui_payment_digest');
+      expect(rpcCalls.length).toBe(1);
+      expect(rpcCalls[0]!.input).toBe('https://sui-rpc.test');
+      expect(String(rpcCalls[0]!.init?.body)).toContain('sui_getTransactionBlock');
+      expect(String(rpcCalls[0]!.init?.body)).toContain('0xsui_payment_digest');
     } finally {
       await close();
     }
@@ -482,15 +633,44 @@ describe('SuiProof Market product server', () => {
   });
 });
 
-async function startTestServer(env: NodeJS.ProcessEnv): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+async function startTestServer(
+  env: NodeJS.ProcessEnv,
+  options: { suiRpcFetch?: typeof fetch } = {},
+): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   const config = loadTenderBoardConfig(env);
   const store = new RunStore(config.receiptsDir);
-  const server = createTenderBoardServer({ config, store, scoutFetch: fakeScoutFetch as typeof fetch });
+  const server = createTenderBoardServer({
+    config,
+    store,
+    scoutFetch: fakeScoutFetch as typeof fetch,
+    ...(options.suiRpcFetch ? { suiRpcFetch: options.suiRpcFetch } : {}),
+  });
   await new Promise<void>((resolve) => server.listen(0, resolve));
   const address = server.address() as AddressInfo;
   return {
     baseUrl: `http://127.0.0.1:${address.port}`,
     close: () => new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve()))),
+  };
+}
+
+function buildX402Payload(receipt: LiveRunReceipt, overrides: Partial<X402SuiPaymentPayload> = {}): X402SuiPaymentPayload {
+  if (!receipt.paymentIntentPlan) throw new Error('Missing payment intent plan.');
+  return {
+    objectType: 'suiproof.x402_sui_payment_payload.v1',
+    x402Version: 1,
+    scheme: 'sui-payment-kit',
+    network: `sui:${receipt.paymentIntentPlan.expectedNetwork}`,
+    transaction: receipt.suiPaymentDigest ?? makeSuiDevDigest('payment', receipt.runId),
+    runId: receipt.runId,
+    resource: `/api/runs/${receipt.runId}/worker-task`,
+    paymentIntentId: receipt.paymentIntentPlan.intentId,
+    paymentNonce: receipt.paymentIntentPlan.paymentNonce,
+    settlementNonce: receipt.paymentIntentPlan.settlementNonce,
+    amountMist: receipt.paymentIntentPlan.amountMist,
+    receiverAddress: receipt.paymentIntentPlan.receiverAddress,
+    coinType: receipt.paymentIntentPlan.coinType,
+    workerAgentId: receipt.workerAgentId,
+    ...overrides,
   };
 }
 

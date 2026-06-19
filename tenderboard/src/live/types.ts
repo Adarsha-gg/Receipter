@@ -283,11 +283,49 @@ export interface X402PaymentResponse {
   objectType: 'suiproof.x402_sui_payment_response.v1';
   x402Version: 1;
   settlement: 'sui-payment-kit';
+  facilitator: 'suiproof-sui-x402';
   network: string;
   transaction: string;
   paymentIntentId: string;
   paymentNonce: string;
   settlementNonce: string;
+}
+
+export interface X402SuiPaymentPayload {
+  objectType: 'suiproof.x402_sui_payment_payload.v1';
+  x402Version: 1;
+  scheme: 'sui-payment-kit';
+  network: string;
+  transaction: string;
+  runId: string;
+  resource: string;
+  paymentIntentId: string;
+  paymentNonce: string;
+  settlementNonce: string;
+  amountMist: string;
+  receiverAddress: string;
+  coinType: '0x2::sui::SUI';
+  workerAgentId: string;
+}
+
+export interface X402SuiFacilitatorVerification {
+  objectType: 'suiproof.sui_x402_facilitator_verification.v1';
+  facilitator: 'suiproof-sui-x402';
+  ok: true;
+  runId: string;
+  resource: string;
+  transaction: string;
+  network: string;
+  verifiedAt: string;
+  checks: {
+    requestBound: true;
+    nonceBound: true;
+    amountBound: true;
+    receiverBound: true;
+    workerBound: true;
+    suiSettlementVerified: true;
+    replayProtected: true;
+  };
 }
 
 export interface ObligationObject {
@@ -425,6 +463,7 @@ export interface SafeConfig {
   workerAgentId: string;
   sui: {
     network: string;
+    rpcUrlConfigured: boolean;
     packageIdConfigured: boolean;
     receiptRegistryIdConfigured: boolean;
     operatorAddressConfigured: boolean;
@@ -442,6 +481,7 @@ export interface TenderBoardConfig {
   receiptsDir: string;
   workerAgentId: string;
   suiNetwork: string;
+  suiRpcUrl: string | undefined;
   suiPackageId: string | undefined;
   suiReceiptRegistryId: string | undefined;
   suiOperatorAddress: string | undefined;

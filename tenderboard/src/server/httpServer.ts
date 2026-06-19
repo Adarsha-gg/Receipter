@@ -15,6 +15,7 @@ import { buildWorkerDelivery, makeSuiDevDigest, makeSuiDevObjectId } from '../li
 import { buildTrustProof, finalizeVerificationManifest } from '../live/trustProof.js';
 import { storeEvidenceOnWalrus } from '../live/walrusRuntime.js';
 import { buildX402SuiPaymentChallenge, buildX402SuiPaymentResponse } from '../live/x402.js';
+import { parseX402PaymentHeader, parseX402PaymentPayload, verifySuiX402Payment } from '../sui/facilitator.js';
 import {
   bindAnchorDigest,
   bindPaymentDigest,
@@ -22,7 +23,15 @@ import {
   buildInitialReceiptPlan,
   buildPaymentIntentPlan,
 } from '../sui/paymentPlan.js';
-import type { CreateRunRequest, LiveRunReceipt, ScoutEvidence, SelectedBidReference, TenderBoardConfig, WorkerBid } from '../live/types.js';
+import type {
+  CreateRunRequest,
+  LiveRunReceipt,
+  ScoutEvidence,
+  SelectedBidReference,
+  TenderBoardConfig,
+  WorkerBid,
+  X402SuiPaymentPayload,
+} from '../live/types.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(dirname, '../client');
@@ -32,6 +41,7 @@ export interface TenderBoardServerOptions {
   store?: RunStore;
   bus?: RunEventBus;
   scoutFetch?: typeof fetch;
+  suiRpcFetch?: typeof fetch;
 }
 
 export function createTenderBoardServer(options: TenderBoardServerOptions = {}) {
@@ -39,10 +49,11 @@ export function createTenderBoardServer(options: TenderBoardServerOptions = {}) 
   const store = options.store ?? new RunStore(config.receiptsDir);
   const bus = options.bus ?? new RunEventBus();
   const scoutFetch = options.scoutFetch;
+  const suiRpcFetch = options.suiRpcFetch;
 
   return createServer(async (req, res) => {
     try {
-      await route(req, res, config, store, bus, scoutFetch);
+      await route(req, res, config, store, bus, scoutFetch, suiRpcFetch);
     } catch (error) {
       if (isHttpError(error)) {
         sendJson(res, error.status, { error: error.message });
@@ -61,6 +72,7 @@ async function route(
   store: RunStore,
   bus: RunEventBus,
   scoutFetch: typeof fetch | undefined,
+  suiRpcFetch: typeof fetch | undefined,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
   const method = req.method ?? 'GET';
@@ -114,6 +126,23 @@ async function route(
     return;
   }
 
+  if (method === 'POST' && url.pathname === '/api/x402/verify') {
+    const payload = parseX402PaymentHeader(req.headers['x-payment'] ?? req.headers['payment-signature']) ?? parseX402PaymentPayload(await readJson<unknown>(req));
+    const result = await facilitateX402Payment(payload, payload.resource, config, store, bus, suiRpcFetch);
+    sendJson(
+      res,
+      200,
+      result,
+      result.paymentResponse
+        ? {
+            'X-Payment-Protocol': 'x402',
+            'X-Payment-Response': JSON.stringify(result.paymentResponse),
+          }
+        : { 'X-Payment-Protocol': 'x402' },
+    );
+    return;
+  }
+
   const handoffMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/agent-handoff$/);
   if (method === 'GET' && handoffMatch) {
     const receipt = await store.get(handoffMatch[1]!);
@@ -133,12 +162,20 @@ async function route(
 
   const workerTaskMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/worker-task$/);
   if (method === 'GET' && workerTaskMatch) {
-    const receipt = await store.get(workerTaskMatch[1]!);
+    let receipt = await store.get(workerTaskMatch[1]!);
     if (!receipt) {
       sendJson(res, 404, { error: 'Run not found' });
       return;
     }
     if (!receipt.suiPaymentDigest) {
+      const paymentPayload = parseX402PaymentHeader(req.headers['x-payment'] ?? req.headers['payment-signature']);
+      if (paymentPayload) {
+        const result = await facilitateX402Payment(paymentPayload, url.pathname, config, store, bus, suiRpcFetch);
+        receipt = result.receipt;
+        sendWorkerTaskJson(res, receipt, result.paymentResponse ? { paymentResponse: result.paymentResponse } : {});
+        return;
+      }
+
       const challenge = buildX402SuiPaymentChallenge(receipt, url.pathname);
       sendJson(res, 402, challenge, {
         'X-Payment-Protocol': 'x402',
@@ -147,31 +184,7 @@ async function route(
       return;
     }
 
-    const paymentResponse = buildX402SuiPaymentResponse(receipt);
-    sendJson(
-      res,
-      200,
-      {
-        runId: receipt.runId,
-        status: receipt.status,
-        sanitizedTask: receipt.sanitizedTask,
-        privacy: receipt.privacy,
-        hirerAgent: receipt.hirerAgent,
-        workerAgent: receipt.workerAgent,
-        agentHandoff: receipt.agentHandoff,
-        trustDecision: receipt.trustDecision,
-        verificationManifest: receipt.verificationManifest,
-        paymentIntentPlan: receipt.paymentIntentPlan,
-        receiptPlan: receipt.receiptPlan,
-        reputationSnapshot: receipt.reputationSnapshot,
-      },
-      paymentResponse
-        ? {
-            'X-Payment-Protocol': 'x402',
-            'X-Payment-Response': JSON.stringify(paymentResponse),
-          }
-        : { 'X-Payment-Protocol': 'x402' },
-    );
+    sendWorkerTaskJson(res, receipt);
     return;
   }
 
@@ -402,16 +415,68 @@ async function approvePayment(
   store: RunStore,
   bus: RunEventBus,
 ): Promise<LiveRunReceipt> {
+  const suiPaymentDigest = config.mode === 'sui-dev' ? makeSuiDevDigest('payment', runId) : body.suiPaymentDigest?.trim();
+  if (!suiPaymentDigest) {
+    throw httpError(400, 'Sui mode requires suiPaymentDigest from the payment approval transaction.');
+  }
+  return recordPaymentApproval(runId, suiPaymentDigest, config, store, bus);
+}
+
+async function facilitateX402Payment(
+  payload: X402SuiPaymentPayload,
+  resource: string,
+  config: TenderBoardConfig,
+  store: RunStore,
+  bus: RunEventBus,
+  suiRpcFetch: typeof fetch | undefined,
+): Promise<{ verification: Awaited<ReturnType<typeof verifySuiX402Payment>>; paymentResponse: ReturnType<typeof buildX402SuiPaymentResponse>; receipt: LiveRunReceipt }> {
+  const receipt = await store.get(payload.runId);
+  if (!receipt) {
+    throw httpError(404, 'Run not found');
+  }
+
+  const verification = await verifySuiX402Payment({
+    receipt,
+    payload,
+    resource,
+    config,
+    ...(suiRpcFetch ? { fetchImpl: suiRpcFetch } : {}),
+  });
+  const updated = await recordPaymentApproval(payload.runId, verification.transaction, config, store, bus, {
+    appEventType: 'x402_payment_verified',
+    appMessage: 'Sui-native x402 facilitator verified payment for this work order.',
+    suiEventType: config.mode === 'sui-dev' ? 'sui_dev_x402_payment_settled' : 'sui_x402_payment_settled',
+    suiMessage: 'Sui-native x402 facilitator bound payment proof to the receipt plan.',
+    extraData: { verification },
+  });
+
+  return {
+    verification,
+    paymentResponse: buildX402SuiPaymentResponse(updated),
+    receipt: updated,
+  };
+}
+
+async function recordPaymentApproval(
+  runId: string,
+  suiPaymentDigest: string,
+  config: TenderBoardConfig,
+  store: RunStore,
+  bus: RunEventBus,
+  options: {
+    appEventType?: string;
+    appMessage?: string;
+    suiEventType?: string;
+    suiMessage?: string;
+    extraData?: Record<string, unknown>;
+  } = {},
+): Promise<LiveRunReceipt> {
   const receipt = await store.require(runId);
   if (receipt.status !== 'awaiting_payment_approval') {
     throw httpError(409, `Run is not waiting for payment approval. Current status: ${receipt.status}`);
   }
 
   const now = new Date().toISOString();
-  const suiPaymentDigest = config.mode === 'sui-dev' ? makeSuiDevDigest('payment', runId) : body.suiPaymentDigest?.trim();
-  if (!suiPaymentDigest) {
-    throw httpError(400, 'Sui mode requires suiPaymentDigest from the payment approval transaction.');
-  }
   const receiptPlan = requireReceiptPlan(receipt);
   const paymentIntentPlan = requirePaymentIntentPlan(receipt);
   await store.update(runId, {
@@ -422,13 +487,19 @@ async function approvePayment(
     ...agentHandoffUpdate(receipt, 'working'),
   });
 
+  const appPaymentEvent = {
+    at: now,
+    source: 'app' as const,
+    type: options.appEventType ?? 'payment_approved',
+    message: options.appMessage ?? 'Sui payment approval was recorded for this work order.',
+  };
   const events = [
-    makeEvent({ at: now, source: 'app', type: 'payment_approved', message: 'Sui payment approval was recorded for this work order.' }),
+    makeEvent(options.extraData ? { ...appPaymentEvent, data: options.extraData } : appPaymentEvent),
     makeEvent({
       at: now,
       source: 'sui',
-      type: config.mode === 'sui-dev' ? 'sui_dev_payment_recorded' : 'sui_payment_recorded',
-      message: 'Sui payment digest recorded and bound to the receipt plan.',
+      type: options.suiEventType ?? (config.mode === 'sui-dev' ? 'sui_dev_payment_recorded' : 'sui_payment_recorded'),
+      message: options.suiMessage ?? 'Sui payment digest recorded and bound to the receipt plan.',
       data: {
         digest: suiPaymentDigest,
         intentId: paymentIntentPlan.intentId,
@@ -437,6 +508,7 @@ async function approvePayment(
         amountMist: paymentIntentPlan.amountMist,
         coinType: paymentIntentPlan.coinType,
         receiverAddress: paymentIntentPlan.receiverAddress,
+        ...(options.extraData ?? {}),
       },
     }),
     makeEvent({
@@ -841,6 +913,38 @@ function sendReceiptJson(res: ServerResponse, receipt: LiveRunReceipt): void {
     'Content-Disposition': `attachment; filename="${fileName}"`,
   });
   res.end(`${JSON.stringify(receipt, null, 2)}\n`);
+}
+
+function sendWorkerTaskJson(
+  res: ServerResponse,
+  receipt: LiveRunReceipt,
+  options: { paymentResponse?: ReturnType<typeof buildX402SuiPaymentResponse> } = {},
+): void {
+  const paymentResponse = options.paymentResponse ?? buildX402SuiPaymentResponse(receipt);
+  sendJson(
+    res,
+    200,
+    {
+      runId: receipt.runId,
+      status: receipt.status,
+      sanitizedTask: receipt.sanitizedTask,
+      privacy: receipt.privacy,
+      hirerAgent: receipt.hirerAgent,
+      workerAgent: receipt.workerAgent,
+      agentHandoff: receipt.agentHandoff,
+      trustDecision: receipt.trustDecision,
+      verificationManifest: receipt.verificationManifest,
+      paymentIntentPlan: receipt.paymentIntentPlan,
+      receiptPlan: receipt.receiptPlan,
+      reputationSnapshot: receipt.reputationSnapshot,
+    },
+    paymentResponse
+      ? {
+          'X-Payment-Protocol': 'x402',
+          'X-Payment-Response': JSON.stringify(paymentResponse),
+        }
+      : { 'X-Payment-Protocol': 'x402' },
+  );
 }
 
 function sendJson(res: ServerResponse, status: number, value: unknown, headers: Record<string, string> = {}): void {

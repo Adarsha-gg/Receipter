@@ -11,11 +11,12 @@ SuiProof Market is a Sui-native operator console for hiring worker agents safely
 5. SuiProof Market creates a verification manifest and Sui work order id.
 6. Worker task access is guarded by an x402-style HTTP 402 challenge.
 7. The challenge carries a Sui Payment Kit-compatible URI plus Payment Intent metadata for that exact work order.
-8. Hirer agent approves payment for that exact work order.
-9. Worker agent receives the paid task packet and delivers public-source evidence.
-10. Full receipt/evidence is stored as a Walrus bundle.
-11. Compact proof fields are committed to the Sui receipt registry.
-12. The worker reputation passport updates only after the Sui receipt anchor is recorded.
+8. Hirer agent retries with a Sui payment payload.
+9. The Sui-native x402 facilitator verifies run, resource, nonce, amount, receiver, worker, and Sui settlement.
+10. Worker agent receives the paid task packet and delivers public-source evidence.
+11. Full receipt/evidence is stored as a Walrus bundle.
+12. Compact proof fields are committed to the Sui receipt registry.
+13. The worker reputation passport updates only after the Sui receipt anchor is recorded.
 
 ## Sui Proof Layer
 
@@ -31,6 +32,7 @@ After publishing, configure:
 ```env
 TENDERBOARD_MODE=sui
 SUI_NETWORK=testnet
+SUI_RPC_URL=https://fullnode.testnet.sui.io:443
 SUI_OPERATOR_ADDRESS=...
 SUI_PACKAGE_ID=...
 SUI_RECEIPT_REGISTRY_ID=...
@@ -48,7 +50,9 @@ Do not claim deployed Sui anchoring until the package is published and at least 
 
 In `sui-dev` mode the app records deterministic Sui dev digests and Walrus dev blob/object ids so the full product loop can be demoed locally. In `sui` mode payment approval requires a real Sui payment transaction digest, the Walrus evidence step uses the configured HTTP publisher, and the Sui anchor step records the real receipt-registry transaction digest.
 
-SuiProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning; it does not execute a wallet payment locally or claim wallet confirmation unless a real transaction digest is supplied. Worker task access is exposed as an x402-style paid API: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest. This is a local x402 negotiation envelope, not a claim that Coinbase facilitator settlement is wired for Sui yet. In this environment the Move package is source-level because the Sui CLI is not installed.
+SuiProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning. Worker task access is exposed as an x402 paid API: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest.
+
+The app includes its own Sui-native x402 facilitator. In `sui-dev` it verifies deterministic local Sui dev digests for demoability. In `sui` mode it calls `SUI_RPC_URL` with `sui_getTransactionBlock` and verifies successful execution, receiver balance change, Payment Kit nonce binding, request/resource binding, amount, receiver, coin type, worker id, and replay protection before unlocking the worker task. This is not the Coinbase-hosted facilitator; it is the missing Sui-specific facilitator path for SuiProof Market. In this environment the Move package is source-level because the Sui CLI is not installed.
 
 ## Run
 
@@ -78,6 +82,7 @@ The browser uses the same API external agents can call:
 
 ```text
 POST /api/runs                         hirer agent creates a safe Sui work order
+POST /api/x402/verify                  Sui x402 facilitator verifies payment and unlocks work
 POST /api/runs/:id/approve-payment     hirer agent records Sui payment approval
 GET  /api/runs/:id/agent-handoff       worker agent reads the awarded handoff
 GET  /api/runs/:id/worker-task         worker agent gets 402 until Sui payment is recorded

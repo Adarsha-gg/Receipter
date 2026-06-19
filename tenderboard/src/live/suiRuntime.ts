@@ -1,5 +1,5 @@
 import { renderScoutReport, scoutOpportunities } from '../agents/opportunityScout.js';
-import type { LiveRunReceipt } from './types.js';
+import type { LiveRunReceipt, ScoutEvidence } from './types.js';
 
 export function makeSuiDevDigest(prefix: string, runId: string): string {
   return `sui_dev_${prefix}_${runId}`;
@@ -13,9 +13,9 @@ export function makeSuiDevObjectId(prefix: string, runId: string): string {
 export async function buildWorkerDelivery(
   receipt: LiveRunReceipt,
   options: { fetchImpl?: typeof fetch; now?: Date } = {},
-): Promise<string> {
+): Promise<{ deliveryText: string; workerEvidence: ScoutEvidence }> {
   const report = await scoutOpportunities(`${receipt.taskTitle}\n${receipt.sanitizedTask}`, options);
-  return [
+  const deliveryText = [
     `TenderBoard worker completed: ${receipt.taskTitle}`,
     '',
     'What I did:',
@@ -26,4 +26,8 @@ export async function buildWorkerDelivery(
     '',
     renderScoutReport(report),
   ].join('\n');
+  return {
+    deliveryText,
+    workerEvidence: report.evidence,
+  };
 }

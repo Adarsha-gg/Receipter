@@ -69,6 +69,10 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     '',
     receipt.deliveryText ? ['```text', receipt.deliveryText, '```'].join('\n') : 'No delivery yet.',
     '',
+    '## Worker source evidence',
+    '',
+    ...renderWorkerEvidence(receipt),
+    '',
     '## Timeline',
     '',
   ];
@@ -82,6 +86,22 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+function renderWorkerEvidence(receipt: LiveRunReceipt): string[] {
+  const evidence = receipt.workerEvidence;
+  if (!evidence) return ['No worker source evidence recorded.'];
+
+  return [
+    `- Evidence hash: ${evidence.evidenceHash}`,
+    `- Source receipt: ${evidence.sourceReceipt.receiptId}`,
+    `- Source receipt hash: ${evidence.sourceReceipt.receiptHash}`,
+    `- Query: ${evidence.query}`,
+    '',
+    '| Claim | Source observation | URL |',
+    '| --- | --- | --- |',
+    ...evidence.claims.map((claim) => `| ${escapeCell(claim.claimId)} | ${escapeCell(claim.sourceObservationId)} | ${escapeCell(claim.url)} |`),
+  ];
 }
 
 function renderClearingObjects(receipt: LiveRunReceipt): string[] {

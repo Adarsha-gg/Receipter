@@ -1,7 +1,11 @@
+import { stableHash } from '../live/hash.js';
+import type { ScoutClaim, ScoutEvidence, SourceObservation, SourceReceipt } from '../live/types.js';
+
 export interface ScoutResult {
   title: string;
   url: string;
   source: string;
+  sourceObservationId: string;
   points: number | undefined;
   createdAt: string | undefined;
   reason: string;
@@ -12,6 +16,9 @@ export interface ScoutReport {
   generatedAt: string;
   results: ScoutResult[];
   warnings: string[];
+  sourceReceipt: SourceReceipt;
+  claims: ScoutClaim[];
+  evidence: ScoutEvidence;
 }
 
 type FetchLike = typeof fetch;
@@ -41,6 +48,11 @@ interface GitHubSearchResponse {
   items?: GitHubRepoItem[];
 }
 
+interface ScoutCandidate {
+  result: ScoutResult;
+  observation: SourceObservation;
+}
+
 export async function scoutOpportunities(
   taskText: string,
   options: { fetchImpl?: FetchLike; now?: Date; limit?: number } = {},
@@ -49,31 +61,41 @@ export async function scoutOpportunities(
   const now = options.now ?? new Date();
   const limit = options.limit ?? 6;
   const query = extractScoutQuery(taskText);
+  const generatedAt = now.toISOString();
   const warnings: string[] = [];
-  const results: ScoutResult[] = [];
+  const candidates: ScoutCandidate[] = [];
 
-  const hnResults = await fetchHackerNews(query, fetchImpl).catch((error) => {
+  const hnResults = await fetchHackerNews(query, generatedAt, fetchImpl).catch((error) => {
     warnings.push(`Hacker News search failed: ${error instanceof Error ? error.message : String(error)}`);
     return [];
   });
-  results.push(...hnResults);
+  candidates.push(...hnResults);
 
-  const githubResults = await fetchGitHubRepos(query, fetchImpl).catch((error) => {
+  const githubResults = await fetchGitHubRepos(query, generatedAt, fetchImpl).catch((error) => {
     warnings.push(`GitHub search failed: ${error instanceof Error ? error.message : String(error)}`);
     return [];
   });
-  results.push(...githubResults);
+  candidates.push(...githubResults);
 
-  const deduped = dedupeResults(results).slice(0, limit);
+  const deduped = dedupeResults(candidates).slice(0, limit);
   if (deduped.length === 0) {
     warnings.push('No public results found. Try a broader task like "find AI agent hackathons".');
   }
 
+  const results = deduped.map((candidate) => candidate.result);
+  const observations = deduped.map((candidate) => candidate.observation);
+  const sourceReceipt = buildSourceReceipt(query, generatedAt, observations, warnings);
+  const claims = buildScoutClaims(results);
+  const evidence = buildScoutEvidence(query, generatedAt, sourceReceipt, claims);
+
   return {
     query,
-    generatedAt: now.toISOString(),
-    results: deduped,
+    generatedAt,
+    results,
     warnings,
+    sourceReceipt,
+    claims,
+    evidence,
   };
 }
 
@@ -88,7 +110,7 @@ export function renderScoutReport(report: ScoutReport): string {
   if (report.results.length > 0) {
     lines.push('Found links:');
     report.results.forEach((result, index) => {
-      const score = result.points === undefined ? '' : ` — score ${result.points}`;
+      const score = result.points === undefined ? '' : ` - score ${result.points}`;
       lines.push(`${index + 1}. ${result.title}`);
       lines.push(`   Source: ${result.source}${score}`);
       lines.push(`   Link: ${result.url}`);
@@ -125,58 +147,157 @@ export function extractScoutQuery(taskText: string): string {
   return query || 'AI agent hackathon opportunities';
 }
 
-async function fetchHackerNews(query: string, fetchImpl: FetchLike): Promise<ScoutResult[]> {
+async function fetchHackerNews(query: string, observedAt: string, fetchImpl: FetchLike): Promise<ScoutCandidate[]> {
   const url = `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=story`;
   const response = await fetchImpl(url, { headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const data = (await response.json()) as HnResponse;
 
   return (data.hits ?? [])
-    .map((hit): ScoutResult | undefined => {
+    .map((hit): ScoutCandidate | undefined => {
       const title = hit.title ?? hit.story_title;
       const link = hit.url ?? hit.story_url;
       if (!title || !link) return undefined;
-      return {
+      const observation = buildSourceObservation({
+        source: 'hacker_news',
+        sourceLabel: 'Hacker News',
+        endpoint: url,
+        query,
+        observedAt,
         title,
         url: link,
-        source: 'Hacker News',
-        points: hit.points,
-        createdAt: hit.created_at,
-        reason: 'Public discussion result related to the task query.',
+        score: hit.points,
+        publishedAt: hit.created_at,
+        record: toRecord(hit),
+      });
+      return {
+        observation,
+        result: {
+          title,
+          url: link,
+          source: 'Hacker News',
+          sourceObservationId: observation.observationId,
+          points: hit.points,
+          createdAt: hit.created_at,
+          reason: 'Public discussion result related to the task query.',
+        },
       };
     })
-    .filter((result): result is ScoutResult => Boolean(result));
+    .filter((candidate): candidate is ScoutCandidate => Boolean(candidate));
 }
 
-async function fetchGitHubRepos(query: string, fetchImpl: FetchLike): Promise<ScoutResult[]> {
+async function fetchGitHubRepos(query: string, observedAt: string, fetchImpl: FetchLike): Promise<ScoutCandidate[]> {
   const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=updated&order=desc&per_page=5`;
   const response = await fetchImpl(url, { headers: { Accept: 'application/vnd.github+json' } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const data = (await response.json()) as GitHubSearchResponse;
 
   return (data.items ?? [])
-    .map((repo): ScoutResult | undefined => {
+    .map((repo): ScoutCandidate | undefined => {
       if (!repo.full_name || !repo.html_url) return undefined;
-      return {
+      const observation = buildSourceObservation({
+        source: 'github',
+        sourceLabel: 'GitHub',
+        endpoint: url,
+        query,
+        observedAt,
         title: repo.full_name,
         url: repo.html_url,
-        source: 'GitHub',
-        points: repo.stargazers_count,
-        createdAt: repo.updated_at,
-        reason: repo.description ?? 'Recently updated public repository related to the task query.',
+        score: repo.stargazers_count,
+        publishedAt: repo.updated_at,
+        record: toRecord(repo),
+      });
+      return {
+        observation,
+        result: {
+          title: repo.full_name,
+          url: repo.html_url,
+          source: 'GitHub',
+          sourceObservationId: observation.observationId,
+          points: repo.stargazers_count,
+          createdAt: repo.updated_at,
+          reason: repo.description ?? 'Recently updated public repository related to the task query.',
+        },
       };
     })
-    .filter((result): result is ScoutResult => Boolean(result));
+    .filter((candidate): candidate is ScoutCandidate => Boolean(candidate));
 }
 
-function dedupeResults(results: ScoutResult[]): ScoutResult[] {
+function buildSourceObservation(input: Omit<SourceObservation, 'observationId' | 'recordHash'>): SourceObservation {
+  const recordHash = stableHash(input.record);
+  const observationHash = stableHash({
+    source: input.source,
+    endpoint: input.endpoint,
+    query: input.query,
+    title: input.title,
+    url: input.url,
+    recordHash,
+  });
+  const observation: SourceObservation = {
+    ...input,
+    observationId: `source_${observationHash.slice('sha256:'.length, 'sha256:'.length + 16)}`,
+    recordHash,
+  };
+  return observation;
+}
+
+function buildSourceReceipt(query: string, generatedAt: string, observations: SourceObservation[], warnings: string[]): SourceReceipt {
+  const body = {
+    schema: 'tenderboard.source_receipt.v1' as const,
+    generatedAt,
+    query,
+    observations,
+    warnings,
+  };
+  const receiptHash = stableHash(body);
+  return {
+    ...body,
+    receiptId: `source_receipt_${receiptHash.slice('sha256:'.length, 'sha256:'.length + 16)}`,
+    receiptHash,
+  };
+}
+
+function buildScoutClaims(results: ScoutResult[]): ScoutClaim[] {
+  return results.map((result, index) => ({
+    claimId: `claim_${index + 1}_${result.sourceObservationId}`,
+    resultIndex: index + 1,
+    title: result.title,
+    url: result.url,
+    sourceObservationId: result.sourceObservationId,
+    statement: `${result.source} result "${result.title}" was used in the rendered Opportunity Scout report.`,
+  }));
+}
+
+function buildScoutEvidence(query: string, generatedAt: string, sourceReceipt: SourceReceipt, claims: ScoutClaim[]): ScoutEvidence {
+  const body = {
+    schema: 'tenderboard.scout_evidence.v1' as const,
+    generatedAt,
+    query,
+    sourceReceipt,
+    claims,
+  };
+  return {
+    ...body,
+    evidenceHash: stableHash(body),
+  };
+}
+
+function toRecord(value: object): Record<string, unknown> {
+  const record: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (item !== undefined) record[key] = item;
+  }
+  return record;
+}
+
+function dedupeResults(candidates: ScoutCandidate[]): ScoutCandidate[] {
   const seen = new Set<string>();
-  const deduped: ScoutResult[] = [];
-  for (const result of results) {
-    const key = result.url.toLowerCase();
+  const deduped: ScoutCandidate[] = [];
+  for (const candidate of candidates) {
+    const key = candidate.result.url.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    deduped.push(result);
+    deduped.push(candidate);
   }
   return deduped;
 }

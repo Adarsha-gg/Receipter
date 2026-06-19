@@ -225,6 +225,7 @@ async function createRun(
     walrusEndEpoch: undefined,
     walrusReadUrl: undefined,
     deliveryText: undefined,
+    workerEvidence: undefined,
     error: undefined,
     events: [
       makeEvent({ at: now, source: 'app', type: 'run_created', message: 'Sui-bound task created.' }),
@@ -308,7 +309,8 @@ async function approvePayment(
     updatedAt: now,
     suiPaymentDigest,
     receiptPlan: bindPaymentDigest(receiptPlan, suiPaymentDigest, now),
-    deliveryText: delivery,
+    deliveryText: delivery.deliveryText,
+    workerEvidence: delivery.workerEvidence,
   });
 
   const events = [
@@ -338,11 +340,12 @@ async function approvePayment(
   }
 
   const latest = await store.require(runId);
-  const verificationManifest = finalizeVerificationManifest(latest, delivery);
+  const verificationManifest = finalizeVerificationManifest(latest, delivery.deliveryText);
   const finalizedReceipt = {
     ...latest,
     verificationManifest,
-    deliveryText: delivery,
+    deliveryText: delivery.deliveryText,
+    workerEvidence: delivery.workerEvidence,
   };
   await store.update(runId, {
     verificationManifest,

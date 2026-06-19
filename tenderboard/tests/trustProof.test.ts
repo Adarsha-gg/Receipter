@@ -66,6 +66,36 @@ describe('trust proof model', () => {
       selectedBidId: undefined,
     });
   });
+
+  it('binds worker source evidence into the finalized evidence hash', () => {
+    const receipt = sampleReceipt();
+    const withoutEvidence = finalizeVerificationManifest(receipt, 'Opportunity Scout Report');
+    const withEvidence = finalizeVerificationManifest(
+      {
+        ...receipt,
+        workerEvidence: {
+          schema: 'tenderboard.scout_evidence.v1',
+          generatedAt: '2026-06-19T18:00:00.000Z',
+          query: 'Sui agent grants',
+          sourceReceipt: {
+            schema: 'tenderboard.source_receipt.v1',
+            receiptId: 'source_receipt_1',
+            generatedAt: '2026-06-19T18:00:00.000Z',
+            query: 'Sui agent grants',
+            observations: [],
+            warnings: [],
+            receiptHash: 'sha256:source',
+          },
+          claims: [],
+          evidenceHash: 'sha256:worker',
+        },
+      },
+      'Opportunity Scout Report',
+    );
+
+    expect(withEvidence.evidenceHash).toMatch(/^sha256:/);
+    expect(withEvidence.evidenceHash).not.toBe(withoutEvidence.evidenceHash);
+  });
 });
 
 function sampleReceipt(): LiveRunReceipt {

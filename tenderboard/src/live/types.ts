@@ -97,6 +97,51 @@ export interface VerificationManifest {
   reputationWriteback: string;
 }
 
+export type ScoutSourceKind = 'hacker_news' | 'github';
+
+export interface SourceObservation {
+  observationId: string;
+  source: ScoutSourceKind;
+  sourceLabel: string;
+  endpoint: string;
+  query: string;
+  observedAt: string;
+  title: string;
+  url: string;
+  score: number | undefined;
+  publishedAt: string | undefined;
+  recordHash: string;
+  record: Record<string, unknown>;
+}
+
+export interface SourceReceipt {
+  schema: 'tenderboard.source_receipt.v1';
+  receiptId: string;
+  generatedAt: string;
+  query: string;
+  observations: SourceObservation[];
+  warnings: string[];
+  receiptHash: string;
+}
+
+export interface ScoutClaim {
+  claimId: string;
+  resultIndex: number;
+  title: string;
+  url: string;
+  sourceObservationId: string;
+  statement: string;
+}
+
+export interface ScoutEvidence {
+  schema: 'tenderboard.scout_evidence.v1';
+  generatedAt: string;
+  query: string;
+  sourceReceipt: SourceReceipt;
+  claims: ScoutClaim[];
+  evidenceHash: string;
+}
+
 export interface SelectedBidReference {
   bidId: string;
   workerAgentId: string;
@@ -264,6 +309,7 @@ export interface LiveRunReceipt {
   walrusEndEpoch: number | undefined;
   walrusReadUrl: string | undefined;
   deliveryText: string | undefined;
+  workerEvidence?: ScoutEvidence | undefined;
   events: LiveRunEvent[];
   error: string | undefined;
 }

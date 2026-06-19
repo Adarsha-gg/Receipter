@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
 import { findSecretPatternMatches } from '../policy/secretPatterns.js';
+import { stableHash } from './hash.js';
 import type {
   CreateRunRequest,
   CheckerPackId,
@@ -172,6 +172,7 @@ export function finalizeVerificationManifest(receipt: LiveRunReceipt, deliveryTe
     suiEscrowObjectId: receipt.suiEscrowObjectId,
     suiPaymentDigest: receipt.suiPaymentDigest,
     deliveryText,
+    workerEvidence: receipt.workerEvidence,
     eventCount: receipt.events.length,
   });
 
@@ -244,10 +245,6 @@ function pricedMultiplierForScore(score: number): number {
   if (score >= 78) return 1.5;
   if (score >= 60) return 2.5;
   return 4;
-}
-
-function stableHash(value: unknown): string {
-  return `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}`;
 }
 
 function normalizedAcceptanceCriteria(criteria: string[] | undefined): string[] {

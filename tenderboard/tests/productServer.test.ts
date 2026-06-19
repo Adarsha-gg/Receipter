@@ -198,6 +198,7 @@ describe('TenderBoard Sui product server', () => {
       const created = await postJson(`${baseUrl}/api/runs`, {
         title: 'Find Sui ecosystem opportunities',
         instructions: 'Make it useful.',
+        privateNotes: 'private strategy note: do not send this field',
         maxPayment: { amount: '0.050', currency: 'SUI' },
       });
 
@@ -214,6 +215,18 @@ describe('TenderBoard Sui product server', () => {
       expect(after.suiPaymentDigest).toContain('sui_dev_payment_');
       expect(after.receiptPlan.paymentDigest).toBe(after.suiPaymentDigest);
       expect(after.deliveryText).toContain('Opportunity Scout Report');
+      expect(after.workerEvidence).toMatchObject({
+        schema: 'tenderboard.scout_evidence.v1',
+        query: expect.any(String),
+        sourceReceipt: {
+          schema: 'tenderboard.source_receipt.v1',
+        },
+      });
+      expect(after.workerEvidence.sourceReceipt.observations.length).toBeGreaterThan(0);
+      expect(after.workerEvidence.claims.length).toBeGreaterThan(0);
+      const observationIds = new Set(after.workerEvidence.sourceReceipt.observations.map((observation: any) => observation.observationId));
+      expect(after.workerEvidence.claims.every((claim: any) => observationIds.has(claim.sourceObservationId))).toBe(true);
+      expect(JSON.stringify(after)).not.toContain('private strategy note');
       expect(after.evidenceEnvelope).toMatchObject({
         deliveryPresent: true,
         walrusReady: false,

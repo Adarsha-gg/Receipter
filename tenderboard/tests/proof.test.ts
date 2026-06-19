@@ -27,6 +27,8 @@ describe('renderReceiptProof', () => {
     expect(proof).toContain('Safe task only.');
     expect(proof).toContain('Spec hash: sha256:spec');
     expect(proof).toContain('Opportunity Scout Report');
+    expect(proof).toContain('Source receipt: source_receipt_proof');
+    expect(proof).toContain('source_hn_1');
     expect(proof).not.toContain('private strategy note');
   });
 
@@ -56,6 +58,15 @@ describe('renderReceiptProof', () => {
       action: 'anchor_sui_receipt',
       selectedBidId: 'public_scout_standard',
     });
+    expect(bundle.workerEvidence?.sourceReceipt.observations[0]).toMatchObject({
+      observationId: 'source_hn_1',
+      source: 'hacker_news',
+      record: {
+        title: 'Public opportunity',
+        url: 'https://example.com',
+      },
+    });
+    expect(bundle.workerEvidence?.claims[0]?.sourceObservationId).toBe('source_hn_1');
   });
 });
 
@@ -172,6 +183,50 @@ function sampleReceipt(): LiveRunReceipt {
     walrusEndEpoch: 12,
     walrusReadUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/walrus_blob_1',
     deliveryText: 'Opportunity Scout Report\nLink: https://example.com',
+    workerEvidence: {
+      schema: 'tenderboard.scout_evidence.v1',
+      generatedAt: '2026-06-19T20:04:00.000Z',
+      query: 'Find opportunities',
+      sourceReceipt: {
+        schema: 'tenderboard.source_receipt.v1',
+        receiptId: 'source_receipt_proof',
+        generatedAt: '2026-06-19T20:04:00.000Z',
+        query: 'Find opportunities',
+        observations: [
+          {
+            observationId: 'source_hn_1',
+            source: 'hacker_news',
+            sourceLabel: 'Hacker News',
+            endpoint: 'https://hn.algolia.com/api/v1/search?query=Find%20opportunities&tags=story',
+            query: 'Find opportunities',
+            observedAt: '2026-06-19T20:04:00.000Z',
+            title: 'Public opportunity',
+            url: 'https://example.com',
+            score: 10,
+            publishedAt: '2026-06-18T00:00:00.000Z',
+            recordHash: 'sha256:record',
+            record: {
+              title: 'Public opportunity',
+              url: 'https://example.com',
+              points: 10,
+            },
+          },
+        ],
+        warnings: [],
+        receiptHash: 'sha256:source_receipt',
+      },
+      claims: [
+        {
+          claimId: 'claim_1_source_hn_1',
+          resultIndex: 1,
+          title: 'Public opportunity',
+          url: 'https://example.com',
+          sourceObservationId: 'source_hn_1',
+          statement: 'Hacker News result "Public opportunity" was used in the rendered Opportunity Scout report.',
+        },
+      ],
+      evidenceHash: 'sha256:worker_evidence',
+    },
     error: undefined,
     events: [makeEvent({ source: 'sui', type: 'sui_dev_payment_recorded', message: 'Sui dev payment digest recorded.' })],
   };

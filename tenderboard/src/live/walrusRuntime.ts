@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { stableHash } from './hash.js';
 import type { LiveRunReceipt, TenderBoardConfig } from './types.js';
 
 export interface WalrusStoreResult {
@@ -41,6 +41,7 @@ export interface EvidenceBundle {
     settlementInstruction: LiveRunReceipt['settlementInstruction'];
   };
   deliveryText: string | undefined;
+  workerEvidence: LiveRunReceipt['workerEvidence'];
   events: LiveRunReceipt['events'];
 }
 
@@ -77,6 +78,7 @@ export function buildEvidenceBundle(receipt: LiveRunReceipt): EvidenceBundle {
       settlementInstruction: receipt.settlementInstruction,
     },
     deliveryText: receipt.deliveryText,
+    workerEvidence: receipt.workerEvidence,
     events: receipt.events,
   };
 }
@@ -86,7 +88,7 @@ export function makeEvidenceBundleText(receipt: LiveRunReceipt): string {
 }
 
 export function makeWalrusDevBlob(receipt: LiveRunReceipt): WalrusStoreResult {
-  const hash = createHash('sha256').update(makeEvidenceBundleText(receipt)).digest('hex');
+  const hash = stableHash(buildEvidenceBundle(receipt)).slice('sha256:'.length);
   return {
     blobId: `walrus_dev_blob_${hash.slice(0, 32)}`,
     blobObjectId: `0x${hash.slice(0, 64)}`,

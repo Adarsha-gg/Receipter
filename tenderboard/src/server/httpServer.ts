@@ -7,6 +7,7 @@ import { buildAgentMarketCard } from '../live/agentMarketCard.js';
 import { buildAgentMemoryPassport, buildAgentMemoryRecord, buildWalrusMemoryIndex } from '../live/agentMemory.js';
 import { buildPrivacyLabeledTask, buildWorkerBidBoard, availableWorkerBids } from '../live/bidBoard.js';
 import { buildClearingObjects } from '../live/clearingObjects.js';
+import { assessStakeChallenge, type StakeChallengeRequest } from '../live/challengeOracle.js';
 import { loadTenderBoardConfig } from '../live/config.js';
 import { loadDotEnvFile } from '../live/dotenv.js';
 import { RunEventBus, formatSseEvent } from '../live/eventBus.js';
@@ -163,6 +164,18 @@ async function route(
       return;
     }
     sendJson(res, 200, await verifyMemoryRecord(receipt));
+    return;
+  }
+
+  const oracleChallengeMatch = url.pathname.match(/^\/api\/oracle\/records\/([^/]+)\/challenges\/assess$/);
+  if (method === 'POST' && oracleChallengeMatch) {
+    const receipt = await store.get(oracleChallengeMatch[1]!);
+    if (!receipt) {
+      sendJson(res, 404, { error: 'Run not found' });
+      return;
+    }
+    const body = await readJson<StakeChallengeRequest>(req);
+    sendJson(res, 200, await assessStakeChallengeOrThrow(receipt, body));
     return;
   }
 
@@ -1104,6 +1117,14 @@ async function executeAutomaticSuiAnchor(receipt: LiveRunReceipt, config: Tender
     return await executeSuiAnchorReceipt(receipt, config);
   } catch (error) {
     throw httpError(502, `Automatic Sui anchoring failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+async function assessStakeChallengeOrThrow(receipt: LiveRunReceipt, body: StakeChallengeRequest) {
+  try {
+    return await assessStakeChallenge(receipt, body);
+  } catch (error) {
+    throw httpError(400, error instanceof Error ? error.message : String(error));
   }
 }
 

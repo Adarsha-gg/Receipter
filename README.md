@@ -36,13 +36,14 @@ The longer-term product is portable agent reputation: safe task intake, privacy 
 - Sui receipt-anchor flow
 - owner-bound agent memory passports
 - Sui `reputation_stake` module for worker stake, challenge, and slash
+- oracle challenge assessment endpoint: `POST /api/oracle/records/:runId/challenges/assess`
 - Sui anchor-plan export
 - live Sui testnet proof:
   - package v3: `0x2aaaa1b3e8700ef4ef6313833a7f20d475c01fc6d933fbb052a2dc88f8c77320`
   - receipt registry: `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`
   - real Walrus blob: `lDssvU3Jw6eRyE2N0X0fvCE3b_oCV5peftFj4UkAklw`
   - receipt anchor tx: `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP`
-  - stake/slash txs: `5tyKBFnaH8FWcGRp1rwwyVpoe8yLkFPZihL7mzzwh7Wh`, `79FCRoGKzdKuqzE9zUXbmSAkHmrYtASpkMbuCNSJBgXS`
+  - oracle-gated stake/slash txs: `H5HJmNXxnVZRGaxxw9KxMsCTzxwThC2CeKtwbUceGxBu`, `82cZpKKuqMa1SQLTp7g4CZpHYznvEz2Ai5V8dFRftAzy`
 - receipt JSON downloads
 - proof markdown export
 - run history

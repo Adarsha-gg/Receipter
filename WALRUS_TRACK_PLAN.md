@@ -109,8 +109,9 @@ pattern in `TenderBoardServerOptions`).
 - **Demo data depends on live HN/GitHub luck** — rapid seed runs return thin results, so
   some workers show `undefined` claim support / 0 anchored. Looks broken.
 - **Identity is inconsistent** across files (see Section 12).
-- **Stake/slash challenge admission is manual.** The live Move primitive exists, but challenge
-  success still needs to be wired to the verifier/oracle rather than accepted as a demo call.
+- **Stake/slash needs production hardening.** The backend executor is now oracle-gated, but the
+  Move entrypoint itself is still permissive; production should require an oracle capability or
+  signed challenge decision.
 
 ---
 
@@ -179,9 +180,11 @@ WalrusProof
      `lDssvU3Jw6eRyE2N0X0fvCE3b_oCV5peftFj4UkAklw` and real anchor
      `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP`.
 4. **Live economic security smoke.** Open a worker stake position and slash it with a challenge.
-   - **Done:** stake object `0xe2e9685140a9d2658f45757b24d2cf26701b18bafa07aa5019ef20e55ff4a18d`;
-     open tx `5tyKBFnaH8FWcGRp1rwwyVpoe8yLkFPZihL7mzzwh7Wh`; slash tx
-     `79FCRoGKzdKuqzE9zUXbmSAkHmrYtASpkMbuCNSJBgXS`.
+   - **Done:** oracle endpoint `/api/oracle/records/:runId/challenges/assess`;
+     stake object `0xbf1dd4c52f762543b690786127e75ecc89bc30f2cb24427b12057d6abad99bdf`;
+     open tx `H5HJmNXxnVZRGaxxw9KxMsCTzxwThC2CeKtwbUceGxBu`; slash tx
+     `82cZpKKuqMa1SQLTp7g4CZpHYznvEz2Ai5V8dFRftAzy`; admitted on `memory_hash`,
+     `walrus_readback`, and contradicted-claim failures.
 
 ### Milestone B — Credible, deterministic demo data
 4. **Deterministic seed.** Inject a well-formed `workerEvidence: ScoutEvidence` (claims
@@ -274,7 +277,7 @@ Then: publish package → set ids → run one job in `sui` mode → confirm real
 
 - [x] One real Walrus blob id + working aggregator read-back link in the submission.
 - [x] Published Move package id + `Registry` id + explorer link to a `ReceiptAnchored` event.
-- [x] One live stake/slash smoke transaction pair.
+- [x] One oracle-gated live stake/slash smoke transaction pair.
 - [ ] MemWal adapter merged (or documented + demoed) — the adoption/tooling story.
 - [ ] Passport directory + Verify-on-Walrus UI.
 - [ ] Demo video following Section 10.
@@ -316,5 +319,6 @@ Actions:
 - Added `npm run seed:memory` (drives the real loop over HTTP).
 - Verified: 3 workers / 6 records / 6 Walrus(-dev) blobs / 2 anchored; 36 tests green.
 - Open follow-up: deterministic seed (Milestone B #4) so all workers anchor reliably.
-- Published package v3 with `reputation_stake`; ran live stake/slash smoke on Sui testnet.
-- Current checks: 49 tests green; typecheck clean.
+- Published package v3 with `reputation_stake`; ran oracle-gated live stake/slash smoke on Sui testnet.
+- Added challenge assessment oracle and slash executor guard.
+- Current checks: 53 tests green; typecheck clean.

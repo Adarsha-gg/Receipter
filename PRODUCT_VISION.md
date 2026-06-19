@@ -103,9 +103,10 @@ This is the difference between "verifiable" and "trustworthy," and **no competit
 `reputation_stake`: open a worker stake position, add SUI stake, challenge a record by evidence
 hash/reason, slash the position, and reward the challenger. Live smoke:
 package `0x2aaaa1b3e8700ef4ef6313833a7f20d475c01fc6d933fbb052a2dc88f8c77320`,
-stake object `0xe2e9685140a9d2658f45757b24d2cf26701b18bafa07aa5019ef20e55ff4a18d`,
-open tx `5tyKBFnaH8FWcGRp1rwwyVpoe8yLkFPZihL7mzzwh7Wh`, slash tx
-`79FCRoGKzdKuqzE9zUXbmSAkHmrYtASpkMbuCNSJBgXS`.
+oracle-gated stake object `0xbf1dd4c52f762543b690786127e75ecc89bc30f2cb24427b12057d6abad99bdf`,
+open tx `H5HJmNXxnVZRGaxxw9KxMsCTzxwThC2CeKtwbUceGxBu`, slash tx
+`82cZpKKuqMa1SQLTp7g4CZpHYznvEz2Ai5V8dFRftAzy`. The slash was admitted only after
+`memory_hash`, `walrus_readback`, and contradicted-claim failures were detected by the verifier.
 
 ### Layer 5 — Reputation Oracle + SDK  ✅ API/SDK started
 The adoption surface. Any marketplace/agent/buyer calls:
@@ -164,7 +165,7 @@ escrow → reputation becomes a **yield-bearing economic asset**, not a vanity s
 | Sui receipt anchor (Move pkg) | ✅ deployed + anchored | package v3 `0x2aaaa1b3e8700ef4ef6313833a7f20d475c01fc6d933fbb052a2dc88f8c77320`; receipt anchor `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP` |
 | Multi-worker award | ✅ built (this week) | `preferredBidId` |
 | **Passport bound to Sui address** | ✅ API-level built / on-chain object pending | `AgentMemoryPassport.ownerAddress`, owner oracle route; Move `passport` object remains |
-| **Stake + slash** | ✅ live primitive | Move `reputation_stake`; open tx `5tyKBFnaH8FWcGRp1rwwyVpoe8yLkFPZihL7mzzwh7Wh`, slash tx `79FCRoGKzdKuqzE9zUXbmSAkHmrYtASpkMbuCNSJBgXS` |
+| **Stake + slash** | ✅ live primitive + oracle gate | Move `reputation_stake`; `/api/oracle/records/:runId/challenges/assess`; oracle-gated open tx `H5HJmNXxnVZRGaxxw9KxMsCTzxwThC2CeKtwbUceGxBu`, slash tx `82cZpKKuqMa1SQLTp7g4CZpHYznvEz2Ai5V8dFRftAzy` |
 | **Reputation Oracle SDK / MCP / LangGraph** | ✅ REST + TS client started | `src/oracle`; MCP/LangGraph remains |
 | **Explorer UI (verify-on-Walrus)** | 🆕 | new web surface on existing APIs |
 | **Seal-gated deep-memory sharing** | 🆕 | Seal + Harbor |
@@ -207,8 +208,9 @@ are not in the conversation.* (= `WALRUS_TRACK_PLAN.md` Milestone A + B.)
 re-verification from Walrus blobs + Sui events. The protocol moment.
 
 **Phase 3 — Economic security.** Move `reputation_stake` module: stake on a passport, challenge a
-record, slash on proof. **First live smoke is complete**; remaining work is tying challenge
-admissibility directly to the verifier/oracle so slashing is not just a manual demo path.
+record, slash on proof. **First oracle-gated live smoke is complete**; remaining production
+hardening is moving from off-chain executor gating to an on-chain oracle capability/signature so
+the Move entrypoint itself rejects unauthorised challenge decisions.
 
 **Phase 4 — Portability proof.** A second, differently-branded "marketplace" frontend reading the
 **same** passport via the oracle — visually proving the reputation is portable, not ours. This is

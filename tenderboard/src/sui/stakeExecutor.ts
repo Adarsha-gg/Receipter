@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { assertStakeChallengeAdmissible, type StakeChallengeAssessment } from '../live/challengeOracle.js';
 import type { TenderBoardConfig } from '../live/types.js';
 import { textToHexBytes } from './anchorExecutor.js';
 
@@ -67,6 +68,26 @@ export async function executeSlashStake(input: SlashStakeInput, config: TenderBo
   });
   const parsed = parseSuiTransactionOutput(stdout, 'Sui stake slash transaction failed');
   return { digest: parsed.digest, stdout, stderr, args };
+}
+
+export async function executeAdmissibleSlashStake(
+  assessment: StakeChallengeAssessment,
+  config: TenderBoardConfig,
+): Promise<SlashStakeResult> {
+  return executeSlashStake(buildSlashStakeInputFromAssessment(assessment), config);
+}
+
+export function buildSlashStakeInputFromAssessment(assessment: StakeChallengeAssessment): SlashStakeInput {
+  assertStakeChallengeAdmissible(assessment);
+  if (!assessment.requestedSlashAmountMist) {
+    throw new Error('Stake challenge assessment is missing requestedSlashAmountMist.');
+  }
+  return {
+    positionId: assessment.stakePositionId,
+    evidenceHash: assessment.evidenceHash,
+    reason: `oracle-admissible:${assessment.runId}:${assessment.reason}`,
+    slashAmountMist: assessment.requestedSlashAmountMist,
+  };
 }
 
 export function buildOpenStakePositionCliArgs(input: OpenStakePositionInput, config: TenderBoardConfig): string[] {

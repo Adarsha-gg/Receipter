@@ -20,6 +20,10 @@ describe('renderReceiptProof', () => {
     expect(proof).toContain('Trust verdict: allow');
     expect(proof).toContain('Selected worker bid: public_scout_standard');
     expect(proof).toContain('| public_scout_standard | sui_worker | 0.035 SUI | 24h | public | available |');
+    expect(proof).toContain('## Market agents');
+    expect(proof).toContain('Hirer agent: Sui Hirer Agent');
+    expect(proof).toContain('Worker agent: Opportunity Scout Worker');
+    expect(proof).toContain('Handoff status: ready_to_anchor');
     expect(proof).toContain('## Clearing objects');
     expect(proof).toContain('## Worker Reputation Passport');
     expect(proof).toContain('Anchored runs: 2');
@@ -53,6 +57,11 @@ describe('renderReceiptProof', () => {
       workerAgentId: 'sui_worker',
       anchoredRunCount: 2,
       walrusEvidenceCount: 2,
+    });
+    expect(bundle.agents.agentHandoff).toMatchObject({
+      hirerAgentId: 'sui_hirer.governed.buyer',
+      workerAgentId: 'sui_worker',
+      status: 'ready_to_anchor',
     });
     expect(bundle.clearingObjects.obligationObject?.selectedBid?.bidId).toBe('public_scout_standard');
     expect(bundle.clearingObjects.evidenceEnvelope).toMatchObject({
@@ -111,6 +120,39 @@ function sampleReceipt(): LiveRunReceipt {
           reason: 'Bid is within the SUI budget and only asks for public worker data.',
         },
       ],
+    },
+    hirerAgent: {
+      objectType: 'suiproof.market_agent.v1',
+      agentId: 'sui_hirer.governed.buyer',
+      role: 'hirer',
+      displayName: 'Sui Hirer Agent',
+      responsibilities: ['Define the job.', 'Publish only safe packet.', 'Approve proof-gated payment.'],
+      controls: ['Private notes stay local.', 'Bids must fit budget.', 'Reputation waits for anchor.'],
+      budgetSui: '0.050',
+      priceSui: undefined,
+      requestedDataLabel: 'public',
+    },
+    workerAgent: {
+      objectType: 'suiproof.market_agent.v1',
+      agentId: 'sui_worker',
+      role: 'worker',
+      displayName: 'Opportunity Scout Worker',
+      responsibilities: ['Bid on the task.', 'Return public-source evidence.', 'Produce source receipts.'],
+      controls: ['Sanitized task only.', 'No buyer-private data.', 'Receipt-bound payment.'],
+      budgetSui: undefined,
+      priceSui: '0.035',
+      requestedDataLabel: 'public',
+    },
+    agentHandoff: {
+      objectType: 'suiproof.agent_handoff.v1',
+      handoffId: 'handoff_proof',
+      hirerAgentId: 'sui_hirer.governed.buyer',
+      workerAgentId: 'sui_worker',
+      selectedBidId: 'public_scout_standard',
+      safePacketHash: 'sha256:safe_packet',
+      specHash: 'sha256:spec',
+      paymentIntentId: 'payment_intent_run_proof',
+      status: 'ready_to_anchor',
     },
     trustDecision: {
       workerAgentId: 'sui_worker',

@@ -56,6 +56,10 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     '',
     ...renderWorkerBidBoard(receipt),
     '',
+    '## Market agents',
+    '',
+    ...renderMarketAgents(receipt),
+    '',
     '## Clearing objects',
     '',
     ...renderClearingObjects(receipt),
@@ -97,6 +101,21 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+function renderMarketAgents(receipt: LiveRunReceipt): string[] {
+  if (!receipt.hirerAgent || !receipt.workerAgent || !receipt.agentHandoff) {
+    return ['No two-agent market handoff recorded.'];
+  }
+
+  return [
+    `- Hirer agent: ${receipt.hirerAgent.displayName} (${receipt.hirerAgent.agentId})`,
+    `- Worker agent: ${receipt.workerAgent.displayName} (${receipt.workerAgent.agentId})`,
+    `- Selected bid: ${receipt.agentHandoff.selectedBidId ?? 'none'}`,
+    `- Handoff status: ${receipt.agentHandoff.status}`,
+    `- Safe packet hash: ${receipt.agentHandoff.safePacketHash}`,
+    `- Payment intent: ${receipt.agentHandoff.paymentIntentId ?? 'not planned'}`,
+  ];
 }
 
 function renderWorkerReputation(receipt: LiveRunReceipt): string[] {

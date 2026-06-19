@@ -375,6 +375,10 @@ pre {
   margin-bottom: 18px;
 }
 
+.agentPairPanel {
+  margin-bottom: 18px;
+}
+
 .reputationPanel {
   margin-bottom: 18px;
 }
@@ -382,6 +386,116 @@ pre {
 .bidBoard {
   display: grid;
   gap: 12px;
+}
+
+.agentPair {
+  display: grid;
+  gap: 12px;
+}
+
+.agentPairGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, .55fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.agentCard, .handoffCard, .agentControls > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 14px;
+}
+
+.agentCard.hirer { border-color: #9db9f2; background: #eef4ff; }
+.agentCard.worker { border-color: #a7d4bd; background: #f2fbf6; }
+
+.agentCard > span {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: #fff;
+  padding: 4px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.agentCard strong, .handoffCard strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.agentCard small, .handoffCard small {
+  display: block;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.agentMeta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.agentMeta em {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .72);
+  padding: 4px 8px;
+  color: var(--ink);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.agentCard ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.handoffCard {
+  display: grid;
+  align-content: center;
+  text-align: center;
+}
+
+.handoffCard span {
+  display: block;
+  color: var(--blue);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.agentControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.agentControls strong {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.agentControls span {
+  display: block;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
 }
 
 .bidSummary {
@@ -902,7 +1016,7 @@ pre {
     grid-template-columns: 1fr;
   }
 
-  .proofColumns, .checkRow, .bidSummary, .bidRow, .passportHero, .passportGrid {
+  .proofColumns, .checkRow, .bidSummary, .bidRow, .passportHero, .passportGrid, .agentPairGrid, .agentControls {
     grid-template-columns: 1fr;
   }
 

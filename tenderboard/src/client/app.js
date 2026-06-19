@@ -212,6 +212,7 @@ function renderReceipt(receipt) {
   renderWorkerBidBoard(receipt);
   renderTrustProof(receipt);
   renderSuiRail(receipt);
+  renderAgentPair(receipt);
   renderReputationPassport(receipt);
 
   const rows = [
@@ -264,6 +265,48 @@ function ensureReputationPanel() {
     <div id="reputationPassport" class="reputationPassport">Create a run to view the selected worker passport.</div>`;
   const bidPanel = document.querySelector('.bidBoardPanel');
   bidPanel?.parentNode?.insertBefore(panel, bidPanel);
+}
+
+function renderAgentPair(receipt) {
+  const status = el('agentPairStatus');
+  const target = el('agentPair');
+  if (!status || !target) return;
+  if (!receipt.hirerAgent || !receipt.workerAgent || !receipt.agentHandoff) {
+    status.textContent = 'waiting';
+    status.className = 'statusPill';
+    target.textContent = 'Create a run to see the hirer/worker handoff.';
+    return;
+  }
+
+  status.textContent = receipt.agentHandoff.status;
+  status.className = `statusPill ${receipt.agentHandoff.status === 'anchored' ? 'verdict-allow' : ''}`;
+  target.innerHTML = `
+    <div class="agentPairGrid">
+      ${renderAgentCard(receipt.hirerAgent)}
+      <div class="handoffCard">
+        <strong>Handoff</strong>
+        <span>${escapeHtml(receipt.agentHandoff.selectedBidId || 'none')}</span>
+        <small>${escapeHtml(receipt.agentHandoff.safePacketHash)}</small>
+      </div>
+      ${renderAgentCard(receipt.workerAgent)}
+    </div>
+    <div class="agentControls">
+      <div><strong>Spec</strong><span>${escapeHtml(receipt.agentHandoff.specHash)}</span></div>
+      <div><strong>Payment intent</strong><span>${escapeHtml(receipt.agentHandoff.paymentIntentId || 'not planned')}</span></div>
+    </div>`;
+}
+
+function renderAgentCard(agent) {
+  return `<article class="agentCard ${escapeHtml(agent.role)}">
+    <span>${escapeHtml(agent.role)}</span>
+    <strong>${escapeHtml(agent.displayName)}</strong>
+    <small>${escapeHtml(agent.agentId)}</small>
+    <div class="agentMeta">
+      <em>${agent.budgetSui ? `${escapeHtml(agent.budgetSui)} SUI budget` : `${escapeHtml(agent.priceSui || '0')} SUI bid`}</em>
+      <em>${escapeHtml(agent.requestedDataLabel)} data</em>
+    </div>
+    <ul>${(agent.responsibilities || []).slice(0, 3).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+  </article>`;
 }
 
 function renderWorkerBidBoard(receipt) {

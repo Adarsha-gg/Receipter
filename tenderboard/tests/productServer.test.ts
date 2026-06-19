@@ -106,6 +106,23 @@ describe('SuiProof Market product server', () => {
         anchoredRunCount: 0,
         walrusEvidenceCount: 0,
       });
+      expect(receipt.hirerAgent).toMatchObject({
+        role: 'hirer',
+        displayName: 'Sui Hirer Agent',
+        budgetSui: '0.050',
+      });
+      expect(receipt.workerAgent).toMatchObject({
+        role: 'worker',
+        displayName: 'Opportunity Scout Worker',
+        priceSui: '0.035',
+      });
+      expect(receipt.agentHandoff).toMatchObject({
+        hirerAgentId: receipt.hirerAgent.agentId,
+        workerAgentId: receipt.workerAgent.agentId,
+        selectedBidId: 'public_scout_standard',
+        paymentIntentId: receipt.paymentIntentPlan.intentId,
+        status: 'awaiting_payment',
+      });
       expect(receiptText).toContain('trustDecision');
       expect(receiptText).toContain('verificationManifest');
       expect(receiptText).toContain('workerBidBoard');
@@ -230,9 +247,11 @@ describe('SuiProof Market product server', () => {
       expect(before.paymentIntentPlan.settlementNonce.length).toBeLessThanOrEqual(36);
       expect(before.paymentIntentPlan.amountMist).toBe('35000000');
       expect(before.receiptPlan.paymentDigest).toBeUndefined();
+      expect(before.agentHandoff.status).toBe('awaiting_payment');
 
       const after = await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
       expect(after.status).toBe('delivered');
+      expect(after.agentHandoff.status).toBe('ready_to_anchor');
       expect(after.reputationSnapshot.anchoredRunCount).toBe(0);
       expect(after.suiPaymentDigest).toContain('sui_dev_payment_');
       expect(after.receiptPlan.paymentDigest).toBe(after.suiPaymentDigest);
@@ -263,6 +282,7 @@ describe('SuiProof Market product server', () => {
 
       const withEvidence = await postJson(`${baseUrl}/api/runs/${created.runId}/store-evidence`, {});
       expect(withEvidence.status).toBe('anchoring');
+      expect(withEvidence.agentHandoff.status).toBe('ready_to_anchor');
       expect(withEvidence.reputationSnapshot.anchoredRunCount).toBe(0);
       expect(withEvidence.walrusBlobId).toContain('walrus_dev_blob_');
       expect(withEvidence.walrusBlobObjectId).toMatch(/^0x/);
@@ -286,6 +306,7 @@ describe('SuiProof Market product server', () => {
 
       const anchored = await postJson(`${baseUrl}/api/runs/${created.runId}/anchor-receipt`, {});
       expect(anchored.status).toBe('anchored');
+      expect(anchored.agentHandoff.status).toBe('anchored');
       expect(anchored.suiAnchorDigest).toContain('sui_dev_anchor_');
       expect(anchored.receiptPlan.anchorDigest).toBe(anchored.suiAnchorDigest);
       expect(anchored.reputationSnapshot).toMatchObject({

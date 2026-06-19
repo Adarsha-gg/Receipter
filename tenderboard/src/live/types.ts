@@ -78,6 +78,32 @@ export interface WorkerBidBoard {
   bids: WorkerBid[];
 }
 
+export type MarketAgentRole = 'hirer' | 'worker';
+
+export interface MarketAgentProfile {
+  objectType: 'suiproof.market_agent.v1';
+  agentId: string;
+  role: MarketAgentRole;
+  displayName: string;
+  responsibilities: string[];
+  controls: string[];
+  budgetSui: string | undefined;
+  priceSui: string | undefined;
+  requestedDataLabel: TaskDataLabel;
+}
+
+export interface AgentHandoff {
+  objectType: 'suiproof.agent_handoff.v1';
+  handoffId: string;
+  hirerAgentId: string;
+  workerAgentId: string;
+  selectedBidId: string | undefined;
+  safePacketHash: string;
+  specHash: string;
+  paymentIntentId: string | undefined;
+  status: 'awaiting_payment' | 'working' | 'ready_to_anchor' | 'anchored';
+}
+
 export type VerificationCheckStatus = 'passed' | 'pending' | 'requires_review';
 
 export interface VerificationCheck {
@@ -313,6 +339,9 @@ export interface LiveRunReceipt {
   privacy?: PrivacyLabeledTask;
   maxPayment: MoneyInput;
   workerBidBoard?: WorkerBidBoard;
+  hirerAgent?: MarketAgentProfile;
+  workerAgent?: MarketAgentProfile;
+  agentHandoff?: AgentHandoff;
   trustDecision: TrustDecision;
   verificationManifest: VerificationManifest;
   paymentIntentPlan?: PaymentIntentPlan;

@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildAgentPair, handoffStatusForRun } from '../live/agentPair.js';
 import { buildPrivacyLabeledTask, buildWorkerBidBoard, availableWorkerBids } from '../live/bidBoard.js';
 import { buildClearingObjects } from '../live/clearingObjects.js';
 import { loadTenderBoardConfig } from '../live/config.js';
@@ -196,6 +197,13 @@ async function createRun(
     config,
   });
   const receiptPlan = buildInitialReceiptPlan(paymentIntentPlan, selectedBid?.workerAgentId ?? config.workerAgentId, now);
+  const agentPair = buildAgentPair({
+    request: body,
+    sanitizedTask: sanitized.sanitizedTask,
+    selectedBid: selectedBidReference,
+    specHash: trustProof.verificationManifest.specHash,
+    paymentIntentId: paymentIntentPlan.intentId,
+  });
   const reputationSnapshot = buildWorkerReputationCard(
     selectedBid?.workerAgentId ?? config.workerAgentId,
     await loadAllReceipts(store),
@@ -212,6 +220,9 @@ async function createRun(
     privacy,
     maxPayment: body.maxPayment,
     workerBidBoard,
+    hirerAgent: agentPair.hirerAgent,
+    workerAgent: agentPair.workerAgent,
+    agentHandoff: agentPair.agentHandoff,
     trustDecision: trustProof.trustDecision,
     verificationManifest: trustProof.verificationManifest,
     paymentIntentPlan,
@@ -279,6 +290,18 @@ async function createRun(
           averageTrustScore: reputationSnapshot.averageTrustScore,
         },
       }),
+      makeEvent({
+        at: now,
+        source: 'app',
+        type: 'agent_handoff_created',
+        message: 'Hirer agent awarded the sanitized Sui work order to the selected worker agent.',
+        data: {
+          hirerAgentId: agentPair.hirerAgent.agentId,
+          workerAgentId: agentPair.workerAgent.agentId,
+          selectedBidId: agentPair.agentHandoff.selectedBidId,
+          safePacketHash: agentPair.agentHandoff.safePacketHash,
+        },
+      }),
       makeEvent({ at: now, source: 'sui', type: 'verification_manifest_created', message: 'Verification manifest is ready for Sui anchoring.', data: { specHash: trustProof.verificationManifest.specHash } }),
     ],
   };
@@ -332,6 +355,7 @@ async function approvePayment(
     receiptPlan: bindPaymentDigest(receiptPlan, suiPaymentDigest, now),
     deliveryText: delivery.deliveryText,
     workerEvidence: delivery.workerEvidence,
+    ...agentHandoffUpdate(receipt, 'delivered'),
   });
 
   const events = [
@@ -432,6 +456,7 @@ async function storeEvidence(
     walrusReadUrl: result.readUrl,
     receiptPlan,
     verificationManifest,
+    ...agentHandoffUpdate(receipt, 'anchoring'),
     ...buildClearingObjects(updatedForClearing),
   });
 
@@ -496,6 +521,7 @@ async function anchorReceipt(
     updatedAt: now,
     suiAnchorDigest,
     receiptPlan: bindAnchorDigest(receiptPlan, suiAnchorDigest, now),
+    ...agentHandoffUpdate(receipt, 'anchored'),
   });
 
   const event = makeEvent({
@@ -596,6 +622,10 @@ function requireReceiptPlan(receipt: LiveRunReceipt) {
     throw httpError(409, 'Run is missing a nonce-bound receipt plan.');
   }
   return receipt.receiptPlan;
+}
+
+function agentHandoffUpdate(receipt: LiveRunReceipt, status: LiveRunReceipt['status']): { agentHandoff: NonNullable<LiveRunReceipt['agentHandoff']> } | {} {
+  return receipt.agentHandoff ? { agentHandoff: { ...receipt.agentHandoff, status: handoffStatusForRun(status) } } : {};
 }
 
 async function cancelRun(runId: string, store: RunStore, bus: RunEventBus): Promise<LiveRunReceipt> {

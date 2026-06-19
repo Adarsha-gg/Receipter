@@ -292,6 +292,10 @@ select {
   grid-template-columns: minmax(140px, 180px) minmax(160px, 220px) auto;
 }
 
+.inlineFields.four {
+  grid-template-columns: minmax(120px, 160px) minmax(150px, 190px) minmax(150px, 190px) auto;
+}
+
 button {
   min-height: 44px;
   border: 0;
@@ -365,6 +369,66 @@ pre {
 
 .chainPanel {
   margin-bottom: 18px;
+}
+
+.bidBoardPanel {
+  margin-bottom: 18px;
+}
+
+.bidBoard {
+  display: grid;
+  gap: 12px;
+}
+
+.bidSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bidSummary > div {
+  min-height: 82px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 12px;
+}
+
+.bidSummary strong, .bidRow small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.bidSummary span, .bidRow span, .bidRow strong {
+  overflow-wrap: anywhere;
+}
+
+.bidRows {
+  display: grid;
+  gap: 10px;
+}
+
+.bidRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(86px, .45fr) minmax(72px, .35fr) minmax(110px, .55fr) minmax(96px, .45fr) minmax(220px, 1.6fr);
+  gap: 10px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 12px;
+}
+
+.bidRow.available {
+  border-color: #a7d4bd;
+  background: #f2fbf6;
+}
+
+.bidRow.blocked {
+  border-color: #f0b2bd;
+  background: #fff7f8;
 }
 
 .suiRail {
@@ -726,11 +790,11 @@ pre {
     grid-template-columns: 1fr;
   }
 
-  .inlineFields, .inlineFields.three {
+  .inlineFields, .inlineFields.three, .inlineFields.four {
     grid-template-columns: 1fr;
   }
 
-  .proofColumns, .checkRow {
+  .proofColumns, .checkRow, .bidSummary, .bidRow {
     grid-template-columns: 1fr;
   }
 

@@ -87,10 +87,18 @@ End with a ranked recommendation and why.</textarea>
         <label for="privateNotes">Private notes never sent to worker</label>
         <textarea id="privateNotes" name="privateNotes">Internal angle: prioritize Sui primitives, Walrus evidence, object ownership, verifiable settlement, and ecosystem growth. Do not expose this field.</textarea>
 
-        <div class="inlineFields three">
+        <div class="inlineFields four">
           <div>
             <label for="amount">Max payment in SUI</label>
             <input id="amount" name="amount" value="0.050" required>
+          </div>
+          <div>
+            <label for="requestedDataLabel">Worker data label</label>
+            <select id="requestedDataLabel" name="requestedDataLabel">
+              <option value="public" selected>Public only</option>
+              <option value="buyer_private">Buyer-private</option>
+              <option value="secret">Secret</option>
+            </select>
           </div>
           <div>
             <label for="checkerPack">Checker pack</label>
@@ -154,6 +162,17 @@ End with a ranked recommendation and why.</textarea>
         <div class="railStep pending"><strong>Walrus evidence blob</strong><span>Delivery evidence gets content-addressed storage.</span></div>
         <div class="railStep pending"><strong>Sui receipt registry</strong><span>Final digest anchors evidence and reputation.</span></div>
       </div>
+    </section>
+
+    <section class="panel bidBoardPanel" aria-label="Buyer sourcing board">
+      <div class="panelHeader">
+        <div>
+          <p class="eyebrow">Buyer sourcing board</p>
+          <h2>Worker bids and risk gates</h2>
+        </div>
+        <span id="bidBoardStatus" class="statusPill">waiting</span>
+      </div>
+      <div id="bidBoard" class="bidBoard">Create a run to compare worker bids before payment approval.</div>
     </section>
 
     <section class="trustGrid" aria-label="Trust and verification">

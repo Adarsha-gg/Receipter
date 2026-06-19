@@ -27,6 +27,13 @@ export interface MoneyInput {
 }
 
 export type CheckerPackId = 'research' | 'code' | 'commerce';
+export type TaskDataLabel = 'public' | 'buyer_private' | 'secret';
+
+export interface PrivacyLabeledTask {
+  requestedDataLabel: TaskDataLabel;
+  privateNotesProvided: boolean;
+  workerDataBoundary: string;
+}
 
 export interface CreateRunRequest {
   title: string;
@@ -34,6 +41,7 @@ export interface CreateRunRequest {
   privateNotes?: string;
   acceptanceCriteria?: string[];
   checkerPack?: CheckerPackId;
+  requestedDataLabel?: TaskDataLabel;
   maxPayment: MoneyInput;
 }
 
@@ -48,6 +56,26 @@ export interface TrustDecision {
   pricedMultiplier: number;
   reasons: string[];
   controls: string[];
+}
+
+export type WorkerBidVerdict = 'available' | 'blocked';
+
+export interface WorkerBid {
+  bidId: string;
+  workerAgentId: string;
+  priceSui: string;
+  sla: string;
+  requestedDataLabel: TaskDataLabel;
+  riskFlags: string[];
+  verdict: WorkerBidVerdict;
+  reason: string;
+}
+
+export interface WorkerBidBoard {
+  buyerMaxPayment: MoneyInput;
+  requestedDataLabel: TaskDataLabel;
+  selectedBidId: string | undefined;
+  bids: WorkerBid[];
 }
 
 export type VerificationCheckStatus = 'passed' | 'pending' | 'requires_review';
@@ -90,7 +118,9 @@ export interface LiveRunReceipt {
   updatedAt: string;
   taskTitle: string;
   sanitizedTask: string;
+  privacy?: PrivacyLabeledTask;
   maxPayment: MoneyInput;
+  workerBidBoard?: WorkerBidBoard;
   trustDecision: TrustDecision;
   verificationManifest: VerificationManifest;
   workerAgentId: string;

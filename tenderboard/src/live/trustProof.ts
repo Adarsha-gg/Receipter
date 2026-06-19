@@ -9,6 +9,7 @@ import type {
   TrustTier,
   VerificationCheck,
   VerificationManifest,
+  WorkerBidBoard,
 } from './types.js';
 
 export interface BuildTrustProofInput {
@@ -17,6 +18,7 @@ export interface BuildTrustProofInput {
   removedLines: string[];
   privateNotesProvided: boolean;
   config: TenderBoardConfig;
+  workerBidBoard?: WorkerBidBoard;
 }
 
 export function buildTrustDecision(input: BuildTrustProofInput): TrustDecision {
@@ -32,7 +34,9 @@ export function buildTrustDecision(input: BuildTrustProofInput): TrustDecision {
     `Payment is capped at ${input.config.maxPaymentSui} SUI by config.`,
     'Final evidence must produce a Walrus blob id before Sui anchoring.',
     'Receipts exclude SDK keys, private notes, wallet secrets, and .env values.',
+    'Worker execution can only proceed with an available bid that stays inside the buyer SUI cap and public data boundary.',
   ];
+  const selectedBid = input.workerBidBoard?.bids.find((bid) => bid.bidId === input.workerBidBoard?.selectedBidId);
 
   let score = 92;
   if (input.removedLines.length > 0) {
@@ -60,13 +64,23 @@ export function buildTrustDecision(input: BuildTrustProofInput): TrustDecision {
   if (normalizedAcceptanceCriteria(input.request.acceptanceCriteria).length > 0) {
     reasons.push('Buyer-defined acceptance criteria were anchored before dispatch.');
   }
+  if (input.workerBidBoard) {
+    const availableBids = input.workerBidBoard.bids.filter((bid) => bid.verdict === 'available').length;
+    const blockedBids = input.workerBidBoard.bids.length - availableBids;
+    reasons.push(`${availableBids} worker bid(s) are available and ${blockedBids} risky bid(s) were blocked.`);
+    if (!selectedBid) {
+      score -= 50;
+      reasons.push('No worker bid is available for Sui payment approval.');
+    }
+  }
 
-  const workerAgentId = input.config.workerAgentId;
+  const workerAgentId = selectedBid?.workerAgentId ?? input.config.workerAgentId;
   reasons.push(`Worker route is pinned to ${workerAgentId}.`);
 
   const boundedScore = clamp(Math.round(score), 0, 100);
   const tier = tierForScore(boundedScore);
-  const verdict = unsafeInPacket.length > 0 || boundedScore < 55 ? 'block' : boundedScore < 78 ? 'review' : 'allow';
+  const verdict =
+    !selectedBid && input.workerBidBoard ? 'block' : unsafeInPacket.length > 0 || boundedScore < 55 ? 'block' : boundedScore < 78 ? 'review' : 'allow';
 
   return {
     workerAgentId,
@@ -138,6 +152,8 @@ export function buildVerificationManifest(input: BuildTrustProofInput): Verifica
       maxPayment: input.request.maxPayment,
       checkerPack,
       acceptanceCriteria,
+      requestedDataLabel: input.request.requestedDataLabel ?? 'public',
+      workerBidBoard: input.workerBidBoard,
     }),
     evidenceHash: undefined,
     checkerPack,

@@ -10,6 +10,8 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     `- Updated: ${receipt.updatedAt}`,
     `- Task: ${receipt.taskTitle}`,
     `- Max payment: ${receipt.maxPayment.amount} ${receipt.maxPayment.currency}`,
+    `- Requested data label: ${receipt.privacy?.requestedDataLabel ?? receipt.workerBidBoard?.requestedDataLabel ?? 'public'}`,
+    `- Selected worker bid: ${receipt.workerBidBoard?.selectedBidId ?? 'not selected'}`,
     `- Trust verdict: ${receipt.trustDecision.verdict} (${receipt.trustDecision.tier}, ${receipt.trustDecision.score}/100)`,
     `- Checker pack: ${receipt.verificationManifest.checkerPack}`,
     `- Spec hash: ${receipt.verificationManifest.specHash}`,
@@ -31,6 +33,10 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     '```text',
     receipt.sanitizedTask,
     '```',
+    '',
+    '## Worker bid board',
+    '',
+    ...renderWorkerBidBoard(receipt),
     '',
     '## Trust gate',
     '',
@@ -61,4 +67,25 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+function renderWorkerBidBoard(receipt: LiveRunReceipt): string[] {
+  if (!receipt.workerBidBoard) return ['No worker bid board recorded.'];
+
+  return [
+    `- Buyer max: ${receipt.workerBidBoard.buyerMaxPayment.amount} ${receipt.workerBidBoard.buyerMaxPayment.currency}`,
+    `- Task data label: ${receipt.workerBidBoard.requestedDataLabel}`,
+    `- Selected bid: ${receipt.workerBidBoard.selectedBidId ?? 'none'}`,
+    '',
+    '| Bid | Worker | Price | SLA | Data | Verdict | Reason |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
+    ...receipt.workerBidBoard.bids.map(
+      (bid) =>
+        `| ${escapeCell(bid.bidId)} | ${escapeCell(bid.workerAgentId)} | ${escapeCell(bid.priceSui)} SUI | ${escapeCell(bid.sla)} | ${escapeCell(bid.requestedDataLabel)} | ${escapeCell(bid.verdict)} | ${escapeCell(bid.reason)} |`,
+    ),
+  ];
+}
+
+function escapeCell(value: unknown): string {
+  return String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
 }

@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildPrivacyLabeledTask, buildWorkerBidBoard, availableWorkerBids } from '../live/bidBoard.js';
 import { loadTenderBoardConfig } from '../live/config.js';
 import { loadDotEnvFile } from '../live/dotenv.js';
 import { RunEventBus, formatSseEvent } from '../live/eventBus.js';
@@ -156,14 +157,21 @@ async function createRun(
   const now = new Date().toISOString();
   const runId = makeRunId();
   const sanitized = sanitizeTaskForWorker(body);
+  const privacy = buildPrivacyLabeledTask(body);
+  const workerBidBoard = buildWorkerBidBoard(body, config);
+  const selectedBid = workerBidBoard.bids.find((bid) => bid.bidId === workerBidBoard.selectedBidId);
   const trustProof = buildTrustProof({
     request: body,
     sanitizedTask: sanitized.sanitizedTask,
     removedLines: sanitized.removedLines,
     privateNotesProvided: sanitized.privateNotesProvided,
     config,
+    workerBidBoard,
   });
 
+  if (availableWorkerBids(workerBidBoard).length === 0) {
+    throw httpError(400, `No safe worker bid is available: ${workerBidBoard.bids.map((bid) => bid.reason).join(' ')}`);
+  }
   if (trustProof.trustDecision.verdict === 'block') {
     throw httpError(400, `Trust gate blocked this task: ${trustProof.trustDecision.reasons.join(' ')}`);
   }
@@ -177,10 +185,12 @@ async function createRun(
     updatedAt: now,
     taskTitle: body.title,
     sanitizedTask: sanitized.sanitizedTask,
+    privacy,
     maxPayment: body.maxPayment,
+    workerBidBoard,
     trustDecision: trustProof.trustDecision,
     verificationManifest: trustProof.verificationManifest,
-    workerAgentId: config.workerAgentId,
+    workerAgentId: selectedBid?.workerAgentId ?? config.workerAgentId,
     workOrderId,
     suiNetwork: config.suiNetwork,
     suiPackageId: config.suiPackageId,
@@ -199,6 +209,17 @@ async function createRun(
     events: [
       makeEvent({ at: now, source: 'app', type: 'run_created', message: 'Sui-bound task created.' }),
       makeEvent({ at: now, source: 'app', type: 'task_sanitized', message: 'Private notes were not sent to the worker.' }),
+      makeEvent({
+        at: now,
+        source: 'app',
+        type: 'worker_bid_board_evaluated',
+        message: 'Worker bids were evaluated against SUI budget and privacy label.',
+        data: {
+          selectedBidId: workerBidBoard.selectedBidId,
+          availableBids: availableWorkerBids(workerBidBoard).length,
+          blockedBids: workerBidBoard.bids.filter((bid) => bid.verdict === 'blocked').length,
+        },
+      }),
       makeEvent({ at: now, source: 'app', type: 'trust_evaluated', message: `Trust gate returned ${trustProof.trustDecision.verdict} at ${trustProof.trustDecision.score}/100.`, data: { score: trustProof.trustDecision.score, tier: trustProof.trustDecision.tier, verdict: trustProof.trustDecision.verdict } }),
       makeEvent({ at: now, source: 'sui', type: 'sui_work_order_created', message: 'Sui work order receipt prepared. Payment approval is required.', data: { workOrderId, network: config.suiNetwork } }),
       makeEvent({ at: now, source: 'sui', type: 'verification_manifest_created', message: 'Verification manifest is ready for Sui anchoring.', data: { specHash: trustProof.verificationManifest.specHash } }),
@@ -423,6 +444,9 @@ function validateCreateRun(body: CreateRunRequest, config: TenderBoardConfig): v
   if (!body.maxPayment || body.maxPayment.currency !== 'SUI') throw httpError(400, 'Max payment must be in SUI.');
   if (body.checkerPack && !['research', 'code', 'commerce'].includes(body.checkerPack)) {
     throw httpError(400, 'Checker pack must be research, code, or commerce.');
+  }
+  if (body.requestedDataLabel && !['public', 'buyer_private', 'secret'].includes(body.requestedDataLabel)) {
+    throw httpError(400, 'Requested data label must be public, buyer_private, or secret.');
   }
   if (body.acceptanceCriteria && !Array.isArray(body.acceptanceCriteria)) {
     throw httpError(400, 'Acceptance criteria must be an array of strings.');

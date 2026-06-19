@@ -56,6 +56,7 @@ el('taskForm').addEventListener('submit', async (event) => {
     privateNotes: el('privateNotes').value,
     acceptanceCriteria: splitLines(el('acceptanceCriteria').value),
     checkerPack: el('checkerPack').value,
+    requestedDataLabel: el('requestedDataLabel').value,
     maxPayment: { amount: el('amount').value, currency: 'SUI' },
   };
 
@@ -207,6 +208,7 @@ function renderReceipt(receipt) {
   el('finalizationBox').classList.toggle('hidden', !canFinalize);
   el('storeEvidenceBtn').disabled = receipt.status !== 'delivered';
   el('anchorReceiptBtn').disabled = receipt.status !== 'anchoring' || !receipt.walrusBlobId;
+  renderWorkerBidBoard(receipt);
   renderTrustProof(receipt);
   renderSuiRail(receipt);
 
@@ -215,6 +217,8 @@ function renderReceipt(receipt) {
     ['Status', receipt.status],
     ['Mode', receipt.mode],
     ['Worker agent', receipt.workerAgentId || 'not configured'],
+    ['Requested data label', receipt.privacy?.requestedDataLabel || receipt.workerBidBoard?.requestedDataLabel || 'public'],
+    ['Selected bid', receipt.workerBidBoard?.selectedBidId || 'none'],
     ['Sui network', receipt.suiNetwork || 'not configured'],
     ['Sui package', receipt.suiPackageId || 'not configured'],
     ['Receipt registry', receipt.suiReceiptRegistryId || 'not configured'],
@@ -238,6 +242,49 @@ function renderReceipt(receipt) {
   el('receipt').innerHTML =
     rows.map(([label, value]) => `<div class="receiptRow"><strong>${escapeHtml(label)}</strong><span>${formatReceiptValue(value)}</span></div>`).join('') +
     receiptLink;
+}
+
+function renderWorkerBidBoard(receipt) {
+  const board = receipt.workerBidBoard;
+  if (!board) {
+    el('bidBoardStatus').textContent = 'legacy';
+    el('bidBoardStatus').className = 'statusPill';
+    el('bidBoard').textContent = 'This older receipt was created before worker bid boards were stored.';
+    return;
+  }
+
+  const availableCount = (board.bids || []).filter((bid) => bid.verdict === 'available').length;
+  const blockedCount = (board.bids || []).filter((bid) => bid.verdict === 'blocked').length;
+  el('bidBoardStatus').textContent = `${availableCount} available / ${blockedCount} blocked`;
+  el('bidBoardStatus').className = availableCount > 0 ? 'statusPill verdict-allow' : 'statusPill verdict-block';
+
+  el('bidBoard').innerHTML = `
+    <div class="bidSummary">
+      <div><strong>Buyer max</strong><span>${escapeHtml(board.buyerMaxPayment.amount)} ${escapeHtml(board.buyerMaxPayment.currency)}</span></div>
+      <div><strong>Task label</strong><span>${escapeHtml(board.requestedDataLabel)}</span></div>
+      <div><strong>Selected bid</strong><span>${escapeHtml(board.selectedBidId || 'none')}</span></div>
+      <div><strong>Boundary</strong><span>${escapeHtml(receipt.privacy?.workerDataBoundary || 'Public worker packet only.')}</span></div>
+    </div>
+    <div class="bidRows">
+      ${(board.bids || [])
+        .map(
+          (bid) => `<div class="bidRow ${escapeHtml(bid.verdict)}">
+            <div>
+              <strong>${escapeHtml(bid.workerAgentId)}</strong>
+              <small>${escapeHtml(bid.bidId)}</small>
+            </div>
+            <span>${escapeHtml(bid.priceSui)} SUI</span>
+            <span>${escapeHtml(bid.sla)}</span>
+            <span>${escapeHtml(bid.requestedDataLabel)}</span>
+            <span class="rowBadge">${escapeHtml(bid.verdict)}</span>
+            <div>
+              <strong>${escapeHtml((bid.riskFlags || []).join(', ') || 'none')}</strong>
+              <small>${escapeHtml(bid.reason)}</small>
+            </div>
+          </div>`,
+        )
+        .join('')}
+    </div>`;
 }
 
 function renderSuiRail(receipt) {
@@ -355,6 +402,7 @@ function setReceiptText(text, error = false) {
   if (error) {
     el('trustVerdict').textContent = 'error';
     el('manifestHash').textContent = 'error';
+    el('bidBoardStatus').textContent = 'error';
   }
 }
 

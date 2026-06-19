@@ -11,6 +11,8 @@ describe('renderReceiptProof', () => {
     expect(proof).toContain('Sui payment digest: 0xsui');
     expect(proof).toContain('Walrus blob id: walrus_blob_1');
     expect(proof).toContain('Trust verdict: allow');
+    expect(proof).toContain('Selected worker bid: public_scout_standard');
+    expect(proof).toContain('| public_scout_standard | sui_worker | 0.035 SUI | 24h | public | available |');
     expect(proof).toContain('Checker pack: research');
     expect(proof).toContain('Safe task only.');
     expect(proof).toContain('Spec hash: sha256:spec');
@@ -28,7 +30,29 @@ function sampleReceipt(): LiveRunReceipt {
     updatedAt: '2026-06-19T20:05:00.000Z',
     taskTitle: 'Find opportunities',
     sanitizedTask: 'Task: Find opportunities',
+    privacy: {
+      requestedDataLabel: 'public',
+      privateNotesProvided: true,
+      workerDataBoundary: 'Only public task instructions and acceptance criteria may be sent to worker bidders.',
+    },
     maxPayment: { amount: '0.050', currency: 'SUI' },
+    workerBidBoard: {
+      buyerMaxPayment: { amount: '0.050', currency: 'SUI' },
+      requestedDataLabel: 'public',
+      selectedBidId: 'public_scout_standard',
+      bids: [
+        {
+          bidId: 'public_scout_standard',
+          workerAgentId: 'sui_worker',
+          priceSui: '0.035',
+          sla: '24h',
+          requestedDataLabel: 'public',
+          riskFlags: [],
+          verdict: 'available',
+          reason: 'Bid is within the SUI budget and only asks for public worker data.',
+        },
+      ],
+    },
     trustDecision: {
       workerAgentId: 'sui_worker',
       score: 91,

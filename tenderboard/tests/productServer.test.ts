@@ -57,6 +57,7 @@ describe('TenderBoard Sui product server', () => {
         instructions: 'Make it useful.',
         acceptanceCriteria: ['Return three concrete Sui launch steps.', 'Include owner and risk for each step.'],
         checkerPack: 'research',
+        requestedDataLabel: 'public',
         privateNotes: 'do not send this field to the worker',
         maxPayment: { amount: '0.050', currency: 'SUI' },
       });
@@ -70,7 +71,77 @@ describe('TenderBoard Sui product server', () => {
       expect(receiptText).toContain('sui_work_order_created');
       expect(receiptText).toContain('trustDecision');
       expect(receiptText).toContain('verificationManifest');
+      expect(receiptText).toContain('workerBidBoard');
       expect(receiptText).toContain('public_sources');
+    } finally {
+      await close();
+    }
+  });
+
+  it('makes safe worker bids available and blocks over-budget and unsafe-data bids', async () => {
+    const { baseUrl, close } = await startTestServer({
+      TENDERBOARD_MODE: 'sui-dev',
+      TENDERBOARD_RECEIPTS_DIR: tempDir,
+    });
+
+    try {
+      const created = await postJson(`${baseUrl}/api/runs`, {
+        title: 'Source Sui builder opportunities',
+        instructions: 'Use public sources only.',
+        requestedDataLabel: 'public',
+        maxPayment: { amount: '0.050', currency: 'SUI' },
+      });
+
+      const receipt = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
+      const bids = receipt.workerBidBoard.bids;
+
+      expect(receipt.privacy).toMatchObject({
+        requestedDataLabel: 'public',
+        privateNotesProvided: false,
+      });
+      expect(receipt.workerBidBoard.selectedBidId).toBe('public_scout_standard');
+      expect(bids.find((bid: any) => bid.bidId === 'public_scout_standard')).toMatchObject({
+        priceSui: '0.035',
+        requestedDataLabel: 'public',
+        verdict: 'available',
+      });
+      expect(bids.find((bid: any) => bid.bidId === 'public_scout_expedited')).toMatchObject({
+        priceSui: '0.075',
+        verdict: 'blocked',
+      });
+      expect(bids.find((bid: any) => bid.bidId === 'public_scout_expedited').riskFlags).toContain('over_budget');
+      expect(bids.find((bid: any) => bid.bidId === 'context_scout_private')).toMatchObject({
+        requestedDataLabel: 'buyer_private',
+        verdict: 'blocked',
+      });
+      expect(bids.find((bid: any) => bid.bidId === 'context_scout_private').riskFlags).toContain('unsafe_data_request');
+    } finally {
+      await close();
+    }
+  });
+
+  it('blocks worker sourcing when the buyer labels the task data unsafe for workers', async () => {
+    const { baseUrl, close } = await startTestServer({
+      TENDERBOARD_MODE: 'sui-dev',
+      TENDERBOARD_RECEIPTS_DIR: tempDir,
+    });
+
+    try {
+      const response = await fetch(`${baseUrl}/api/runs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Use private CRM notes',
+          instructions: 'Summarize private buyer notes.',
+          requestedDataLabel: 'buyer_private',
+          maxPayment: { amount: '0.050', currency: 'SUI' },
+        }),
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body.error).toContain('No safe worker bid is available');
+      expect(body.error).toContain('buyer-private');
     } finally {
       await close();
     }

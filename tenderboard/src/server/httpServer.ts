@@ -21,7 +21,7 @@ import {
   buildInitialReceiptPlan,
   buildPaymentIntentPlan,
 } from '../sui/paymentPlan.js';
-import type { CreateRunRequest, LiveRunReceipt, SelectedBidReference, TenderBoardConfig, WorkerBid } from '../live/types.js';
+import type { CreateRunRequest, LiveRunReceipt, ScoutEvidence, SelectedBidReference, TenderBoardConfig, WorkerBid } from '../live/types.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(dirname, '../client');
@@ -113,6 +113,23 @@ async function route(
     return;
   }
 
+  const handoffMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/agent-handoff$/);
+  if (method === 'GET' && handoffMatch) {
+    const receipt = await store.get(handoffMatch[1]!);
+    if (!receipt) {
+      sendJson(res, 404, { error: 'Run not found' });
+      return;
+    }
+    sendJson(res, 200, {
+      hirerAgent: receipt.hirerAgent,
+      workerAgent: receipt.workerAgent,
+      agentHandoff: receipt.agentHandoff,
+      workerBidBoard: receipt.workerBidBoard,
+      reputationSnapshot: receipt.reputationSnapshot,
+    });
+    return;
+  }
+
   const eventsMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/events$/);
   if (method === 'GET' && eventsMatch) {
     await streamEvents(res, eventsMatch[1]!, store, bus);
@@ -122,7 +139,15 @@ async function route(
   const approveMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/approve-payment$/);
   if (method === 'POST' && approveMatch) {
     const body = await readJson<{ suiPaymentDigest?: string }>(req);
-    const receipt = await approvePayment(approveMatch[1]!, body, config, store, bus, scoutFetch);
+    const receipt = await approvePayment(approveMatch[1]!, body, config, store, bus);
+    sendJson(res, 200, receipt);
+    return;
+  }
+
+  const workerDeliveryMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/worker-delivery$/);
+  if (method === 'POST' && workerDeliveryMatch) {
+    const body = await readJson<{ deliveryText?: string; workerEvidence?: ScoutEvidence }>(req);
+    const receipt = await submitWorkerDelivery(workerDeliveryMatch[1]!, body, store, bus, scoutFetch);
     sendJson(res, 200, receipt);
     return;
   }
@@ -331,7 +356,6 @@ async function approvePayment(
   config: TenderBoardConfig,
   store: RunStore,
   bus: RunEventBus,
-  scoutFetch: typeof fetch | undefined,
 ): Promise<LiveRunReceipt> {
   const receipt = await store.require(runId);
   if (receipt.status !== 'awaiting_payment_approval') {
@@ -345,17 +369,12 @@ async function approvePayment(
   }
   const receiptPlan = requireReceiptPlan(receipt);
   const paymentIntentPlan = requirePaymentIntentPlan(receipt);
-  const delivery = scoutFetch
-    ? await buildWorkerDelivery(receipt, { fetchImpl: scoutFetch })
-    : await buildWorkerDelivery(receipt);
   await store.update(runId, {
-    status: 'delivered',
+    status: 'working',
     updatedAt: now,
     suiPaymentDigest,
     receiptPlan: bindPaymentDigest(receiptPlan, suiPaymentDigest, now),
-    deliveryText: delivery.deliveryText,
-    workerEvidence: delivery.workerEvidence,
-    ...agentHandoffUpdate(receipt, 'delivered'),
+    ...agentHandoffUpdate(receipt, 'working'),
   });
 
   const events = [
@@ -375,7 +394,69 @@ async function approvePayment(
         receiverAddress: paymentIntentPlan.receiverAddress,
       },
     }),
-    makeEvent({ at: now, source: 'worker', type: 'delivery_sent', message: 'Worker delivered the result.' }),
+    makeEvent({
+      at: now,
+      source: 'worker',
+      type: 'worker_task_available',
+      message: 'Selected worker agent can now submit delivery for the paid work order.',
+      data: {
+        workerAgentId: receipt.workerAgentId,
+        selectedBidId: receipt.workerBidBoard?.selectedBidId,
+        handoffId: receipt.agentHandoff?.handoffId,
+      },
+    }),
+  ];
+
+  for (const event of events) {
+    await store.appendEvent(runId, event);
+    bus.publish(runId, event);
+  }
+
+  return store.require(runId);
+}
+
+async function submitWorkerDelivery(
+  runId: string,
+  body: { deliveryText?: string; workerEvidence?: ScoutEvidence },
+  store: RunStore,
+  bus: RunEventBus,
+  scoutFetch: typeof fetch | undefined,
+): Promise<LiveRunReceipt> {
+  const receipt = await store.require(runId);
+  if (receipt.status !== 'working') {
+    throw httpError(409, `Run is not waiting for worker delivery. Current status: ${receipt.status}`);
+  }
+  if (!receipt.suiPaymentDigest) {
+    throw httpError(409, 'Run needs Sui payment approval before worker delivery.');
+  }
+
+  const now = new Date().toISOString();
+  const delivery = body.deliveryText?.trim()
+    ? { deliveryText: body.deliveryText.trim(), workerEvidence: body.workerEvidence }
+    : scoutFetch
+      ? await buildWorkerDelivery(receipt, { fetchImpl: scoutFetch })
+      : await buildWorkerDelivery(receipt);
+
+  await store.update(runId, {
+    status: 'delivered',
+    updatedAt: now,
+    deliveryText: delivery.deliveryText,
+    workerEvidence: delivery.workerEvidence,
+    ...agentHandoffUpdate(receipt, 'delivered'),
+  });
+
+  const events = [
+    makeEvent({
+      at: now,
+      source: 'worker',
+      type: 'delivery_sent',
+      message: 'Worker agent submitted delivery for the paid work order.',
+      data: {
+        workerAgentId: receipt.workerAgentId,
+        handoffId: receipt.agentHandoff?.handoffId,
+        sourceEvidenceHash: delivery.workerEvidence?.evidenceHash,
+      },
+    }),
     makeEvent({ at: now, source: 'walrus', type: 'walrus_upload_pending', message: 'Full receipt and evidence should be uploaded to Walrus before Sui anchoring.' }),
   ];
 

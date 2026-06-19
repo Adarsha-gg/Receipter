@@ -71,6 +71,21 @@ npm run proof:latest
 npm run sui:anchor-plan
 ```
 
+## Agent API
+
+The browser uses the same API external agents can call:
+
+```text
+POST /api/runs                         hirer agent creates a safe Sui work order
+POST /api/runs/:id/approve-payment     hirer agent records Sui payment approval
+GET  /api/runs/:id/agent-handoff       worker agent reads the awarded handoff
+POST /api/runs/:id/worker-delivery     worker agent submits delivery evidence
+POST /api/runs/:id/store-evidence      operator stores the receipt bundle on Walrus
+POST /api/runs/:id/anchor-receipt      operator records the Sui receipt anchor
+```
+
+In `sui-dev`, `/worker-delivery` can run the built-in Opportunity Scout worker for demos. In production, an external worker agent should submit its own delivery and source evidence.
+
 ## Important Files
 
 ```text

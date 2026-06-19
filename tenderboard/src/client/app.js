@@ -94,6 +94,20 @@ el('approveBtn').addEventListener('click', async () => {
   }
 });
 
+el('submitDeliveryBtn').addEventListener('click', async () => {
+  if (!currentRunId) return;
+  el('submitDeliveryBtn').disabled = true;
+  try {
+    await request(`/api/runs/${currentRunId}/worker-delivery`, { method: 'POST', body: {} });
+    await refreshReceipt();
+    await loadRunHistory();
+  } catch (error) {
+    setReceiptText(error.message, true);
+  } finally {
+    el('submitDeliveryBtn').disabled = false;
+  }
+});
+
 el('storeEvidenceBtn').addEventListener('click', async () => {
   if (!currentRunId) return;
   el('storeEvidenceBtn').disabled = true;
@@ -205,8 +219,10 @@ async function loadRunHistory() {
 function renderReceipt(receipt) {
   el('receiptStatus').textContent = receipt.status;
   el('paymentBox').classList.toggle('hidden', receipt.status !== 'awaiting_payment_approval');
+  el('workerDeliveryBox').classList.toggle('hidden', receipt.status !== 'working');
   const canFinalize = ['delivered', 'anchoring', 'anchored'].includes(receipt.status);
   el('finalizationBox').classList.toggle('hidden', !canFinalize);
+  el('submitDeliveryBtn').disabled = receipt.status !== 'working';
   el('storeEvidenceBtn').disabled = receipt.status !== 'delivered';
   el('anchorReceiptBtn').disabled = receipt.status !== 'anchoring' || !receipt.walrusBlobId;
   renderWorkerBidBoard(receipt);

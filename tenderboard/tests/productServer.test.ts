@@ -250,35 +250,48 @@ describe('SuiProof Market product server', () => {
       expect(before.agentHandoff.status).toBe('awaiting_payment');
 
       const after = await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
-      expect(after.status).toBe('delivered');
-      expect(after.agentHandoff.status).toBe('ready_to_anchor');
+      expect(after.status).toBe('working');
+      expect(after.agentHandoff.status).toBe('working');
       expect(after.reputationSnapshot.anchoredRunCount).toBe(0);
       expect(after.suiPaymentDigest).toContain('sui_dev_payment_');
       expect(after.receiptPlan.paymentDigest).toBe(after.suiPaymentDigest);
-      expect(after.deliveryText).toContain('Opportunity Scout Report');
-      expect(after.workerEvidence).toMatchObject({
+      expect(after.deliveryText).toBeUndefined();
+      expect(JSON.stringify(after.events)).toContain('worker_task_available');
+
+      const handoff = await (await fetch(`${baseUrl}/api/runs/${created.runId}/agent-handoff`)).json();
+      expect(handoff.agentHandoff).toMatchObject({
+        hirerAgentId: after.hirerAgent.agentId,
+        workerAgentId: after.workerAgent.agentId,
+        status: 'working',
+      });
+
+      const delivered = await postJson(`${baseUrl}/api/runs/${created.runId}/worker-delivery`, {});
+      expect(delivered.status).toBe('delivered');
+      expect(delivered.agentHandoff.status).toBe('ready_to_anchor');
+      expect(delivered.deliveryText).toContain('Opportunity Scout Report');
+      expect(delivered.workerEvidence).toMatchObject({
         schema: 'tenderboard.scout_evidence.v1',
         query: expect.any(String),
         sourceReceipt: {
           schema: 'tenderboard.source_receipt.v1',
         },
       });
-      expect(after.workerEvidence.sourceReceipt.observations.length).toBeGreaterThan(0);
-      expect(after.workerEvidence.claims.length).toBeGreaterThan(0);
-      const observationIds = new Set(after.workerEvidence.sourceReceipt.observations.map((observation: any) => observation.observationId));
-      expect(after.workerEvidence.claims.every((claim: any) => observationIds.has(claim.sourceObservationId))).toBe(true);
-      expect(JSON.stringify(after)).not.toContain('private strategy note');
-      expect(after.evidenceEnvelope).toMatchObject({
+      expect(delivered.workerEvidence.sourceReceipt.observations.length).toBeGreaterThan(0);
+      expect(delivered.workerEvidence.claims.length).toBeGreaterThan(0);
+      const observationIds = new Set(delivered.workerEvidence.sourceReceipt.observations.map((observation: any) => observation.observationId));
+      expect(delivered.workerEvidence.claims.every((claim: any) => observationIds.has(claim.sourceObservationId))).toBe(true);
+      expect(JSON.stringify(delivered)).not.toContain('private strategy note');
+      expect(delivered.evidenceEnvelope).toMatchObject({
         deliveryPresent: true,
         walrusReady: false,
       });
-      expect(after.evidenceEnvelope.evidenceHash).toMatch(/^sha256:/);
-      expect(after.clearingDecision).toMatchObject({
+      expect(delivered.evidenceEnvelope.evidenceHash).toMatch(/^sha256:/);
+      expect(delivered.clearingDecision).toMatchObject({
         verdict: 'pending_walrus',
         walrusReady: false,
       });
-      expect(after.settlementInstruction.action).toBe('store_walrus_evidence');
-      expect(JSON.stringify(after.events)).toContain('walrus_upload_pending');
+      expect(delivered.settlementInstruction.action).toBe('store_walrus_evidence');
+      expect(JSON.stringify(delivered.events)).toContain('walrus_upload_pending');
 
       const withEvidence = await postJson(`${baseUrl}/api/runs/${created.runId}/store-evidence`, {});
       expect(withEvidence.status).toBe('anchoring');

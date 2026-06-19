@@ -185,8 +185,25 @@ async function verifyWalrusReadback(receipt: LiveRunReceipt, fetchImpl: typeof f
     if (body.run?.runId !== receipt.runId) {
       return { id: 'walrus_readback', status: 'failed', detail: 'Walrus bundle run id does not match the receipt.' };
     }
-    if (body.verification?.evidenceHash !== receipt.verificationManifest.evidenceHash) {
-      return { id: 'walrus_readback', status: 'failed', detail: 'Walrus bundle evidence hash does not match the receipt.' };
+    if (receipt.suiPaymentDigest && body.sui?.paymentDigest !== receipt.suiPaymentDigest) {
+      return { id: 'walrus_readback', status: 'failed', detail: 'Walrus bundle payment digest does not match the receipt.' };
+    }
+    if (receipt.workerEvidence?.evidenceHash && body.workerEvidence?.evidenceHash !== receipt.workerEvidence.evidenceHash) {
+      return { id: 'walrus_readback', status: 'failed', detail: 'Walrus bundle worker evidence hash does not match the receipt.' };
+    }
+    if (body.verification?.specHash !== receipt.verificationManifest.specHash) {
+      return { id: 'walrus_readback', status: 'failed', detail: 'Walrus bundle spec hash does not match the receipt.' };
+    }
+    const acceptedEvidenceHashes = new Set([
+      receipt.verificationManifest.evidenceHash,
+      receipt.evidenceEnvelope?.evidenceHash,
+      receipt.memoryRecord?.evidenceHash,
+      ...receipt.events
+        .map((event) => (isRecord(event.data) && typeof event.data.evidenceHash === 'string' ? event.data.evidenceHash : undefined))
+        .filter((hash): hash is string => Boolean(hash)),
+    ]);
+    if (!body.verification?.evidenceHash || !acceptedEvidenceHashes.has(body.verification.evidenceHash)) {
+      return { id: 'walrus_readback', status: 'failed', detail: 'Walrus bundle evidence hash is not part of this receipt history.' };
     }
     return { id: 'walrus_readback', status: 'passed', detail: `Walrus blob ${receipt.walrusBlobId} read back and matched.` };
   } catch (error) {
@@ -196,4 +213,8 @@ async function verifyWalrusReadback(receipt: LiveRunReceipt, fetchImpl: typeof f
       detail: `Walrus readback failed: ${(error as Error).message}`,
     };
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

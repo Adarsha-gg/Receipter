@@ -200,7 +200,7 @@ function reputationPlanFields(receipt: LiveRunReceipt, walrusBlobId: string | un
   const priorAverage = snapshot?.averageTrustScore ?? 0;
   const averageTrustScoreAfter =
     anchoredRunCountAfter > 0
-      ? Math.round(((priorAverage * currentRunCount + (includeCurrentRun ? receipt.trustDecision.score : 0)) / anchoredRunCountAfter) * 10) / 10
+      ? Math.round((priorAverage * currentRunCount + (includeCurrentRun ? receipt.trustDecision.score : 0)) / anchoredRunCountAfter)
       : 0;
 
   return {

@@ -61,6 +61,17 @@ Deployer: 0xb401ec7dde816354d0745fbba538674c51e5f7bcbb3816305df538f32d9c7727
 Smoke anchor tx: 3Yr14XHTAGLvHVa6RABeFsPXbxe2DRhhW5qZjRmhgmz8
 ```
 
+Current live Sui-mode proof:
+
+```text
+Run:        run_20260619164447_9t7mn9
+Payment:    DmH3uwtvvZsrnyG4gj9d8yj5UbisT6jyjGUeHxwgURSG
+Walrus:     zxPV1VpSPiJCzRREbs6uqdz4M6Oc-low6JFs4oFs8Ss
+Walrus URL: https://aggregator.walrus-testnet.walrus.space/v1/blobs/zxPV1VpSPiJCzRREbs6uqdz4M6Oc-low6JFs4oFs8Ss
+Sui anchor: 9VjUCNMheL4MjAucxSPHgCZF4m62M4aAPbK6roH5PSJH
+Verifier:   walrus_readback=passed, sui_anchor_binding=passed
+```
+
 After publishing, configure:
 
 ```env

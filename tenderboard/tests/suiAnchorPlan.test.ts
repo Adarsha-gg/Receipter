@@ -62,6 +62,46 @@ describe('Sui anchor plan', () => {
     expect(suiAmountToMist('1.000000001')).toBe('1000000001');
   });
 
+  it('rounds reputation average trust to a Move u16-compatible integer', () => {
+    const config = loadTenderBoardConfig({
+      TENDERBOARD_MODE: 'sui',
+      SUI_NETWORK: 'testnet',
+      SUI_OPERATOR_ADDRESS: '0xoperator',
+      SUI_PACKAGE_ID: '0xpackage',
+      SUI_RECEIPT_REGISTRY_ID: '0xregistry',
+      WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
+      WALRUS_AGGREGATOR_URL: 'https://aggregator.walrus.testnet.example',
+    });
+    const receipt = {
+      ...sampleReceipt(),
+      reputationSnapshot: {
+        objectType: 'tenderboard.worker_reputation_passport.v1' as const,
+        workerAgentId: 'sui_worker',
+        generatedAt: '2026-06-19T01:00:00.000Z',
+        anchoredRunCount: 3,
+        walrusEvidenceCount: 3,
+        sourceEvidenceCount: 4,
+        memoryCount: 3,
+        averageClaimSupport: 100,
+        averageTrustScore: 84.1,
+        tierCounts: { AAA: 0, AA: 0, A: 3, B: 0, C: 0 },
+        totalMistEarned: '105000000',
+        totalSuiEarned: '0.105',
+        lastAnchoredRunId: 'prior',
+        lastAnchoredAt: '2026-06-19T00:00:00.000Z',
+        lastWalrusBlobId: 'prior_blob',
+        lastMemoryId: 'prior_memory',
+        lastEvidenceHash: 'sha256:prior',
+        lastAnchorDigest: 'prior_anchor',
+      },
+    };
+
+    const plan = buildSuiAnchorPlan(receipt, config, 'walrus_blob_123');
+
+    expect(plan.reputation.averageTrustScoreAfter).toBe(86);
+    expect(plan.moveCall.arguments[19]).toBe('86');
+  });
+
   it('renders missing deployment settings without overclaiming readiness', () => {
     const config = loadTenderBoardConfig({ TENDERBOARD_MODE: 'sui-dev' });
     const plan = buildSuiAnchorPlan(sampleReceipt(), config);

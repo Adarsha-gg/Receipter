@@ -1,5 +1,6 @@
 module tenderboard::receipts;
 
+use std::string::{Self, String};
 use std::vector;
 use sui::event;
 use sui::object::{Self, UID};
@@ -53,6 +54,18 @@ public struct WorkerReputationUpdated has copy, drop {
     last_run_id: vector<u8>,
     last_walrus_blob_id: vector<u8>,
     last_evidence_hash: vector<u8>,
+}
+
+public struct PaymentIntentRecorded has copy, drop {
+    sender: address,
+    run_id: String,
+    resource: String,
+    payment_intent_id: String,
+    payment_nonce: String,
+    settlement_nonce: String,
+    amount_mist: String,
+    receiver: String,
+    worker_agent_id: String,
 }
 
 fun init(ctx: &mut TxContext) {
@@ -128,6 +141,30 @@ public entry fun anchor_receipt(
         last_run_id: run_id,
         last_walrus_blob_id: walrus_blob_id,
         last_evidence_hash: evidence_hash,
+    });
+}
+
+public entry fun record_payment_intent(
+    run_id: vector<u8>,
+    resource: vector<u8>,
+    payment_intent_id: vector<u8>,
+    payment_nonce: vector<u8>,
+    settlement_nonce: vector<u8>,
+    amount_mist: vector<u8>,
+    receiver: vector<u8>,
+    worker_agent_id: vector<u8>,
+    ctx: &mut TxContext,
+) {
+    event::emit(PaymentIntentRecorded {
+        sender: tx_context::sender(ctx),
+        run_id: string::utf8(run_id),
+        resource: string::utf8(resource),
+        payment_intent_id: string::utf8(payment_intent_id),
+        payment_nonce: string::utf8(payment_nonce),
+        settlement_nonce: string::utf8(settlement_nonce),
+        amount_mist: string::utf8(amount_mist),
+        receiver: string::utf8(receiver),
+        worker_agent_id: string::utf8(worker_agent_id),
     });
 }
 

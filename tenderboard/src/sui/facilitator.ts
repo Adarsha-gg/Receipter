@@ -193,8 +193,11 @@ async function verifySuiRpcSettlement(input: {
   if (!hasMatchingReceiverBalanceChange(result, input.payload)) {
     throw new SuiX402FacilitatorError(402, 'Sui transaction does not pay the expected amount to the expected receiver.');
   }
-  if (!containsDeepValue(result, input.payload.paymentNonce)) {
-    throw new SuiX402FacilitatorError(402, 'Sui transaction is not bound to the expected Payment Kit nonce.');
+  if (!hasMatchingPaymentIntentMarker(result, input.payload, input.receipt, input.config)) {
+    throw new SuiX402FacilitatorError(
+      402,
+      'Sui transaction is missing the expected PaymentIntentRecorded nonce marker.',
+    );
   }
 }
 
@@ -216,11 +219,61 @@ function hasMatchingReceiverBalanceChange(result: Record<string, unknown>, paylo
   });
 }
 
-function containsDeepValue(value: unknown, expected: string): boolean {
-  if (value === expected) return true;
-  if (Array.isArray(value)) return value.some((item) => containsDeepValue(item, expected));
-  if (!isRecord(value)) return false;
-  return Object.values(value).some((item) => containsDeepValue(item, expected));
+function hasMatchingPaymentIntentMarker(
+  result: Record<string, unknown>,
+  payload: X402SuiPaymentPayload,
+  receipt: LiveRunReceipt,
+  config: TenderBoardConfig,
+): boolean {
+  const events = Array.isArray(result.events) ? result.events : [];
+  return events.some((event) => {
+    if (!isRecord(event)) return false;
+    const type = stringOptional(event.type);
+    if (!type || !isPaymentIntentEventType(type, config.suiPackageId)) return false;
+
+    const parsedJson = recordOptional(event.parsedJson);
+    if (!parsedJson) return false;
+
+    return (
+      eventString(parsedJson, 'run_id', 'runId') === payload.runId &&
+      eventString(parsedJson, 'resource') === payload.resource &&
+      eventString(parsedJson, 'payment_intent_id', 'paymentIntentId') === payload.paymentIntentId &&
+      eventString(parsedJson, 'payment_nonce', 'paymentNonce') === payload.paymentNonce &&
+      eventString(parsedJson, 'settlement_nonce', 'settlementNonce') === payload.settlementNonce &&
+      eventString(parsedJson, 'amount_mist', 'amountMist') === payload.amountMist &&
+      sameAddress(eventString(parsedJson, 'receiver'), payload.receiverAddress) &&
+      eventString(parsedJson, 'worker_agent_id', 'workerAgentId') === receipt.workerAgentId
+    );
+  });
+}
+
+function isPaymentIntentEventType(type: string, packageId: string | undefined): boolean {
+  if (!type.endsWith('::receipts::PaymentIntentRecorded')) return false;
+  if (!packageId) return true;
+  return type.toLowerCase().startsWith(`${packageId.toLowerCase()}::`);
+}
+
+function eventString(value: Record<string, unknown>, snakeField: string, camelField?: string): string | undefined {
+  return decodedStringOptional(value[snakeField]) ?? (camelField ? decodedStringOptional(value[camelField]) : undefined);
+}
+
+function decodedStringOptional(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  if (value.trim() === '') return value;
+  const decoded = decodeBase64Printable(value);
+  return decoded ?? value;
+}
+
+function decodeBase64Printable(value: string): string | undefined {
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(value) || value.length % 4 !== 0) return undefined;
+  const decoded = Buffer.from(value, 'base64').toString('utf8');
+  if (!decoded || decoded.includes('\u0000')) return undefined;
+  if (!/^[\x20-\x7E]+$/.test(decoded)) return undefined;
+  return decoded;
+}
+
+function sameAddress(actual: string | undefined, expected: string): boolean {
+  return typeof actual === 'string' && actual.toLowerCase() === expected.toLowerCase();
 }
 
 function assertEqual(label: string, actual: string, expected: string): void {

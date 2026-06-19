@@ -55,9 +55,12 @@ sui client publish
 Current testnet deployment:
 
 ```text
-Package:  0x87a14a921a1ced0d2fd410ed0d6285d1722efabaf304d6a169971b902f6152c9
-Registry: 0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb
-Deployer: 0xb401ec7dde816354d0745fbba538674c51e5f7bcbb3816305df538f32d9c7727
+Package v2:      0xe87a8b5c87cfbf8e3251bed02f0be8a45220512f3f17e341f2c677a0154d4a47
+Original pkg:    0x87a14a921a1ced0d2fd410ed0d6285d1722efabaf304d6a169971b902f6152c9
+Registry:        0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb
+Upgrade cap:     0xc50924def84e7bcadb6aaaea58f887017903102ace49363f82b9e18bad698b7d
+Deployer:        0xb401ec7dde816354d0745fbba538674c51e5f7bcbb3816305df538f32d9c7727
+V2 upgrade tx:   GRN22WmqYbZrM9kjgsZLw9wrvxZUixsh3AZ6YQXvZzo7
 Smoke anchor tx: 3Yr14XHTAGLvHVa6RABeFsPXbxe2DRhhW5qZjRmhgmz8
 ```
 
@@ -72,6 +75,16 @@ Sui anchor: 9VjUCNMheL4MjAucxSPHgCZF4m62M4aAPbK6roH5PSJH
 Verifier:   walrus_readback=passed, sui_anchor_binding=passed
 ```
 
+Current live x402 Sui payment proof:
+
+```text
+Run:       run_20260619165718_nnxw1z
+Payment:   7rQS8zmCkjJkxu469UbVSQsjxwD88eVNpkaB2VAZoaYN
+Package:   0xe87a8b5c87cfbf8e3251bed02f0be8a45220512f3f17e341f2c677a0154d4a47
+Event:     PaymentIntentRecorded
+Verifier:  requestBound, nonceBound, amountBound, receiverBound, workerBound, suiSettlementVerified, replayProtected
+```
+
 After publishing, configure:
 
 ```env
@@ -79,7 +92,7 @@ TENDERBOARD_MODE=sui
 SUI_NETWORK=testnet
 SUI_RPC_URL=https://fullnode.testnet.sui.io:443
 SUI_OPERATOR_ADDRESS=...
-SUI_PACKAGE_ID=0x87a14a921a1ced0d2fd410ed0d6285d1722efabaf304d6a169971b902f6152c9
+SUI_PACKAGE_ID=0xe87a8b5c87cfbf8e3251bed02f0be8a45220512f3f17e341f2c677a0154d4a47
 SUI_RECEIPT_REGISTRY_ID=0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb
 SUI_CLI_PATH=C:\Users\adars\.sui-bin\testnet-v1.73.1\sui.exe
 SUI_CLIENT_CONFIG=C:\Users\adars\.sui\sui_config\client.yaml
@@ -97,13 +110,13 @@ npm run sui:anchor-plan <run-id>
 
 If `SUI_CLI_PATH` is configured, `POST /api/runs/:id/anchor-receipt` executes the Move receipt-registry call directly from the backend. Without it, Sui mode still accepts a manually supplied `suiAnchorDigest`.
 
-Do not claim deployed Sui anchoring until the package is published and at least one receipt is anchored on testnet or mainnet.
+Do not claim mainnet anchoring until the package and Walrus publisher path are redeployed on mainnet.
 
 In `sui-dev` mode the app records deterministic Sui dev digests and Walrus dev blob/object ids so the full product loop can be demoed locally. In `sui` mode payment approval requires a real Sui payment transaction digest, the Walrus evidence step uses the configured HTTP publisher, and the Sui anchor step records the real receipt-registry transaction digest.
 
 WalrusProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning. Worker task access is exposed as an x402 paid API: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest.
 
-The app includes its own Sui-native x402 facilitator. In `sui-dev` it verifies deterministic local Sui dev digests for demoability. In `sui` mode it calls `SUI_RPC_URL` with `sui_getTransactionBlock` and verifies successful execution, receiver balance change, Payment Kit nonce binding, request/resource binding, amount, receiver, coin type, worker id, and replay protection before unlocking the worker task. This is not the Coinbase-hosted facilitator; it is the missing Sui-specific facilitator path for WalrusProof Market.
+The app includes its own Sui-native x402 facilitator. In `sui-dev` it verifies deterministic local Sui dev digests for demoability. In `sui` mode it calls `SUI_RPC_URL` with `sui_getTransactionBlock` and verifies successful execution, receiver balance change, a package-owned `PaymentIntentRecorded` event, Payment Kit nonce binding, request/resource binding, amount, receiver, coin type, worker id, and replay protection before unlocking the worker task. This is not the Coinbase-hosted facilitator; it is the missing Sui-specific facilitator path for WalrusProof Market.
 
 ## Verification Layer
 
@@ -160,6 +173,8 @@ npm test
 npm run typecheck
 npm run proof:latest
 npm run sui:anchor-plan
+npm run sui:x402-pay -- <run-id>
+npm run smoke:x402-live
 ```
 
 ## Agent API

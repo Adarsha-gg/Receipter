@@ -10,7 +10,9 @@
     "start": "tsx src/server/httpServer.ts",
     "proof:latest": "tsx src/cli/exportProof.ts",
     "seed:memory": "tsx src/cli/seedMemory.ts",
-    "sui:anchor-plan": "tsx src/cli/exportSuiAnchorPlan.ts"
+    "sui:anchor-plan": "tsx src/cli/exportSuiAnchorPlan.ts",
+    "sui:x402-pay": "tsx src/cli/paySuiX402.ts",
+    "smoke:x402-live": "tsx src/cli/runLiveX402Smoke.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.3",

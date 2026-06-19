@@ -290,7 +290,7 @@ describe('WalrusProof Market product server', () => {
 
   it('verifies real Sui x402 payments through Sui JSON-RPC', async () => {
     const rpcCalls: Array<{ input: RequestInfo | URL; init: RequestInit | undefined }> = [];
-    let currentSuiNonce = '';
+    let currentPaymentMarker: Record<string, string> = {};
     const suiRpcFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       rpcCalls.push({ input, init });
       const request = JSON.parse(String(init?.body));
@@ -312,10 +312,8 @@ describe('WalrusProof Market product server', () => {
             ],
             events: [
               {
-                type: '0xpayment::PaymentReceipt',
-                parsedJson: {
-                  nonce: 'filled-after-create',
-                },
+                type: '0xpackage::receipts::PaymentIntentRecorded',
+                parsedJson: currentPaymentMarker,
               },
             ],
           },
@@ -339,7 +337,6 @@ describe('WalrusProof Market product server', () => {
         const response = await suiRpcFetch(input, init);
         const request = JSON.parse(String(init?.body));
         const body = await response.json();
-        body.result.events[0].parsedJson.nonce = currentSuiNonce;
         body.result.digest = request.params[0];
         return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
       } },
@@ -352,7 +349,16 @@ describe('WalrusProof Market product server', () => {
         maxPayment: { amount: '0.050', currency: 'SUI' },
       });
       const receipt = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
-      currentSuiNonce = receipt.paymentIntentPlan.paymentNonce;
+      currentPaymentMarker = {
+        run_id: receipt.runId,
+        resource: `/api/runs/${receipt.runId}/worker-task`,
+        payment_intent_id: receipt.paymentIntentPlan.intentId,
+        payment_nonce: receipt.paymentIntentPlan.paymentNonce,
+        settlement_nonce: receipt.paymentIntentPlan.settlementNonce,
+        amount_mist: receipt.paymentIntentPlan.amountMist,
+        receiver: receipt.paymentIntentPlan.receiverAddress,
+        worker_agent_id: receipt.workerAgentId,
+      };
       const payload = buildX402Payload(receipt, { transaction: '0xsui_payment_digest' });
 
       const verified = await postJson(`${baseUrl}/api/x402/verify`, payload);

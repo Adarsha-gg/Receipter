@@ -649,6 +649,39 @@ describe('WalrusProof Market product server', () => {
         },
       });
 
+      const recordVerification = await (await fetch(`${baseUrl}/api/oracle/records/${created.runId}/verify`)).json();
+      expect(recordVerification).toMatchObject({
+        objectType: 'walrusproof.verified_memory_record.v1',
+        runId: created.runId,
+        workerAgentId: 'sui_opportunity_scout',
+        memoryId: anchored.memoryRecord.memoryId,
+        memoryHash: anchored.memoryRecord.memoryHash,
+        verified: true,
+      });
+      expect(recordVerification.checks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'memory_hash', status: 'passed' }),
+          expect.objectContaining({ id: 'source_receipt_hash', status: 'passed' }),
+          expect.objectContaining({ id: 'worker_evidence_hash', status: 'passed' }),
+          expect.objectContaining({ id: 'walrus_binding', status: 'passed' }),
+          expect.objectContaining({ id: 'sui_anchor_binding', status: 'passed' }),
+          expect.objectContaining({ id: 'walrus_readback', status: 'skipped' }),
+        ]),
+      );
+
+      const passportVerification = await (await fetch(`${baseUrl}/api/oracle/passports/sui_opportunity_scout/verify`)).json();
+      expect(passportVerification).toMatchObject({
+        objectType: 'walrusproof.verified_passport.v1',
+        workerAgentId: 'sui_opportunity_scout',
+        verifiedRecordCount: 1,
+        failedRecordCount: 0,
+        verified: true,
+        passport: {
+          memoryCount: 1,
+          latestMemoryId: anchored.memoryRecord.memoryId,
+        },
+      });
+
       const memoryIndex = await (await fetch(`${baseUrl}/api/walrus/memory`)).json();
       expect(memoryIndex).toMatchObject({
         objectType: 'walrusproof.memory_index.v1',

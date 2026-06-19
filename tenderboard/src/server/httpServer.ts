@@ -15,6 +15,7 @@ import { buildWorkerReputationCard, markReputationSignalAnchored } from '../live
 import { sanitizeTaskForWorker } from '../live/sanitizeTask.js';
 import { buildWorkerDelivery, makeSuiDevDigest, makeSuiDevObjectId } from '../live/suiRuntime.js';
 import { buildTrustProof, finalizeVerificationManifest } from '../live/trustProof.js';
+import { verifyMemoryRecord, verifyPassport } from '../live/memoryVerifier.js';
 import { storeEvidenceOnWalrus } from '../live/walrusRuntime.js';
 import { buildX402SuiPaymentChallenge, buildX402SuiPaymentResponse } from '../live/x402.js';
 import { parseX402PaymentHeader, parseX402PaymentPayload, verifySuiX402Payment } from '../sui/facilitator.js';
@@ -127,6 +128,24 @@ async function route(
   if (method === 'GET' && agentCardMatch) {
     const workerAgentId = decodeURIComponent(agentCardMatch[1]!);
     sendJson(res, 200, buildAgentMarketCard(workerAgentId, config, await loadAllReceipts(store)));
+    return;
+  }
+
+  const oraclePassportMatch = url.pathname.match(/^\/api\/oracle\/passports\/([^/]+)\/verify$/);
+  if (method === 'GET' && oraclePassportMatch) {
+    const workerAgentId = decodeURIComponent(oraclePassportMatch[1]!);
+    sendJson(res, 200, await verifyPassport(workerAgentId, await loadAllReceipts(store)));
+    return;
+  }
+
+  const oracleRecordMatch = url.pathname.match(/^\/api\/oracle\/records\/([^/]+)\/verify$/);
+  if (method === 'GET' && oracleRecordMatch) {
+    const receipt = await store.get(oracleRecordMatch[1]!);
+    if (!receipt) {
+      sendJson(res, 404, { error: 'Run not found' });
+      return;
+    }
+    sendJson(res, 200, await verifyMemoryRecord(receipt));
     return;
   }
 

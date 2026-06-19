@@ -18,6 +18,15 @@ export interface SlashStakeInput {
   slashAmountMist: string;
 }
 
+export interface IssueChallengeDecisionInput extends SlashStakeInput {
+  oracleRegistryId: string;
+}
+
+export interface SlashStakeWithDecisionInput {
+  positionId: string;
+  challengeDecisionId: string;
+}
+
 export interface OpenStakePositionResult {
   digest: string;
   stakePositionId: string;
@@ -28,6 +37,22 @@ export interface OpenStakePositionResult {
 
 export interface SlashStakeResult {
   digest: string;
+  stdout: string;
+  stderr: string;
+  args: string[];
+}
+
+export interface CreateOracleRegistryResult {
+  digest: string;
+  oracleRegistryId: string;
+  stdout: string;
+  stderr: string;
+  args: string[];
+}
+
+export interface IssueChallengeDecisionResult {
+  digest: string;
+  challengeDecisionId: string;
   stdout: string;
   stderr: string;
   args: string[];
@@ -67,6 +92,66 @@ export async function executeSlashStake(input: SlashStakeInput, config: TenderBo
     maxBuffer: 1024 * 1024 * 16,
   });
   const parsed = parseSuiTransactionOutput(stdout, 'Sui stake slash transaction failed');
+  return { digest: parsed.digest, stdout, stderr, args };
+}
+
+export async function executeCreateOracleRegistry(config: TenderBoardConfig): Promise<CreateOracleRegistryResult> {
+  if (!config.suiCliPath) {
+    throw new Error('SUI_CLI_PATH is required for automatic Sui stake execution.');
+  }
+
+  const args = buildCreateOracleRegistryCliArgs(config);
+  const { stdout, stderr } = await execFileAsync(config.suiCliPath, args, {
+    windowsHide: true,
+    maxBuffer: 1024 * 1024 * 16,
+  });
+  const parsed = parseSuiTransactionOutput(stdout, 'Sui oracle registry create transaction failed');
+  return {
+    digest: parsed.digest,
+    oracleRegistryId: parseCreatedObjectId(parsed.raw, config, 'OracleRegistry'),
+    stdout,
+    stderr,
+    args,
+  };
+}
+
+export async function executeIssueChallengeDecision(
+  input: IssueChallengeDecisionInput,
+  config: TenderBoardConfig,
+): Promise<IssueChallengeDecisionResult> {
+  if (!config.suiCliPath) {
+    throw new Error('SUI_CLI_PATH is required for automatic Sui stake execution.');
+  }
+
+  const args = buildIssueChallengeDecisionCliArgs(input, config);
+  const { stdout, stderr } = await execFileAsync(config.suiCliPath, args, {
+    windowsHide: true,
+    maxBuffer: 1024 * 1024 * 16,
+  });
+  const parsed = parseSuiTransactionOutput(stdout, 'Sui challenge decision issue transaction failed');
+  return {
+    digest: parsed.digest,
+    challengeDecisionId: parseCreatedObjectId(parsed.raw, config, 'ChallengeDecision'),
+    stdout,
+    stderr,
+    args,
+  };
+}
+
+export async function executeSlashStakeWithDecision(
+  input: SlashStakeWithDecisionInput,
+  config: TenderBoardConfig,
+): Promise<SlashStakeResult> {
+  if (!config.suiCliPath) {
+    throw new Error('SUI_CLI_PATH is required for automatic Sui stake execution.');
+  }
+
+  const args = buildSlashStakeWithDecisionCliArgs(input, config);
+  const { stdout, stderr } = await execFileAsync(config.suiCliPath, args, {
+    windowsHide: true,
+    maxBuffer: 1024 * 1024 * 16,
+  });
+  const parsed = parseSuiTransactionOutput(stdout, 'Sui oracle decision slash transaction failed');
   return { digest: parsed.digest, stdout, stderr, args };
 }
 
@@ -117,6 +202,57 @@ export function buildOpenStakePositionCliArgs(input: OpenStakePositionInput, con
   return args;
 }
 
+export function buildCreateOracleRegistryCliArgs(config: TenderBoardConfig): string[] {
+  assertPackage(config);
+
+  const args = ['client'];
+  if (config.suiClientConfig) {
+    args.push('--client.config', config.suiClientConfig);
+  }
+  args.push(
+    'call',
+    '--package',
+    config.suiPackageId!,
+    '--module',
+    'reputation_stake',
+    '--function',
+    'create_oracle_registry',
+    '--gas-budget',
+    '100000000',
+    '--json',
+  );
+  return args;
+}
+
+export function buildIssueChallengeDecisionCliArgs(input: IssueChallengeDecisionInput, config: TenderBoardConfig): string[] {
+  assertPackage(config);
+  assertPositiveMist(input.slashAmountMist, 'slashAmountMist');
+
+  const args = ['client'];
+  if (config.suiClientConfig) {
+    args.push('--client.config', config.suiClientConfig);
+  }
+  args.push(
+    'call',
+    '--package',
+    config.suiPackageId!,
+    '--module',
+    'reputation_stake',
+    '--function',
+    'issue_challenge_decision',
+    '--args',
+    input.oracleRegistryId,
+    input.positionId,
+    textToHexBytes(input.evidenceHash),
+    textToHexBytes(input.reason),
+    input.slashAmountMist,
+    '--gas-budget',
+    '100000000',
+    '--json',
+  );
+  return args;
+}
+
 export function buildSlashStakeCliArgs(input: SlashStakeInput, config: TenderBoardConfig): string[] {
   assertPackage(config);
   assertPositiveMist(input.slashAmountMist, 'slashAmountMist');
@@ -145,12 +281,44 @@ export function buildSlashStakeCliArgs(input: SlashStakeInput, config: TenderBoa
   return args;
 }
 
+export function buildSlashStakeWithDecisionCliArgs(input: SlashStakeWithDecisionInput, config: TenderBoardConfig): string[] {
+  assertPackage(config);
+
+  const args = ['client'];
+  if (config.suiClientConfig) {
+    args.push('--client.config', config.suiClientConfig);
+  }
+  args.push(
+    'call',
+    '--package',
+    config.suiPackageId!,
+    '--module',
+    'reputation_stake',
+    '--function',
+    'slash_with_decision',
+    '--args',
+    input.positionId,
+    input.challengeDecisionId,
+    '--gas-budget',
+    '100000000',
+    '--json',
+  );
+  return args;
+}
+
 export function parseStakePositionObjectId(parsed: unknown, config: TenderBoardConfig): string {
+  return parseCreatedObjectId(parsed, config, 'StakePosition');
+}
+
+export function parseCreatedObjectId(parsed: unknown, config: TenderBoardConfig, typeName: string): string {
   const objectChanges = (parsed as { objectChanges?: Array<{ type?: string; objectType?: string; objectId?: string }> }).objectChanges ?? [];
-  const packagePrefix = `${config.suiPackageId}::reputation_stake::StakePosition`;
-  const created = objectChanges.find((change) => change.type === 'created' && change.objectType === packagePrefix && change.objectId);
+  const packagePrefix = `${config.suiPackageId}::reputation_stake::${typeName}`;
+  const typeSuffix = `::reputation_stake::${typeName}`;
+  const created = objectChanges.find(
+    (change) => change.type === 'created' && change.objectId && (change.objectType === packagePrefix || change.objectType?.endsWith(typeSuffix)),
+  );
   if (!created?.objectId) {
-    throw new Error('Sui stake open command did not return a StakePosition object id.');
+    throw new Error(`Sui command did not return a ${typeName} object id.`);
   }
   return created.objectId;
 }

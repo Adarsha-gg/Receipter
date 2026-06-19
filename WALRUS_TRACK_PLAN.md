@@ -110,9 +110,9 @@ pattern in `TenderBoardServerOptions`).
   and server URL for a real write.
 - **No inspector UI** (passport directory / blob viewer / hash-match).
 - **Identity is inconsistent** across files (see Section 12).
-- **Stake/slash needs production hardening.** The backend executor is now oracle-gated, but the
-  Move entrypoint itself is still permissive; production should require an oracle capability or
-  signed challenge decision.
+- **Stake/slash needs production registry hardening.** The backend executor is oracle-gated and
+  Move can now consume an oracle-issued `ChallengeDecision`; production should canonicalize the
+  oracle registry in config/governance.
 
 ---
 
@@ -172,7 +172,7 @@ WalrusProof
      hash matches.
 2. **Publish Move package to testnet.** Install Sui CLI, `sui client publish`, capture
    `SUI_PACKAGE_ID` + `Registry` object id; anchor one real receipt via `sui:anchor-plan`.
-   - **Done:** package upgraded to v3 `0x2aaaa1b3e8700ef4ef6313833a7f20d475c01fc6d933fbb052a2dc88f8c77320`;
+   - **Done:** package upgraded to v4 `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`;
      registry `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`;
      full proof anchor `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP` emitted `ReceiptAnchored`.
 3. **Wire `sui` mode env** end to end so one full run produces a real blob **and** a real
@@ -182,10 +182,12 @@ WalrusProof
      `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP`.
 4. **Live economic security smoke.** Open a worker stake position and slash it with a challenge.
    - **Done:** oracle endpoint `/api/oracle/records/:runId/challenges/assess`;
-     stake object `0xbf1dd4c52f762543b690786127e75ecc89bc30f2cb24427b12057d6abad99bdf`;
-     open tx `H5HJmNXxnVZRGaxxw9KxMsCTzxwThC2CeKtwbUceGxBu`; slash tx
-     `82cZpKKuqMa1SQLTp7g4CZpHYznvEz2Ai5V8dFRftAzy`; admitted on `memory_hash`,
-     `walrus_readback`, and contradicted-claim failures.
+     stake object `0x48273520a89927db522dd76c45ab333780998ec9ba336dc5d5666db8b44fc859`;
+     oracle registry `0x78aeac24fbcde9b26b8d8ed5e9f51defde5258f6045bb91d8f2c4d3982e9dc35`;
+     challenge decision `0xf3433158331908788eb465063f519be866f2e6393b4bc90629655af65a8c2f84`;
+     decision tx `FCsWy75sSrheYpk2ah1B9MFLzbHodx6SHhu2396Lf4Li`; slash tx
+     `GJz9y9nac2sgwMi9xp9PkuYryWU99wcgvbhAMyiYwCzA`; admitted on `memory_hash`,
+     `walrus_readback`, and contradicted-claim failures, then consumed by `slash_with_decision`.
 
 ### Milestone B — Credible, deterministic demo data
 4. **Deterministic seed.** Inject a well-formed `workerEvidence: ScoutEvidence` (claims
@@ -330,4 +332,6 @@ Actions:
   records / 6 Walrus-backed / 6 Sui-anchored.
 - Extended `createWalrusProofOracleClient()` with `assessStakeChallenge(...)` for external
   agents/marketplaces to consume verifier-gated slashing.
-- Current checks: 62 tests green; typecheck clean.
+- Added `OracleRegistry` + one-time `ChallengeDecision` objects to Move; live slash now consumes
+  the oracle decision object.
+- Current checks: 65 tests green; typecheck clean.

@@ -102,11 +102,13 @@ This is the difference between "verifiable" and "trustworthy," and **no competit
 **Update:** the first live primitive is now deployed on Sui testnet in Move module
 `reputation_stake`: open a worker stake position, add SUI stake, challenge a record by evidence
 hash/reason, slash the position, and reward the challenger. Live smoke:
-package `0x2aaaa1b3e8700ef4ef6313833a7f20d475c01fc6d933fbb052a2dc88f8c77320`,
-oracle-gated stake object `0xbf1dd4c52f762543b690786127e75ecc89bc30f2cb24427b12057d6abad99bdf`,
-open tx `H5HJmNXxnVZRGaxxw9KxMsCTzxwThC2CeKtwbUceGxBu`, slash tx
-`82cZpKKuqMa1SQLTp7g4CZpHYznvEz2Ai5V8dFRftAzy`. The slash was admitted only after
-`memory_hash`, `walrus_readback`, and contradicted-claim failures were detected by the verifier.
+package `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`,
+stake object `0x48273520a89927db522dd76c45ab333780998ec9ba336dc5d5666db8b44fc859`,
+oracle registry `0x78aeac24fbcde9b26b8d8ed5e9f51defde5258f6045bb91d8f2c4d3982e9dc35`,
+challenge decision `0xf3433158331908788eb465063f519be866f2e6393b4bc90629655af65a8c2f84`,
+slash tx `GJz9y9nac2sgwMi9xp9PkuYryWU99wcgvbhAMyiYwCzA`. The slash was admitted only after
+`memory_hash`, `walrus_readback`, and contradicted-claim failures were detected by the verifier,
+then the Move slash consumed the oracle-issued `ChallengeDecision` object.
 
 ### Layer 5 — Reputation Oracle + SDK  ✅ API/SDK started
 The adoption surface. Any marketplace/agent/buyer calls:
@@ -167,7 +169,7 @@ escrow → reputation becomes a **yield-bearing economic asset**, not a vanity s
 | Sui receipt anchor (Move pkg) | ✅ deployed + anchored | package v3 `0x2aaaa1b3e8700ef4ef6313833a7f20d475c01fc6d933fbb052a2dc88f8c77320`; receipt anchor `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP` |
 | Multi-worker award | ✅ built (this week) | `preferredBidId` |
 | **Passport bound to Sui address** | ✅ API-level built / on-chain object pending | `AgentMemoryPassport.ownerAddress`, owner oracle route; Move `passport` object remains |
-| **Stake + slash** | ✅ live primitive + oracle gate | Move `reputation_stake`; `/api/oracle/records/:runId/challenges/assess`; oracle-gated open tx `H5HJmNXxnVZRGaxxw9KxMsCTzxwThC2CeKtwbUceGxBu`, slash tx `82cZpKKuqMa1SQLTp7g4CZpHYznvEz2Ai5V8dFRftAzy` |
+| **Stake + slash** | ✅ live primitive + oracle decision object | Move `reputation_stake`; `/api/oracle/records/:runId/challenges/assess`; decision tx `FCsWy75sSrheYpk2ah1B9MFLzbHodx6SHhu2396Lf4Li`, slash tx `GJz9y9nac2sgwMi9xp9PkuYryWU99wcgvbhAMyiYwCzA` |
 | **Reputation Oracle SDK / MCP / LangGraph** | ✅ REST + TS client started | `src/oracle`; MCP/LangGraph remains |
 | **Explorer UI (verify-on-Walrus)** | 🆕 | new web surface on existing APIs |
 | **Seal-gated deep-memory sharing** | 🆕 | Seal + Harbor |
@@ -210,9 +212,9 @@ are not in the conversation.* (= `WALRUS_TRACK_PLAN.md` Milestone A + B.)
 re-verification from Walrus blobs + Sui events. The protocol moment.
 
 **Phase 3 — Economic security.** Move `reputation_stake` module: stake on a passport, challenge a
-record, slash on proof. **First oracle-gated live smoke is complete**; remaining production
-hardening is moving from off-chain executor gating to an on-chain oracle capability/signature so
-the Move entrypoint itself rejects unauthorised challenge decisions.
+record, slash on proof. **Oracle-decision live smoke is complete**: backend verifier gates
+admissibility, Sui stores the `ChallengeDecision`, and `slash_with_decision` consumes that object.
+Remaining production hardening is canonicalizing the oracle registry in config/governance.
 
 **Phase 4 — Portability proof.** A second, differently-branded "marketplace" frontend reading the
 **same** passport via the oracle — visually proving the reputation is portable, not ours. This is

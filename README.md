@@ -41,11 +41,11 @@ The longer-term product is portable agent reputation: safe task intake, privacy 
 - TypeScript oracle client for passport verification and stake challenge assessment
 - Sui anchor-plan export
 - live Sui testnet proof:
-  - package v3: `0x2aaaa1b3e8700ef4ef6313833a7f20d475c01fc6d933fbb052a2dc88f8c77320`
+  - package v4: `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`
   - receipt registry: `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`
   - real Walrus blob: `lDssvU3Jw6eRyE2N0X0fvCE3b_oCV5peftFj4UkAklw`
   - receipt anchor tx: `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP`
-  - oracle-gated stake/slash txs: `H5HJmNXxnVZRGaxxw9KxMsCTzxwThC2CeKtwbUceGxBu`, `82cZpKKuqMa1SQLTp7g4CZpHYznvEz2Ai5V8dFRftAzy`
+  - oracle-decision stake/slash txs: open `Baeau5g65CEkUGkM5BWQh3FpENy6GnC8nbMasTZZRVMD`, registry `7W1fvoAhmgBhxob17wQ12buQwHnz5ydzcjWSy8eHJLYT`, decision `FCsWy75sSrheYpk2ah1B9MFLzbHodx6SHhu2396Lf4Li`, slash `GJz9y9nac2sgwMi9xp9PkuYryWU99wcgvbhAMyiYwCzA`
 - receipt JSON downloads
 - proof markdown export
 - run history
@@ -110,7 +110,7 @@ The seed drives the real HTTP loop with deterministic worker evidence. It now ex
 
 Current testnet deployment:
 
-- package v3: `0x2aaaa1b3e8700ef4ef6313833a7f20d475c01fc6d933fbb052a2dc88f8c77320`
+- package v4: `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`
 - receipt registry: `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`
 - upgrade cap: `0xc50924def84e7bcadb6aaaea58f887017903102ace49363f82b9e18bad698b7d`
 

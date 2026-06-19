@@ -2,7 +2,13 @@ import { loadTenderBoardConfig } from '../live/config.js';
 import { assessStakeChallenge } from '../live/challengeOracle.js';
 import { loadDotEnvFile } from '../live/dotenv.js';
 import type { LiveRunReceipt } from '../live/types.js';
-import { executeAdmissibleSlashStake, executeOpenStakePosition } from '../sui/stakeExecutor.js';
+import {
+  buildSlashStakeInputFromAssessment,
+  executeCreateOracleRegistry,
+  executeIssueChallengeDecision,
+  executeOpenStakePosition,
+  executeSlashStakeWithDecision,
+} from '../sui/stakeExecutor.js';
 
 const DEFAULT_STAKE_MIST = '1000000';
 const DEFAULT_SLASH_MIST = '100000';
@@ -31,7 +37,22 @@ async function main(): Promise<void> {
     },
     async () => new Response(JSON.stringify({ error: 'forged blob missing' }), { status: 404 }),
   );
-  const slashed = await executeAdmissibleSlashStake(assessment, config);
+  const slashInput = buildSlashStakeInputFromAssessment(assessment);
+  const registry = await executeCreateOracleRegistry(config);
+  const decision = await executeIssueChallengeDecision(
+    {
+      ...slashInput,
+      oracleRegistryId: registry.oracleRegistryId,
+    },
+    config,
+  );
+  const slashed = await executeSlashStakeWithDecision(
+    {
+      positionId: opened.stakePositionId,
+      challengeDecisionId: decision.challengeDecisionId,
+    },
+    config,
+  );
 
   console.log(
     JSON.stringify(
@@ -41,11 +62,15 @@ async function main(): Promise<void> {
         workerAgentId,
         packageId: config.suiPackageId,
         stakePositionId: opened.stakePositionId,
+        oracleRegistryId: registry.oracleRegistryId,
+        challengeDecisionId: decision.challengeDecisionId,
         challengeAdmissible: assessment.admissible,
         slashableCheckIds: assessment.slashableCheckIds,
         openedStakeMist: process.env.TENDERBOARD_STAKE_SMOKE_MIST ?? DEFAULT_STAKE_MIST,
         slashedMist: process.env.TENDERBOARD_SLASH_SMOKE_MIST ?? DEFAULT_SLASH_MIST,
         openDigest: opened.digest,
+        registryDigest: registry.digest,
+        decisionDigest: decision.digest,
         slashDigest: slashed.digest,
       },
       null,

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { TenderBoardConfig } from '../src/live/types.js';
 import {
+  buildCreateOracleRegistryCliArgs,
+  buildIssueChallengeDecisionCliArgs,
   buildOpenStakePositionCliArgs,
   buildSlashStakeInputFromAssessment,
   buildSlashStakeCliArgs,
+  buildSlashStakeWithDecisionCliArgs,
+  parseCreatedObjectId,
   parseStakePositionObjectId,
 } from '../src/sui/stakeExecutor.js';
 import { textToHexBytes } from '../src/sui/anchorExecutor.js';
@@ -45,6 +49,53 @@ describe('Sui reputation stake executor', () => {
     ]);
   });
 
+  it('builds oracle registry, decision, and decision-slash calls', () => {
+    expect(buildCreateOracleRegistryCliArgs(sampleConfig())).toEqual([
+      'client',
+      '--client.config',
+      'client.yaml',
+      'call',
+      '--package',
+      '0xpackage',
+      '--module',
+      'reputation_stake',
+      '--function',
+      'create_oracle_registry',
+      '--gas-budget',
+      '100000000',
+      '--json',
+    ]);
+
+    const decisionArgs = buildIssueChallengeDecisionCliArgs(
+      {
+        oracleRegistryId: '0xoracle',
+        positionId: '0xstake',
+        evidenceHash: 'sha256:evidence',
+        reason: 'verifier failure',
+        slashAmountMist: '100000',
+      },
+      sampleConfig(),
+    );
+    expect(decisionArgs).toContain('issue_challenge_decision');
+    expect(decisionArgs.slice(decisionArgs.indexOf('--args') + 1, decisionArgs.indexOf('--gas-budget'))).toEqual([
+      '0xoracle',
+      '0xstake',
+      textToHexBytes('sha256:evidence'),
+      textToHexBytes('verifier failure'),
+      '100000',
+    ]);
+
+    const slashArgs = buildSlashStakeWithDecisionCliArgs(
+      { positionId: '0xstake', challengeDecisionId: '0xdecision' },
+      sampleConfig(),
+    );
+    expect(slashArgs).toContain('slash_with_decision');
+    expect(slashArgs.slice(slashArgs.indexOf('--args') + 1, slashArgs.indexOf('--gas-budget'))).toEqual([
+      '0xstake',
+      '0xdecision',
+    ]);
+  });
+
   it('extracts the created StakePosition id from Sui JSON output', () => {
     const objectId = parseStakePositionObjectId(
       {
@@ -57,6 +108,28 @@ describe('Sui reputation stake executor', () => {
     );
 
     expect(objectId).toBe('0xstake');
+  });
+
+  it('extracts oracle registry and challenge decision ids from Sui JSON output', () => {
+    const parsed = {
+      objectChanges: [
+        { type: 'created', objectType: '0xpackage::reputation_stake::OracleRegistry', objectId: '0xoracle' },
+        { type: 'created', objectType: '0xpackage::reputation_stake::ChallengeDecision', objectId: '0xdecision' },
+      ],
+    };
+
+    expect(parseCreatedObjectId(parsed, sampleConfig(), 'OracleRegistry')).toBe('0xoracle');
+    expect(parseCreatedObjectId(parsed, sampleConfig(), 'ChallengeDecision')).toBe('0xdecision');
+  });
+
+  it('extracts created object ids when upgraded packages emit original package object types', () => {
+    const parsed = {
+      objectChanges: [
+        { type: 'created', objectType: '0xoriginal::reputation_stake::StakePosition', objectId: '0xstake' },
+      ],
+    };
+
+    expect(parseCreatedObjectId(parsed, sampleConfig(), 'StakePosition')).toBe('0xstake');
   });
 
   it('refuses to build a slash input from a non-admissible challenge assessment', () => {

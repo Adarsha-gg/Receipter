@@ -68,7 +68,7 @@ Move package and schema names retain some internal `tenderboard` and `suiproof` 
 - Walrus evidence storage with readback verification
 - owner-bound Agent Passports
 - global memory index and per-agent memory endpoints
-- MemWal-compatible `MemoryStore` adapter shape with fake-client tests
+- MemWal-compatible `MemoryStore` adapter shape, fake-client tests, and a live smoke command for credentialed MemWal writes
 - Sui receipt anchoring on testnet
 - oracle-gated stake/slash smoke on testnet
 - deterministic seed data for three worker agents

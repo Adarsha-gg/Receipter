@@ -58,7 +58,7 @@ Everything in this doc serves one sentence the judges should be able to repeat:
 | Multi-agent coordination / task delegation | hirer agent ↔ worker bids ↔ award (`preferredBidId`) ↔ delivery | **built** |
 | Artifact-driven workflows | evidence bundles generated, stored, **reused in next trust gate** | **built** |
 | Long-running state over time | passports accrue track record across jobs | **built** |
-| Tooling to help devs adopt Walrus / MemWal | `MemoryStore` interface + MemWal adapter | **backend built; live credentials/package install remain** |
+| Tooling to help devs adopt Walrus / MemWal | `MemoryStore` interface + MemWal adapter + `smoke:memwal-live` | **backend built; live credentials/package install remain** |
 
 **Gap to close:** visible inspector UI + live MemWal credential smoke. Real testnet blob readback,
 Sui receipt anchor, deterministic seed data, MemWal backend shape, and oracle-gated stake/slash
@@ -105,9 +105,9 @@ pattern in `TenderBoardServerOptions`).
 - 36/36 tests pass; typecheck clean.
 
 ### NOT real yet (must fix before submission)
-- **No live MemWal smoke yet.** `MemWalMemoryStore` exists as a raw-Walrus + MemWal semantic
-  overlay, but the environment still needs `@mysten-incubation/memwal`, delegate key, account id,
-  and server URL for a real write.
+- **No credentialed live MemWal write yet.** `MemWalMemoryStore` exists as a raw-Walrus + MemWal
+  semantic overlay, and `npm run smoke:memwal-live` is now the live harness, but the environment
+  still needs `@mysten-incubation/memwal`, delegate key, account id, and server URL for a real write.
 - **No inspector UI** (passport directory / blob viewer / hash-match).
 - **Identity is now aligned in public submission docs.** Some internal package/module/schema names
   keep legacy `tenderboard` / `suiproof` prefixes as stable protocol identifiers.
@@ -285,7 +285,7 @@ Then: publish package → set ids → run one job in `sui` mode → confirm real
 - [x] One real Walrus blob id + working aggregator read-back link in the submission.
 - [x] Published Move package id + `Registry` id + explorer link to a `ReceiptAnchored` event.
 - [x] One oracle-gated live stake/slash smoke transaction pair.
-- [x] MemWal adapter merged (fake-client tested); live MemWal smoke remains.
+- [x] MemWal adapter and live smoke harness merged (fake-client tested); credentialed live MemWal run remains.
 - [ ] Passport directory + Verify-on-Walrus UI.
 - [ ] Demo video following Section 10.
 - [x] README + SUBMISSION aligned to one product name.

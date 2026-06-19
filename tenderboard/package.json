@@ -14,6 +14,7 @@
     "sui:x402-pay": "tsx src/cli/paySuiX402.ts",
     "smoke:x402-live": "tsx src/cli/runLiveX402Smoke.ts",
     "smoke:full-live": "tsx src/cli/runLiveFullSmoke.ts",
+    "smoke:memwal-live": "tsx src/cli/runLiveMemWalSmoke.ts",
     "smoke:stake-live": "tsx src/cli/runLiveStakeSmoke.ts"
   },
   "devDependencies": {

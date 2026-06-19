@@ -94,6 +94,7 @@ npm test
 npm run typecheck
 npm run proof:latest
 npm run sui:anchor-plan
+npm run smoke:memwal-live   # requires MEMORY_BACKEND=memwal plus MemWal credentials/package
 npm run smoke:stake-live
 ```
 
@@ -136,3 +137,12 @@ MEMWAL_NAMESPACE=walrusproof
 ```
 
 In MemWal mode, WalrusProof still stores the full evidence bundle on raw Walrus, then writes a distilled searchable reputation fact to MemWal.
+
+Live MemWal smoke:
+
+```bash
+cd tenderboard
+MEMORY_BACKEND=memwal npm run smoke:memwal-live
+```
+
+The smoke requires `@mysten-incubation/memwal`, `MEMWAL_DELEGATE_KEY`, `MEMWAL_ACCOUNT_ID`, and `MEMWAL_SERVER_URL`. It uploads the full proof bundle to Walrus, calls MemWal `remember(...)`, then reads the Walrus blob back through the aggregator.

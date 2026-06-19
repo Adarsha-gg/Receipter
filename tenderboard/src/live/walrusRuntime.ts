@@ -153,8 +153,8 @@ function parseWalrusPublisherResponse(body: WalrusPublisherResponse, config: Ten
     return {
       blobId: newlyCreated.blobId,
       blobObjectId: newlyCreated.id,
-      certifiedEpoch: newlyCreated.certifiedEpoch,
-      endEpoch: newlyCreated.storage?.endEpoch,
+      certifiedEpoch: numberOrUndefined(newlyCreated.certifiedEpoch),
+      endEpoch: numberOrUndefined(newlyCreated.storage?.endEpoch),
       readUrl: buildWalrusReadUrl(config, newlyCreated.blobId),
     };
   }
@@ -165,7 +165,7 @@ function parseWalrusPublisherResponse(body: WalrusPublisherResponse, config: Ten
       blobId: alreadyCertified.blobId,
       blobObjectId: undefined,
       certifiedEpoch: undefined,
-      endEpoch: alreadyCertified.endEpoch,
+      endEpoch: numberOrUndefined(alreadyCertified.endEpoch),
       readUrl: buildWalrusReadUrl(config, alreadyCertified.blobId),
     };
   }
@@ -178,19 +178,23 @@ function buildWalrusReadUrl(config: TenderBoardConfig, blobId: string): string |
   return `${config.walrusAggregatorUrl.replace(/\/+$/, '')}/v1/blobs/${encodeURIComponent(blobId)}`;
 }
 
+function numberOrUndefined(value: number | null | undefined): number | undefined {
+  return typeof value === 'number' ? value : undefined;
+}
+
 interface WalrusPublisherResponse {
   newlyCreated?: {
     blobObject?: {
       id?: string;
       blobId?: string;
-      certifiedEpoch?: number;
+      certifiedEpoch?: number | null;
       storage?: {
-        endEpoch?: number;
+        endEpoch?: number | null;
       };
     };
   };
   alreadyCertified?: {
     blobId?: string;
-    endEpoch?: number;
+    endEpoch?: number | null;
   };
 }

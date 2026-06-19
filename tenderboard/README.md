@@ -70,9 +70,11 @@ SUI_RPC_URL=https://fullnode.testnet.sui.io:443
 SUI_OPERATOR_ADDRESS=...
 SUI_PACKAGE_ID=0x87a14a921a1ced0d2fd410ed0d6285d1722efabaf304d6a169971b902f6152c9
 SUI_RECEIPT_REGISTRY_ID=0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb
-WALRUS_PUBLISHER_URL=...
-WALRUS_AGGREGATOR_URL=...
+WALRUS_PUBLISHER_URL=https://publisher.walrus-testnet.walrus.space
+WALRUS_AGGREGATOR_URL=https://aggregator.walrus-testnet.walrus.space
 ```
+
+The configured Walrus Testnet endpoints are the Mysten Labs reference publisher and aggregator from the Walrus Network Reference. Mainnet does not provide a public unauthenticated publisher, so production uploads need a private authenticated publisher, upload relay, or SDK integration.
 
 Export a call plan:
 

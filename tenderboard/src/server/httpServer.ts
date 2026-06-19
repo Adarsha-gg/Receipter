@@ -14,6 +14,7 @@ import { sanitizeTaskForWorker } from '../live/sanitizeTask.js';
 import { buildWorkerDelivery, makeSuiDevDigest, makeSuiDevObjectId } from '../live/suiRuntime.js';
 import { buildTrustProof, finalizeVerificationManifest } from '../live/trustProof.js';
 import { storeEvidenceOnWalrus } from '../live/walrusRuntime.js';
+import { buildX402SuiPaymentChallenge, buildX402SuiPaymentResponse } from '../live/x402.js';
 import {
   bindAnchorDigest,
   bindPaymentDigest,
@@ -127,6 +128,50 @@ async function route(
       workerBidBoard: receipt.workerBidBoard,
       reputationSnapshot: receipt.reputationSnapshot,
     });
+    return;
+  }
+
+  const workerTaskMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/worker-task$/);
+  if (method === 'GET' && workerTaskMatch) {
+    const receipt = await store.get(workerTaskMatch[1]!);
+    if (!receipt) {
+      sendJson(res, 404, { error: 'Run not found' });
+      return;
+    }
+    if (!receipt.suiPaymentDigest) {
+      const challenge = buildX402SuiPaymentChallenge(receipt, url.pathname);
+      sendJson(res, 402, challenge, {
+        'X-Payment-Protocol': 'x402',
+        'X-Payment-Required': 'true',
+      });
+      return;
+    }
+
+    const paymentResponse = buildX402SuiPaymentResponse(receipt);
+    sendJson(
+      res,
+      200,
+      {
+        runId: receipt.runId,
+        status: receipt.status,
+        sanitizedTask: receipt.sanitizedTask,
+        privacy: receipt.privacy,
+        hirerAgent: receipt.hirerAgent,
+        workerAgent: receipt.workerAgent,
+        agentHandoff: receipt.agentHandoff,
+        trustDecision: receipt.trustDecision,
+        verificationManifest: receipt.verificationManifest,
+        paymentIntentPlan: receipt.paymentIntentPlan,
+        receiptPlan: receipt.receiptPlan,
+        reputationSnapshot: receipt.reputationSnapshot,
+      },
+      paymentResponse
+        ? {
+            'X-Payment-Protocol': 'x402',
+            'X-Payment-Response': JSON.stringify(paymentResponse),
+          }
+        : { 'X-Payment-Protocol': 'x402' },
+    );
     return;
   }
 
@@ -798,9 +843,9 @@ function sendReceiptJson(res: ServerResponse, receipt: LiveRunReceipt): void {
   res.end(`${JSON.stringify(receipt, null, 2)}\n`);
 }
 
-function sendJson(res: ServerResponse, status: number, value: unknown): void {
+function sendJson(res: ServerResponse, status: number, value: unknown, headers: Record<string, string> = {}): void {
   const error = isHttpError(value) ? value.message : undefined;
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', ...headers });
   res.end(JSON.stringify(error ? { error } : value));
 }
 

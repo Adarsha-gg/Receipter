@@ -9,12 +9,13 @@ SuiProof Market is a Sui-native operator console for hiring worker agents safely
 3. SuiProof Market creates a worker-facing safe packet.
 4. SuiProof Market scores the worker route before execution.
 5. SuiProof Market creates a verification manifest and Sui work order id.
-6. SuiProof Market generates a Payment Kit-compatible SUI payment URI and receipt plan for that exact work order.
-7. Operator approves payment for that exact work order.
-8. Worker delivers public-source evidence.
-9. Full receipt/evidence is stored as a Walrus bundle.
-10. Compact proof fields are committed to the Sui receipt registry.
-11. The worker reputation passport updates only after the Sui receipt anchor is recorded.
+6. Worker task access is guarded by an x402-style HTTP 402 challenge.
+7. The challenge carries a Sui Payment Kit-compatible URI plus Payment Intent metadata for that exact work order.
+8. Hirer agent approves payment for that exact work order.
+9. Worker agent receives the paid task packet and delivers public-source evidence.
+10. Full receipt/evidence is stored as a Walrus bundle.
+11. Compact proof fields are committed to the Sui receipt registry.
+12. The worker reputation passport updates only after the Sui receipt anchor is recorded.
 
 ## Sui Proof Layer
 
@@ -47,7 +48,7 @@ Do not claim deployed Sui anchoring until the package is published and at least 
 
 In `sui-dev` mode the app records deterministic Sui dev digests and Walrus dev blob/object ids so the full product loop can be demoed locally. In `sui` mode payment approval requires a real Sui payment transaction digest, the Walrus evidence step uses the configured HTTP publisher, and the Sui anchor step records the real receipt-registry transaction digest.
 
-SuiProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning; it does not execute a wallet payment locally or claim wallet confirmation unless a real transaction digest is supplied. In this environment the Move package is source-level because the Sui CLI is not installed.
+SuiProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning; it does not execute a wallet payment locally or claim wallet confirmation unless a real transaction digest is supplied. Worker task access is exposed as an x402-style paid API: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest. This is a local x402 negotiation envelope, not a claim that Coinbase facilitator settlement is wired for Sui yet. In this environment the Move package is source-level because the Sui CLI is not installed.
 
 ## Run
 
@@ -79,6 +80,7 @@ The browser uses the same API external agents can call:
 POST /api/runs                         hirer agent creates a safe Sui work order
 POST /api/runs/:id/approve-payment     hirer agent records Sui payment approval
 GET  /api/runs/:id/agent-handoff       worker agent reads the awarded handoff
+GET  /api/runs/:id/worker-task         worker agent gets 402 until Sui payment is recorded
 POST /api/runs/:id/worker-delivery     worker agent submits delivery evidence
 POST /api/runs/:id/store-evidence      operator stores the receipt bundle on Walrus
 POST /api/runs/:id/anchor-receipt      operator records the Sui receipt anchor

@@ -83,6 +83,9 @@ describe('SuiProof Market product server', () => {
       expect(receipt.paymentIntentPlan.paymentUri).toContain('sui:pay?');
       expect(receipt.paymentIntentPlan.paymentUri).toContain('amountMist=35000000');
       expect(receipt.paymentIntentPlan.paymentUri).toContain('coinType=0x2%3A%3Asui%3A%3ASUI');
+      expect(receipt.paymentIntentPlan.paymentUri).toContain(`nonce=${receipt.paymentIntentPlan.paymentNonce}`);
+      expect(receipt.paymentIntentPlan.paymentUri).toContain('label=SuiProof+Market');
+      expect(receipt.paymentIntentPlan.paymentUri).toContain('message=SuiProof+Market+agent+work+payment');
       expect(receipt.paymentIntentPlan.paymentUri).toContain(`runId=${created.runId}`);
       expect(receipt.paymentIntentPlan.paymentUri).toContain('selectedBidId=public_scout_standard');
       expect(receipt.paymentIntentPlan.paymentUri).not.toContain('Make%20it%20useful');
@@ -249,6 +252,35 @@ describe('SuiProof Market product server', () => {
       expect(before.receiptPlan.paymentDigest).toBeUndefined();
       expect(before.agentHandoff.status).toBe('awaiting_payment');
 
+      const unpaidWorkerTaskResponse = await fetch(`${baseUrl}/api/runs/${created.runId}/worker-task`);
+      const unpaidWorkerTask = await unpaidWorkerTaskResponse.json();
+      expect(unpaidWorkerTaskResponse.status).toBe(402);
+      expect(unpaidWorkerTaskResponse.headers.get('x-payment-protocol')).toBe('x402');
+      expect(unpaidWorkerTask).toMatchObject({
+        objectType: 'suiproof.x402_sui_payment_challenge.v1',
+        x402Version: 1,
+        error: 'X402_PAYMENT_REQUIRED',
+        settlement: 'sui-payment-kit',
+        intentModel: 'sui-payment-intent',
+      });
+      expect(unpaidWorkerTask.accepts[0]).toMatchObject({
+        scheme: 'sui-payment-kit',
+        network: 'sui:testnet',
+        maxAmountRequired: '35000000',
+        resource: `/api/runs/${created.runId}/worker-task`,
+        payTo: '<SUI_OPERATOR_ADDRESS>',
+        asset: '0x2::sui::SUI',
+        extra: {
+          paymentUri: before.paymentIntentPlan.paymentUri,
+          paymentIntentId: before.paymentIntentPlan.intentId,
+          paymentNonce: before.paymentIntentPlan.paymentNonce,
+          settlementNonce: before.paymentIntentPlan.settlementNonce,
+          workerAgentId: 'sui_opportunity_scout',
+          runId: created.runId,
+        },
+      });
+      expect(JSON.stringify(unpaidWorkerTask)).not.toContain('private strategy note');
+
       const after = await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
       expect(after.status).toBe('working');
       expect(after.agentHandoff.status).toBe('working');
@@ -257,6 +289,30 @@ describe('SuiProof Market product server', () => {
       expect(after.receiptPlan.paymentDigest).toBe(after.suiPaymentDigest);
       expect(after.deliveryText).toBeUndefined();
       expect(JSON.stringify(after.events)).toContain('worker_task_available');
+
+      const paidWorkerTaskResponse = await fetch(`${baseUrl}/api/runs/${created.runId}/worker-task`);
+      const paidWorkerTask = await paidWorkerTaskResponse.json();
+      const xPaymentResponse = JSON.parse(paidWorkerTaskResponse.headers.get('x-payment-response') ?? '{}');
+      expect(paidWorkerTaskResponse.status).toBe(200);
+      expect(paidWorkerTaskResponse.headers.get('x-payment-protocol')).toBe('x402');
+      expect(xPaymentResponse).toMatchObject({
+        objectType: 'suiproof.x402_sui_payment_response.v1',
+        x402Version: 1,
+        settlement: 'sui-payment-kit',
+        network: 'sui:testnet',
+        transaction: after.suiPaymentDigest,
+        paymentIntentId: before.paymentIntentPlan.intentId,
+        paymentNonce: before.paymentIntentPlan.paymentNonce,
+      });
+      expect(paidWorkerTask).toMatchObject({
+        runId: created.runId,
+        status: 'working',
+        sanitizedTask: expect.stringContaining('Find Sui ecosystem opportunities'),
+        agentHandoff: {
+          status: 'working',
+        },
+      });
+      expect(JSON.stringify(paidWorkerTask)).not.toContain('private strategy note');
 
       const handoff = await (await fetch(`${baseUrl}/api/runs/${created.runId}/agent-handoff`)).json();
       expect(handoff.agentHandoff).toMatchObject({

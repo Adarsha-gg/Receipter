@@ -244,6 +244,52 @@ export interface ReceiptPlan {
   updatedAt: string;
 }
 
+export interface X402SuiPaymentRequirement {
+  scheme: 'sui-payment-kit';
+  network: string;
+  maxAmountRequired: string;
+  resource: string;
+  description: string;
+  mimeType: 'application/json';
+  payTo: string;
+  asset: '0x2::sui::SUI';
+  outputSchema: Record<string, unknown>;
+  extra: {
+    settlement: 'sui_payment_kit_metadata_only';
+    paymentUri: string;
+    paymentIntentId: string;
+    paymentNonce: string;
+    settlementNonce: string;
+    selectedBidId: string | undefined;
+    workerAgentId: string;
+    runId: string;
+    registry: string | undefined;
+    packageId: string | undefined;
+  };
+}
+
+export interface X402PaymentChallenge {
+  objectType: 'suiproof.x402_sui_payment_challenge.v1';
+  x402Version: 1;
+  error: 'X402_PAYMENT_REQUIRED';
+  accepts: X402SuiPaymentRequirement[];
+  payerHint: 'hirer-agent';
+  settlement: 'sui-payment-kit';
+  intentModel: 'sui-payment-intent';
+  caveat: string;
+}
+
+export interface X402PaymentResponse {
+  objectType: 'suiproof.x402_sui_payment_response.v1';
+  x402Version: 1;
+  settlement: 'sui-payment-kit';
+  network: string;
+  transaction: string;
+  paymentIntentId: string;
+  paymentNonce: string;
+  settlementNonce: string;
+}
+
 export interface ObligationObject {
   objectType: 'tenderboard.obligation.v1';
   obligationId: string;

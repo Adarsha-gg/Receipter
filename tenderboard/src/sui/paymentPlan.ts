@@ -156,6 +156,9 @@ function buildPaymentUri(input: {
     amount: input.amountMist,
     amountMist: input.amountMist,
     coinType: SUI_COIN_TYPE,
+    nonce: input.paymentNonce,
+    label: 'SuiProof Market',
+    message: 'SuiProof Market agent work payment',
     paymentNonce: input.paymentNonce,
     settlementNonce: input.settlementNonce,
     network: input.network,
@@ -170,7 +173,10 @@ function buildPaymentUri(input: {
     params.set('sla', input.selectedBid.sla);
   }
   if (input.packageId) params.set('packageId', input.packageId);
-  if (input.receiptRegistryId) params.set('receiptRegistryId', input.receiptRegistryId);
+  if (input.receiptRegistryId) {
+    params.set('registry', input.receiptRegistryId);
+    params.set('receiptRegistryId', input.receiptRegistryId);
+  }
 
   return `sui:pay?${params.toString()}`;
 }

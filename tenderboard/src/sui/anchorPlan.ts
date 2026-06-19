@@ -1,4 +1,5 @@
 import type { LiveRunReceipt, TenderBoardConfig } from '../live/types.js';
+import { SUI_COIN_TYPE, suiAmountToMist } from './paymentPlan.js';
 
 export interface SuiAnchorPlan {
   ready: boolean;
@@ -10,6 +11,16 @@ export interface SuiAnchorPlan {
     publisherUrl: string | undefined;
     aggregatorUrl: string | undefined;
     blobId: string | undefined;
+  };
+  payment: {
+    intentId: string;
+    paymentNonce: string;
+    settlementNonce: string;
+    duplicatePreventionKey: string;
+    amountMist: string;
+    coinType: string;
+    receiverAddress: string;
+    paymentDigest: string | undefined;
   };
   moveCall: {
     packageId: string | undefined;
@@ -24,7 +35,8 @@ export function buildSuiAnchorPlan(
   config: TenderBoardConfig,
   walrusBlobId?: string,
 ): SuiAnchorPlan {
-  const paymentReference = receipt.suiPaymentDigest ?? receipt.workOrderId ?? 'not-paid';
+  const payment = paymentPlanFields(receipt, config);
+  const paymentReference = payment.paymentDigest ?? receipt.suiPaymentDigest ?? receipt.workOrderId ?? 'not-paid';
   const argumentsForMove = [
     config.suiReceiptRegistryId ?? '<SUI_RECEIPT_REGISTRY_ID>',
     receipt.runId,
@@ -35,6 +47,12 @@ export function buildSuiAnchorPlan(
     receipt.verificationManifest.checkerPack,
     paymentReference,
     walrusBlobId ?? receipt.walrusBlobId ?? '<WALRUS_BLOB_ID>',
+    payment.paymentNonce,
+    payment.amountMist,
+    payment.coinType,
+    payment.receiverAddress,
+    payment.settlementNonce,
+    payment.duplicatePreventionKey,
   ];
 
   return {
@@ -48,6 +66,7 @@ export function buildSuiAnchorPlan(
       aggregatorUrl: config.walrusAggregatorUrl,
       blobId: walrusBlobId ?? receipt.walrusBlobId,
     },
+    payment,
     moveCall: {
       packageId: config.suiPackageId,
       module: 'receipts',
@@ -68,6 +87,14 @@ export function renderSuiAnchorPlan(plan: SuiAnchorPlan): string {
     `- Walrus publisher: ${plan.walrus.publisherUrl ?? 'missing'}`,
     `- Walrus aggregator: ${plan.walrus.aggregatorUrl ?? 'missing'}`,
     `- Walrus blob id: ${plan.walrus.blobId ?? 'missing'}`,
+    `- Payment intent id: ${plan.payment.intentId}`,
+    `- Payment nonce: ${plan.payment.paymentNonce}`,
+    `- Settlement nonce: ${plan.payment.settlementNonce}`,
+    `- Duplicate-prevention key: ${plan.payment.duplicatePreventionKey}`,
+    `- Amount MIST: ${plan.payment.amountMist}`,
+    `- Coin type: ${plan.payment.coinType}`,
+    `- Receiver: ${plan.payment.receiverAddress}`,
+    `- Payment digest: ${plan.payment.paymentDigest ?? 'not paid / no digest'}`,
     '',
   ];
 
@@ -93,4 +120,27 @@ export function renderSuiAnchorPlan(plan: SuiAnchorPlan): string {
 
 function shellQuote(value: string): string {
   return value.includes(' ') ? `"${value.replaceAll('"', '\\"')}"` : value;
+}
+
+function paymentPlanFields(
+  receipt: LiveRunReceipt,
+  config: TenderBoardConfig,
+): SuiAnchorPlan['payment'] {
+  const amountSui = receipt.receiptPlan?.amountSui ?? receipt.paymentIntentPlan?.amountSui ?? receipt.settlementInstruction?.amount.amount ?? receipt.maxPayment.amount;
+  const intentId = receipt.paymentIntentPlan?.intentId ?? receipt.receiptPlan?.intentId ?? `payment_intent_${receipt.runId}`;
+  const paymentNonce = receipt.receiptPlan?.paymentNonce ?? receipt.paymentIntentPlan?.paymentNonce ?? '<PAYMENT_NONCE>';
+  const settlementNonce = receipt.receiptPlan?.settlementNonce ?? receipt.paymentIntentPlan?.settlementNonce ?? '<SETTLEMENT_NONCE>';
+
+  return {
+    intentId,
+    paymentNonce,
+    settlementNonce,
+    duplicatePreventionKey:
+      receipt.receiptPlan?.duplicatePreventionKey ?? `${config.suiNetwork}:${intentId}:${paymentNonce}:${settlementNonce}`,
+    amountMist: receipt.receiptPlan?.amountMist ?? receipt.paymentIntentPlan?.amountMist ?? suiAmountToMist(amountSui),
+    coinType: receipt.receiptPlan?.coinType ?? receipt.paymentIntentPlan?.coinType ?? SUI_COIN_TYPE,
+    receiverAddress:
+      receipt.receiptPlan?.receiverAddress ?? receipt.paymentIntentPlan?.receiverAddress ?? config.suiOperatorAddress ?? '<SUI_OPERATOR_ADDRESS>',
+    paymentDigest: receipt.receiptPlan?.paymentDigest ?? receipt.suiPaymentDigest,
+  };
 }

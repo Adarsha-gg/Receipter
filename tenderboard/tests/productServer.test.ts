@@ -64,11 +64,30 @@ describe('TenderBoard Sui product server', () => {
 
       const receiptResponse = await fetch(`${baseUrl}/api/runs/${created.runId}`);
       const receiptText = await receiptResponse.text();
+      const receipt = JSON.parse(receiptText);
 
       expect(created.status).toBe('awaiting_payment_approval');
       expect(created.sanitizedTask).toContain('Write Sui launch checklist');
       expect(receiptText).not.toContain('do not send this field');
       expect(receiptText).toContain('sui_work_order_created');
+      expect(receipt.paymentIntentPlan).toMatchObject({
+        intentId: `payment_intent_${created.runId}`,
+        amountMist: '35000000',
+        amountSui: '0.035',
+        coinType: '0x2::sui::SUI',
+        receiverAddress: '<SUI_OPERATOR_ADDRESS>',
+        expectedNetwork: 'testnet',
+      });
+      expect(receipt.paymentIntentPlan.paymentNonce).toMatch(/^payment_/);
+      expect(receipt.paymentIntentPlan.settlementNonce).toMatch(/^settlement_/);
+      expect(receipt.receiptPlan).toMatchObject({
+        intentId: receipt.paymentIntentPlan.intentId,
+        paymentNonce: receipt.paymentIntentPlan.paymentNonce,
+        settlementNonce: receipt.paymentIntentPlan.settlementNonce,
+        amountMist: '35000000',
+        selectedBidId: 'public_scout_standard',
+      });
+      expect(receipt.receiptPlan.paymentDigest).toBeUndefined();
       expect(receiptText).toContain('trustDecision');
       expect(receiptText).toContain('verificationManifest');
       expect(receiptText).toContain('workerBidBoard');
@@ -185,10 +204,15 @@ describe('TenderBoard Sui product server', () => {
       const before = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
       expect(before.suiPaymentDigest).toBeUndefined();
       expect(before.deliveryText).toBeUndefined();
+      expect(before.paymentIntentPlan.paymentNonce).toMatch(/^payment_/);
+      expect(before.paymentIntentPlan.settlementNonce).toMatch(/^settlement_/);
+      expect(before.paymentIntentPlan.amountMist).toBe('35000000');
+      expect(before.receiptPlan.paymentDigest).toBeUndefined();
 
       const after = await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
       expect(after.status).toBe('delivered');
       expect(after.suiPaymentDigest).toContain('sui_dev_payment_');
+      expect(after.receiptPlan.paymentDigest).toBe(after.suiPaymentDigest);
       expect(after.deliveryText).toContain('Opportunity Scout Report');
       expect(after.evidenceEnvelope).toMatchObject({
         deliveryPresent: true,
@@ -206,6 +230,12 @@ describe('TenderBoard Sui product server', () => {
       expect(withEvidence.status).toBe('anchoring');
       expect(withEvidence.walrusBlobId).toContain('walrus_dev_blob_');
       expect(withEvidence.walrusBlobObjectId).toMatch(/^0x/);
+      expect(withEvidence.receiptPlan).toMatchObject({
+        paymentNonce: before.paymentIntentPlan.paymentNonce,
+        settlementNonce: before.paymentIntentPlan.settlementNonce,
+        walrusBlobId: withEvidence.walrusBlobId,
+        walrusBlobObjectId: withEvidence.walrusBlobObjectId,
+      });
       expect(withEvidence.verificationManifest.evidenceHash).toMatch(/^sha256:/);
       expect(withEvidence.evidenceEnvelope).toMatchObject({
         evidenceHash: withEvidence.verificationManifest.evidenceHash,
@@ -221,12 +251,46 @@ describe('TenderBoard Sui product server', () => {
       const anchored = await postJson(`${baseUrl}/api/runs/${created.runId}/anchor-receipt`, {});
       expect(anchored.status).toBe('anchored');
       expect(anchored.suiAnchorDigest).toContain('sui_dev_anchor_');
+      expect(anchored.receiptPlan.anchorDigest).toBe(anchored.suiAnchorDigest);
       expect(anchored.clearingDecision.verdict).toBe('anchored');
       expect(anchored.settlementInstruction).toMatchObject({
         action: 'record_settlement',
         suiAnchorDigest: anchored.suiAnchorDigest,
       });
       expect(JSON.stringify(anchored.events)).toContain('sui_dev_receipt_anchored');
+    } finally {
+      await close();
+    }
+  });
+
+  it('requires a payment digest before approval in Sui mode', async () => {
+    const { baseUrl, close } = await startTestServer({
+      TENDERBOARD_MODE: 'sui',
+      TENDERBOARD_RECEIPTS_DIR: tempDir,
+      SUI_NETWORK: 'testnet',
+      SUI_OPERATOR_ADDRESS: '0xoperator',
+      SUI_PACKAGE_ID: '0xpackage',
+      SUI_RECEIPT_REGISTRY_ID: '0xregistry',
+      WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
+      WALRUS_AGGREGATOR_URL: 'https://aggregator.walrus.testnet.example',
+    });
+
+    try {
+      const created = await postJson(`${baseUrl}/api/runs`, {
+        title: 'Require real digest',
+        instructions: 'Make it useful.',
+        maxPayment: { amount: '0.050', currency: 'SUI' },
+      });
+
+      const response = await fetch(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body.error).toContain('Sui mode requires suiPaymentDigest');
     } finally {
       await close();
     }

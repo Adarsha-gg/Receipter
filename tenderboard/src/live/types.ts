@@ -105,6 +105,48 @@ export interface SelectedBidReference {
   requestedDataLabel: TaskDataLabel;
 }
 
+export interface PaymentIntentPlan {
+  objectType: 'tenderboard.payment_intent_plan.v1';
+  intentId: string;
+  paymentNonce: string;
+  settlementNonce: string;
+  amountMist: string;
+  amountSui: string;
+  coinType: '0x2::sui::SUI';
+  receiverAddress: string;
+  operatorAddress: string;
+  selectedBid: SelectedBidReference | undefined;
+  specHash: string;
+  expectedNetwork: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface ReceiptPlan {
+  objectType: 'tenderboard.receipt_plan.v1';
+  intentId: string;
+  paymentNonce: string;
+  settlementNonce: string;
+  duplicatePreventionKey: string;
+  amountMist: string;
+  amountSui: string;
+  coinType: '0x2::sui::SUI';
+  receiverAddress: string;
+  operatorAddress: string;
+  selectedBidId: string | undefined;
+  workerAgentId: string;
+  specHash: string;
+  expectedNetwork: string;
+  paymentDigest: string | undefined;
+  walrusBlobId: string | undefined;
+  walrusBlobObjectId: string | undefined;
+  walrusCertifiedEpoch: number | undefined;
+  walrusEndEpoch: number | undefined;
+  walrusReadUrl: string | undefined;
+  anchorDigest: string | undefined;
+  updatedAt: string;
+}
+
 export interface ObligationObject {
   objectType: 'tenderboard.obligation.v1';
   obligationId: string;
@@ -201,6 +243,8 @@ export interface LiveRunReceipt {
   workerBidBoard?: WorkerBidBoard;
   trustDecision: TrustDecision;
   verificationManifest: VerificationManifest;
+  paymentIntentPlan?: PaymentIntentPlan;
+  receiptPlan?: ReceiptPlan;
   obligationObject?: ObligationObject;
   evidenceEnvelope?: EvidenceEnvelope;
   clearingDecision?: ClearingDecision;

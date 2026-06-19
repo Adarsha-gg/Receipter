@@ -12,7 +12,14 @@ import { sanitizeTaskForWorker } from '../live/sanitizeTask.js';
 import { buildWorkerDelivery, makeSuiDevDigest, makeSuiDevObjectId } from '../live/suiRuntime.js';
 import { buildTrustProof, finalizeVerificationManifest } from '../live/trustProof.js';
 import { storeEvidenceOnWalrus } from '../live/walrusRuntime.js';
-import type { CreateRunRequest, LiveRunReceipt, TenderBoardConfig } from '../live/types.js';
+import {
+  bindAnchorDigest,
+  bindPaymentDigest,
+  bindWalrusEvidence,
+  buildInitialReceiptPlan,
+  buildPaymentIntentPlan,
+} from '../sui/paymentPlan.js';
+import type { CreateRunRequest, LiveRunReceipt, SelectedBidReference, TenderBoardConfig, WorkerBid } from '../live/types.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(dirname, '../client');
@@ -178,6 +185,16 @@ async function createRun(
   }
 
   const workOrderId = `sui_work_order_${runId}`;
+  const selectedBidReference = selectedBid ? toSelectedBidReference(selectedBid) : undefined;
+  const paymentIntentPlan = buildPaymentIntentPlan({
+    runId,
+    createdAt: now,
+    maxPayment: body.maxPayment,
+    selectedBid: selectedBidReference,
+    specHash: trustProof.verificationManifest.specHash,
+    config,
+  });
+  const receiptPlan = buildInitialReceiptPlan(paymentIntentPlan, selectedBid?.workerAgentId ?? config.workerAgentId, now);
   const receipt: LiveRunReceipt = {
     runId,
     mode: config.mode,
@@ -191,6 +208,8 @@ async function createRun(
     workerBidBoard,
     trustDecision: trustProof.trustDecision,
     verificationManifest: trustProof.verificationManifest,
+    paymentIntentPlan,
+    receiptPlan,
     workerAgentId: selectedBid?.workerAgentId ?? config.workerAgentId,
     workOrderId,
     suiNetwork: config.suiNetwork,
@@ -222,7 +241,22 @@ async function createRun(
         },
       }),
       makeEvent({ at: now, source: 'app', type: 'trust_evaluated', message: `Trust gate returned ${trustProof.trustDecision.verdict} at ${trustProof.trustDecision.score}/100.`, data: { score: trustProof.trustDecision.score, tier: trustProof.trustDecision.tier, verdict: trustProof.trustDecision.verdict } }),
-      makeEvent({ at: now, source: 'sui', type: 'sui_work_order_created', message: 'Sui work order receipt prepared. Payment approval is required.', data: { workOrderId, network: config.suiNetwork } }),
+      makeEvent({
+        at: now,
+        source: 'sui',
+        type: 'sui_work_order_created',
+        message: 'Nonce-bound Sui payment intent prepared. Payment approval is required.',
+        data: {
+          workOrderId,
+          intentId: paymentIntentPlan.intentId,
+          paymentNonce: paymentIntentPlan.paymentNonce,
+          settlementNonce: paymentIntentPlan.settlementNonce,
+          amountMist: paymentIntentPlan.amountMist,
+          coinType: paymentIntentPlan.coinType,
+          receiverAddress: paymentIntentPlan.receiverAddress,
+          network: config.suiNetwork,
+        },
+      }),
       makeEvent({ at: now, source: 'sui', type: 'verification_manifest_created', message: 'Verification manifest is ready for Sui anchoring.', data: { specHash: trustProof.verificationManifest.specHash } }),
     ],
   };
@@ -264,6 +298,8 @@ async function approvePayment(
   if (!suiPaymentDigest) {
     throw httpError(400, 'Sui mode requires suiPaymentDigest from the payment approval transaction.');
   }
+  const receiptPlan = requireReceiptPlan(receipt);
+  const paymentIntentPlan = requirePaymentIntentPlan(receipt);
   const delivery = scoutFetch
     ? await buildWorkerDelivery(receipt, { fetchImpl: scoutFetch })
     : await buildWorkerDelivery(receipt);
@@ -271,14 +307,27 @@ async function approvePayment(
     status: 'delivered',
     updatedAt: now,
     suiPaymentDigest,
+    receiptPlan: bindPaymentDigest(receiptPlan, suiPaymentDigest, now),
     deliveryText: delivery,
   });
 
   const events = [
     makeEvent({ at: now, source: 'app', type: 'payment_approved', message: 'Sui payment approval was recorded for this work order.' }),
-    suiPaymentDigest
-      ? makeEvent({ at: now, source: 'sui', type: 'sui_dev_payment_recorded', message: 'Sui dev payment digest recorded.', data: { digest: suiPaymentDigest } })
-      : makeEvent({ at: now, source: 'sui', type: 'sui_payment_pending', message: 'Run needs a real Sui payment transaction digest before final submission.' }),
+    makeEvent({
+      at: now,
+      source: 'sui',
+      type: config.mode === 'sui-dev' ? 'sui_dev_payment_recorded' : 'sui_payment_recorded',
+      message: 'Sui payment digest recorded and bound to the receipt plan.',
+      data: {
+        digest: suiPaymentDigest,
+        intentId: paymentIntentPlan.intentId,
+        paymentNonce: paymentIntentPlan.paymentNonce,
+        settlementNonce: paymentIntentPlan.settlementNonce,
+        amountMist: paymentIntentPlan.amountMist,
+        coinType: paymentIntentPlan.coinType,
+        receiverAddress: paymentIntentPlan.receiverAddress,
+      },
+    }),
     makeEvent({ at: now, source: 'worker', type: 'delivery_sent', message: 'Worker delivered the result.' }),
     makeEvent({ at: now, source: 'walrus', type: 'walrus_upload_pending', message: 'Full receipt and evidence should be uploaded to Walrus before Sui anchoring.' }),
   ];
@@ -318,7 +367,20 @@ async function storeEvidence(
   }
 
   const now = new Date().toISOString();
+  const baseReceiptPlan = requireReceiptPlan(receipt);
+  const paymentIntentPlan = requirePaymentIntentPlan(receipt);
   const result = await storeEvidenceOnWalrus(receipt, config);
+  const receiptPlan = bindWalrusEvidence(
+    baseReceiptPlan,
+    {
+      walrusBlobId: result.blobId,
+      walrusBlobObjectId: result.blobObjectId,
+      walrusCertifiedEpoch: result.certifiedEpoch,
+      walrusEndEpoch: result.endEpoch,
+      walrusReadUrl: result.readUrl,
+    },
+    now,
+  );
   const updatedForManifest: LiveRunReceipt = {
     ...receipt,
     status: 'anchoring',
@@ -328,6 +390,7 @@ async function storeEvidence(
     walrusCertifiedEpoch: result.certifiedEpoch,
     walrusEndEpoch: result.endEpoch,
     walrusReadUrl: result.readUrl,
+    receiptPlan,
   };
   const verificationManifest = finalizeVerificationManifest(updatedForManifest, receipt.deliveryText);
   const updatedForClearing = {
@@ -343,6 +406,7 @@ async function storeEvidence(
     walrusCertifiedEpoch: result.certifiedEpoch,
     walrusEndEpoch: result.endEpoch,
     walrusReadUrl: result.readUrl,
+    receiptPlan,
     verificationManifest,
     ...buildClearingObjects(updatedForClearing),
   });
@@ -358,6 +422,9 @@ async function storeEvidence(
         blobObjectId: result.blobObjectId,
         endEpoch: result.endEpoch,
         readUrl: result.readUrl,
+        intentId: paymentIntentPlan.intentId,
+        paymentNonce: paymentIntentPlan.paymentNonce,
+        settlementNonce: paymentIntentPlan.settlementNonce,
       },
     }),
     makeEvent({
@@ -397,11 +464,14 @@ async function anchorReceipt(
     throw httpError(400, 'Sui mode requires suiAnchorDigest from the receipt registry transaction.');
   }
 
+  const receiptPlan = requireReceiptPlan(receipt);
+  const paymentIntentPlan = requirePaymentIntentPlan(receipt);
   const now = new Date().toISOString();
   await store.update(runId, {
     status: 'anchored',
     updatedAt: now,
     suiAnchorDigest,
+    receiptPlan: bindAnchorDigest(receiptPlan, suiAnchorDigest, now),
   });
 
   const event = makeEvent({
@@ -414,6 +484,9 @@ async function anchorReceipt(
       registry: receipt.suiReceiptRegistryId,
       walrusBlobId: receipt.walrusBlobId,
       evidenceHash: receipt.verificationManifest.evidenceHash,
+      intentId: paymentIntentPlan.intentId,
+      paymentNonce: paymentIntentPlan.paymentNonce,
+      settlementNonce: paymentIntentPlan.settlementNonce,
     },
   });
   await store.appendEvent(runId, event);
@@ -423,6 +496,30 @@ async function anchorReceipt(
   await store.update(runId, buildClearingObjects(latest));
 
   return store.require(runId);
+}
+
+function toSelectedBidReference(bid: WorkerBid): SelectedBidReference {
+  return {
+    bidId: bid.bidId,
+    workerAgentId: bid.workerAgentId,
+    priceSui: bid.priceSui,
+    sla: bid.sla,
+    requestedDataLabel: bid.requestedDataLabel,
+  };
+}
+
+function requirePaymentIntentPlan(receipt: LiveRunReceipt) {
+  if (!receipt.paymentIntentPlan) {
+    throw httpError(409, 'Run is missing a nonce-bound payment intent plan.');
+  }
+  return receipt.paymentIntentPlan;
+}
+
+function requireReceiptPlan(receipt: LiveRunReceipt) {
+  if (!receipt.receiptPlan) {
+    throw httpError(409, 'Run is missing a nonce-bound receipt plan.');
+  }
+  return receipt.receiptPlan;
 }
 
 async function cancelRun(runId: string, store: RunStore, bus: RunEventBus): Promise<LiveRunReceipt> {

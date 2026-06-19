@@ -28,6 +28,8 @@ export interface EvidenceBundle {
     paymentDigest: string | undefined;
     anchorDigest: string | undefined;
   };
+  paymentIntentPlan: LiveRunReceipt['paymentIntentPlan'];
+  receiptPlan: LiveRunReceipt['receiptPlan'];
   privacy: LiveRunReceipt['privacy'];
   workerBidBoard: LiveRunReceipt['workerBidBoard'];
   trust: LiveRunReceipt['trustDecision'];
@@ -62,6 +64,8 @@ export function buildEvidenceBundle(receipt: LiveRunReceipt): EvidenceBundle {
       paymentDigest: receipt.suiPaymentDigest,
       anchorDigest: receipt.suiAnchorDigest,
     },
+    paymentIntentPlan: receipt.paymentIntentPlan,
+    receiptPlan: receipt.receiptPlan,
     privacy: receipt.privacy,
     workerBidBoard: receipt.workerBidBoard,
     trust: receipt.trustDecision,

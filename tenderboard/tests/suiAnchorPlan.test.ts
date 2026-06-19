@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadTenderBoardConfig } from '../src/live/config.js';
 import type { LiveRunReceipt } from '../src/live/types.js';
 import { buildSuiAnchorPlan, renderSuiAnchorPlan } from '../src/sui/anchorPlan.js';
+import { suiAmountToMist } from '../src/sui/paymentPlan.js';
 
 describe('Sui anchor plan', () => {
   it('maps a finalized receipt into the Move call arguments', () => {
@@ -29,7 +30,20 @@ describe('Sui anchor plan', () => {
       'research',
       '0xsui_payment',
       'walrus_blob_123',
+      'payment_nonce_123',
+      '35000000',
+      '0x2::sui::SUI',
+      '0xoperator',
+      'settlement_nonce_456',
+      'testnet:payment_intent_run_sui:payment_nonce_123:settlement_nonce_456',
     ]);
+    expect(renderSuiAnchorPlan(plan)).toContain('Payment nonce: payment_nonce_123');
+    expect(renderSuiAnchorPlan(plan)).toContain('Amount MIST: 35000000');
+  });
+
+  it('converts decimal SUI amounts to MIST without floating point rounding', () => {
+    expect(suiAmountToMist('0.035')).toBe('35000000');
+    expect(suiAmountToMist('1.000000001')).toBe('1000000001');
   });
 
   it('renders missing deployment settings without overclaiming readiness', () => {
@@ -94,5 +108,51 @@ function sampleReceipt(): LiveRunReceipt {
     deliveryText: 'Sui opportunity report',
     error: undefined,
     events: [],
+    paymentIntentPlan: {
+      objectType: 'tenderboard.payment_intent_plan.v1',
+      intentId: 'payment_intent_run_sui',
+      paymentNonce: 'payment_nonce_123',
+      settlementNonce: 'settlement_nonce_456',
+      amountMist: '35000000',
+      amountSui: '0.035',
+      coinType: '0x2::sui::SUI',
+      receiverAddress: '0xoperator',
+      operatorAddress: '0xoperator',
+      selectedBid: {
+        bidId: 'public_scout_standard',
+        workerAgentId: 'sui_worker',
+        priceSui: '0.035',
+        sla: '24h',
+        requestedDataLabel: 'public',
+      },
+      specHash: 'sha256:spec',
+      expectedNetwork: 'testnet',
+      expiresAt: '2026-06-20T01:00:00.000Z',
+      createdAt: '2026-06-19T01:00:00.000Z',
+    },
+    receiptPlan: {
+      objectType: 'tenderboard.receipt_plan.v1',
+      intentId: 'payment_intent_run_sui',
+      paymentNonce: 'payment_nonce_123',
+      settlementNonce: 'settlement_nonce_456',
+      duplicatePreventionKey: 'testnet:payment_intent_run_sui:payment_nonce_123:settlement_nonce_456',
+      amountMist: '35000000',
+      amountSui: '0.035',
+      coinType: '0x2::sui::SUI',
+      receiverAddress: '0xoperator',
+      operatorAddress: '0xoperator',
+      selectedBidId: 'public_scout_standard',
+      workerAgentId: 'sui_worker',
+      specHash: 'sha256:spec',
+      expectedNetwork: 'testnet',
+      paymentDigest: '0xsui_payment',
+      walrusBlobId: undefined,
+      walrusBlobObjectId: undefined,
+      walrusCertifiedEpoch: undefined,
+      walrusEndEpoch: undefined,
+      walrusReadUrl: undefined,
+      anchorDigest: undefined,
+      updatedAt: '2026-06-19T01:00:00.000Z',
+    },
   };
 }

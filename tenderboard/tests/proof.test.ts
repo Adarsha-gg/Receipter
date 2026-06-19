@@ -12,6 +12,9 @@ describe('renderReceiptProof', () => {
     expect(proof).toContain('# TenderBoard Sui Run Proof: run_proof');
     expect(proof).toContain('Sui payment digest: 0xsui');
     expect(proof).toContain('Walrus blob id: walrus_blob_1');
+    expect(proof).toContain('Payment nonce: payment_nonce_proof');
+    expect(proof).toContain('Settlement nonce: settlement_nonce_proof');
+    expect(proof).toContain('Amount MIST: 35000000');
     expect(proof).toContain('Trust verdict: allow');
     expect(proof).toContain('Selected worker bid: public_scout_standard');
     expect(proof).toContain('| public_scout_standard | sui_worker | 0.035 SUI | 24h | public | available |');
@@ -30,6 +33,15 @@ describe('renderReceiptProof', () => {
   it('includes formal clearing objects in the Walrus evidence bundle', () => {
     const bundle = buildEvidenceBundle(sampleReceipt());
 
+    expect(bundle.paymentIntentPlan).toMatchObject({
+      paymentNonce: 'payment_nonce_proof',
+      settlementNonce: 'settlement_nonce_proof',
+      amountMist: '35000000',
+    });
+    expect(bundle.receiptPlan).toMatchObject({
+      paymentDigest: '0xsui',
+      walrusBlobId: 'walrus_blob_1',
+    });
     expect(bundle.clearingObjects.obligationObject?.selectedBid?.bidId).toBe('public_scout_standard');
     expect(bundle.clearingObjects.evidenceEnvelope).toMatchObject({
       evidenceHash: 'sha256:evidence',
@@ -98,6 +110,52 @@ function sampleReceipt(): LiveRunReceipt {
       ],
       settlementRule: 'Release after Sui approval and delivery.',
       reputationWriteback: 'Use receipt as Sui feedback.',
+    },
+    paymentIntentPlan: {
+      objectType: 'tenderboard.payment_intent_plan.v1',
+      intentId: 'payment_intent_run_proof',
+      paymentNonce: 'payment_nonce_proof',
+      settlementNonce: 'settlement_nonce_proof',
+      amountMist: '35000000',
+      amountSui: '0.035',
+      coinType: '0x2::sui::SUI',
+      receiverAddress: '0xoperator',
+      operatorAddress: '0xoperator',
+      selectedBid: {
+        bidId: 'public_scout_standard',
+        workerAgentId: 'sui_worker',
+        priceSui: '0.035',
+        sla: '24h',
+        requestedDataLabel: 'public',
+      },
+      specHash: 'sha256:spec',
+      expectedNetwork: 'testnet',
+      expiresAt: '2026-06-20T20:00:00.000Z',
+      createdAt: '2026-06-19T20:00:00.000Z',
+    },
+    receiptPlan: {
+      objectType: 'tenderboard.receipt_plan.v1',
+      intentId: 'payment_intent_run_proof',
+      paymentNonce: 'payment_nonce_proof',
+      settlementNonce: 'settlement_nonce_proof',
+      duplicatePreventionKey: 'testnet:payment_intent_run_proof:payment_nonce_proof:settlement_nonce_proof',
+      amountMist: '35000000',
+      amountSui: '0.035',
+      coinType: '0x2::sui::SUI',
+      receiverAddress: '0xoperator',
+      operatorAddress: '0xoperator',
+      selectedBidId: 'public_scout_standard',
+      workerAgentId: 'sui_worker',
+      specHash: 'sha256:spec',
+      expectedNetwork: 'testnet',
+      paymentDigest: '0xsui',
+      walrusBlobId: 'walrus_blob_1',
+      walrusBlobObjectId: '0xwalrus',
+      walrusCertifiedEpoch: 10,
+      walrusEndEpoch: 12,
+      walrusReadUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/walrus_blob_1',
+      anchorDigest: undefined,
+      updatedAt: '2026-06-19T20:05:00.000Z',
     },
     workerAgentId: 'sui_worker',
     workOrderId: 'sui_work_order_1',

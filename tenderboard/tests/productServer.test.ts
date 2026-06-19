@@ -54,6 +54,8 @@ describe('TenderBoard product server', () => {
       const created = await postJson(`${baseUrl}/api/runs`, {
         title: 'Write launch checklist',
         instructions: 'Make it useful.',
+        acceptanceCriteria: ['Return three concrete launch steps.', 'Include owner and risk for each step.'],
+        checkerPack: 'research',
         privateNotes: 'do not send this field to the worker',
         maxPayment: { amount: '0.05', currency: 'USDC' },
       });
@@ -63,8 +65,13 @@ describe('TenderBoard product server', () => {
 
       expect(created.status).toBe('awaiting_payment_approval');
       expect(created.sanitizedTask).toContain('Write launch checklist');
+      expect(created.sanitizedTask).toContain('Return three concrete launch steps.');
       expect(receiptText).not.toContain('do not send this field');
       expect(receiptText).toContain('negotiation_created');
+      expect(receiptText).toContain('trustDecision');
+      expect(receiptText).toContain('verificationManifest');
+      expect(receiptText).toContain('public_sources');
+      expect(receiptText).toContain('trust_evaluated');
     } finally {
       await close();
     }
@@ -167,6 +174,26 @@ describe('TenderBoard product server', () => {
           taskTitle: 'Write launch checklist',
           sanitizedTask: 'Task: Write launch checklist',
           maxPayment: { amount: '0.05', currency: 'USDC' },
+          trustDecision: {
+            workerAgentId: 'svc_worker',
+            score: 91,
+            tier: 'AA',
+            verdict: 'allow',
+            pricedMultiplier: 1,
+            reasons: ['No secret-looking lines were found in the public worker packet.'],
+            controls: ['Payment requires explicit approval.'],
+          },
+          verificationManifest: {
+            specHash: 'sha256:spec',
+            evidenceHash: undefined,
+            checkerPack: 'research',
+            acceptanceCriteria: ['Safe task only.'],
+            requiredChecks: [
+              { id: 'safe_packet', label: 'Safe worker packet', status: 'passed', detail: 'No forbidden secret pattern remains.' },
+            ],
+            settlementRule: 'Release after approval and delivery.',
+            reputationWriteback: 'Use receipt as feedback.',
+          },
           crooServiceId: 'svc_worker',
           negotiationId: 'real_neg_123',
           orderId: 'real_order_123',

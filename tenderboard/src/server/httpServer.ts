@@ -9,6 +9,7 @@ import { loadDotEnvFile } from '../live/dotenv.js';
 import { RunEventBus, formatSseEvent } from '../live/eventBus.js';
 import { makeEvent, makeRunId, RunStore } from '../live/runStore.js';
 import { sanitizeTaskForWorker } from '../live/sanitizeTask.js';
+import { buildTrustProof, finalizeVerificationManifest } from '../live/trustProof.js';
 import type { CreateRunRequest, LiveRunReceipt, TenderBoardConfig } from '../live/types.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -148,6 +149,18 @@ async function createRun(
   const now = new Date().toISOString();
   const runId = makeRunId();
   const sanitized = sanitizeTaskForWorker(body);
+  const trustProof = buildTrustProof({
+    request: body,
+    sanitizedTask: sanitized.sanitizedTask,
+    removedLines: sanitized.removedLines,
+    privateNotesProvided: sanitized.privateNotesProvided,
+    config,
+  });
+
+  if (trustProof.trustDecision.verdict === 'block') {
+    throw httpError(400, `Trust gate blocked this task: ${trustProof.trustDecision.reasons.join(' ')}`);
+  }
+
   const receipt: LiveRunReceipt = {
     runId,
     mode: config.mode,
@@ -157,6 +170,8 @@ async function createRun(
     taskTitle: body.title,
     sanitizedTask: sanitized.sanitizedTask,
     maxPayment: body.maxPayment,
+    trustDecision: trustProof.trustDecision,
+    verificationManifest: trustProof.verificationManifest,
     crooServiceId: config.workerServiceId ?? 'mock_worker_service',
     negotiationId: config.mode === 'live' ? undefined : `${config.mode}_neg_${runId}`,
     orderId: config.mode === 'live' ? undefined : `${config.mode}_order_${runId}`,
@@ -166,6 +181,8 @@ async function createRun(
     events: [
       makeEvent({ at: now, source: 'app', type: 'run_created', message: 'Task created.' }),
       makeEvent({ at: now, source: 'app', type: 'task_sanitized', message: 'Private notes were not sent to the worker.' }),
+      makeEvent({ at: now, source: 'app', type: 'trust_evaluated', message: `Trust gate returned ${trustProof.trustDecision.verdict} at ${trustProof.trustDecision.score}/100.`, data: { score: trustProof.trustDecision.score, tier: trustProof.trustDecision.tier, verdict: trustProof.trustDecision.verdict } }),
+      makeEvent({ at: now, source: 'app', type: 'verification_manifest_created', message: 'Verification manifest was anchored for this task.', data: { specHash: trustProof.verificationManifest.specHash } }),
     ],
   };
 
@@ -245,6 +262,11 @@ async function approvePayment(
     bus.publish(runId, event);
   }
 
+  const latest = await store.require(runId);
+  await store.update(runId, {
+    verificationManifest: finalizeVerificationManifest(latest, delivery),
+  });
+
   return store.require(runId);
 }
 
@@ -286,6 +308,15 @@ function validateCreateRun(body: CreateRunRequest, config: TenderBoardConfig): v
   if (!body.title || !body.title.trim()) throw httpError(400, 'Task title is required.');
   if (!body.instructions || !body.instructions.trim()) throw httpError(400, 'Task instructions are required.');
   if (!body.maxPayment || body.maxPayment.currency !== 'USDC') throw httpError(400, 'Max payment must be in USDC.');
+  if (body.checkerPack && !['research', 'code', 'commerce'].includes(body.checkerPack)) {
+    throw httpError(400, 'Checker pack must be research, code, or commerce.');
+  }
+  if (body.acceptanceCriteria && !Array.isArray(body.acceptanceCriteria)) {
+    throw httpError(400, 'Acceptance criteria must be an array of strings.');
+  }
+  if (body.acceptanceCriteria?.some((criterion) => typeof criterion !== 'string')) {
+    throw httpError(400, 'Acceptance criteria must be strings.');
+  }
 
   const amount = Number(body.maxPayment.amount);
   const cap = Number(config.maxPaymentUsdc);

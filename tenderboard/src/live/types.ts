@@ -26,11 +26,47 @@ export interface MoneyInput {
   currency: 'USDC';
 }
 
+export type CheckerPackId = 'research' | 'code' | 'commerce';
+
 export interface CreateRunRequest {
   title: string;
   instructions: string;
   privateNotes?: string;
+  acceptanceCriteria?: string[];
+  checkerPack?: CheckerPackId;
   maxPayment: MoneyInput;
+}
+
+export type TrustTier = 'AAA' | 'AA' | 'A' | 'B' | 'C';
+export type TrustVerdict = 'allow' | 'review' | 'block';
+
+export interface TrustDecision {
+  workerAgentId: string;
+  score: number;
+  tier: TrustTier;
+  verdict: TrustVerdict;
+  pricedMultiplier: number;
+  reasons: string[];
+  controls: string[];
+}
+
+export type VerificationCheckStatus = 'passed' | 'pending' | 'requires_review';
+
+export interface VerificationCheck {
+  id: string;
+  label: string;
+  status: VerificationCheckStatus;
+  detail: string;
+}
+
+export interface VerificationManifest {
+  specHash: string;
+  evidenceHash: string | undefined;
+  checkerPack: CheckerPackId;
+  acceptanceCriteria: string[];
+  requiredChecks: VerificationCheck[];
+  settlementRule: string;
+  reputationWriteback: string;
 }
 
 export interface LiveRunSummary {
@@ -53,6 +89,8 @@ export interface LiveRunReceipt {
   taskTitle: string;
   sanitizedTask: string;
   maxPayment: MoneyInput;
+  trustDecision: TrustDecision;
+  verificationManifest: VerificationManifest;
   crooServiceId: string | undefined;
   negotiationId: string | undefined;
   orderId: string | undefined;

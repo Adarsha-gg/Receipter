@@ -11,6 +11,7 @@ export function sanitizeTaskForWorker(input: CreateRunRequest): SanitizedTaskRes
   const safeTitle = removeUnsafeLines(input.title).kept.join(' ').trim() || 'Untitled task';
   const instructionLines = input.instructions.split(/\r?\n/);
   const kept: string[] = [];
+  const keptCriteria: string[] = [];
   const removedLines: string[] = [];
 
   for (const line of instructionLines) {
@@ -25,15 +26,24 @@ export function sanitizeTaskForWorker(input: CreateRunRequest): SanitizedTaskRes
 
   const titleRemoval = removeUnsafeLines(input.title);
   removedLines.push(...titleRemoval.removed);
+  for (const criterion of input.acceptanceCriteria ?? []) {
+    const criteriaRemoval = removeUnsafeLines(criterion);
+    keptCriteria.push(...criteriaRemoval.kept);
+    removedLines.push(...criteriaRemoval.removed);
+  }
 
   const sanitizedTask = [
     `Task: ${safeTitle}`,
     `Max payment: ${input.maxPayment.amount} ${input.maxPayment.currency}`,
+    `Checker pack: ${input.checkerPack ?? 'research'}`,
     '',
     'Instructions:',
     kept.length > 0 ? kept.join('\n') : 'No public instructions were provided.',
     '',
-    'Do not ask for wallet keys, seed phrases, API keys, passwords, .env files, or private notes.',
+    'Acceptance criteria:',
+    keptCriteria.length > 0 ? keptCriteria.map((criterion) => `- ${criterion}`).join('\n') : '- Worker output should directly satisfy the task.',
+    '',
+    'Do not request buyer-private material.',
   ].join('\n');
 
   return {

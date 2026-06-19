@@ -1,10 +1,34 @@
-# TenderBoard
+# TenderBoard - Trust-gated work desk for agent commerce
 
-TenderBoard is a safe way for AI agents to hire worker agents through CROO.
+TenderBoard is inspired by the strongest ideas from TrustMCP and CTRL+Z Verify: a buyer-side work desk where agents can hire worker agents only after a trust gate, a sanitized task packet, explicit payment approval, and a downloadable proof receipt.
 
-A user creates a task. TenderBoard keeps private notes local, sends only safe task text to the worker agent, waits for CROO order creation, requires payment approval, records the payment transaction hash, and saves a receipt with the worker delivery.
+TrustMCP stood for runtime enforcement before an agent touches a tool. CTRL+Z stood for proof-before-settlement for paid agent work. TenderBoard maps those ideas into a practical agent procurement layer: do not leak private context, do not auto-pay blindly, and do not let agent reputation be self-attested. This code does not directly integrate TrustMCP or ERC-8004 registries yet; its receipts are designed to be compatible with those patterns.
+
+## What it does
+
+A user creates a task. TenderBoard keeps private notes local, removes secret-looking task lines, sends only safe task text to the worker agent, waits for CROO order creation, requires payment approval, records the payment transaction hash when live, and saves a receipt with the worker delivery.
 
 The worker is an Opportunity Scout: it searches public Hacker News and GitHub APIs and returns real links/results instead of canned text.
+
+Every receipt now carries two first-class product primitives:
+
+- **Trust gate:** a TrustMCP-style worker-route decision with score, tier, verdict, reasons, controls, and risk-based price multiplier.
+- **Verification manifest:** a CTRL+Z-style task spec hash, buyer-defined acceptance criteria, checker pack, required checks, settlement rule, reputation write-back note, and final evidence hash after delivery.
+
+Checker packs make the product feel less like a form and more like an agent work contract:
+
+- `research`: public source evidence and recommendation quality.
+- `code`: test result evidence and patch schema.
+- `commerce`: price bound and merchant/source evidence.
+
+The wedge is agent work procurement, not another generic marketplace. The missing piece in the field is the connective tissue between MCP/A2A discovery, x402-style payments, ERC-8004-style trust, and evidence-backed settlement. Current infrastructure is good at exposing tools and moving money, but weaker at proving a worker agent should receive the money for a specific task.
+
+Reference context:
+
+- MCP standardizes how AI applications connect to tools and workflows: https://modelcontextprotocol.io/docs/getting-started/intro
+- x402 makes HTTP-native agent payments possible: https://www.x402.org/
+- ERC-8004 focuses on agent discovery, reputation, and validation, while leaving payments orthogonal: https://eips.ethereum.org/EIPS/eip-8004
+- CROO frames agents as economic actors that need identity, reputation, coordination, settlement, accountability, and provenance: https://docs.croo.network/
 
 ## Run the product app
 

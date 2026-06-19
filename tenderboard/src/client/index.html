@@ -3,69 +3,199 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TenderBoard Live</title>
+  <title>TenderBoard</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <main>
-    <section class="hero">
+  <main class="appShell">
+    <header class="topbar">
       <div>
-        <p class="eyebrow">TenderBoard Live</p>
-        <h1>Pay worker agents without leaking private info.</h1>
-        <p class="lead">Create a task, send only the safe version to a worker agent, approve payment, and watch the order finish live.</p>
+        <p class="kicker">TrustMCP-inspired / CTRL+Z-style</p>
+        <h1>TenderBoard</h1>
       </div>
-      <div class="modeCard">
+      <div class="topActions">
         <span id="modeBadge" class="badge">loading</span>
-        <p id="configText">Checking setup…</p>
+        <a class="ghostLink" href="#runHistory">Receipts</a>
+      </div>
+    </header>
+
+    <section class="commandBand" aria-label="Product overview">
+      <div class="commandCopy">
+        <p class="eyebrow">Agent work desk</p>
+        <h2>Hire worker agents with trust gates, verifiable work, and controlled settlement.</h2>
+        <p class="lead">TenderBoard maps TrustMCP-inspired runtime trust checks to a CTRL+Z-style pay-on-proof workflow. The buyer sees what leaves the boundary, approves payment only after an order exists, and keeps a portable receipt for reputation and dispute review.</p>
+      </div>
+      <div class="networkMap" aria-hidden="true">
+        <div class="node buyer">Buyer</div>
+        <div class="edge edgeOne"></div>
+        <div class="node gate">Trust Gate</div>
+        <div class="edge edgeTwo"></div>
+        <div class="node worker">Worker</div>
+        <div class="receiptNode">Receipt</div>
       </div>
     </section>
 
-    <section class="grid">
-      <form id="taskForm" class="card">
-        <h2>1. Create task</h2>
+    <section class="statusGrid" aria-label="System status">
+      <article class="metricPanel">
+        <span>Payment cap</span>
+        <strong id="paymentCap">--</strong>
+        <small>Hard limit before any run can move money.</small>
+      </article>
+      <article class="metricPanel">
+        <span>Live readiness</span>
+        <strong id="liveReadiness">checking</strong>
+        <small id="configText">Checking setup...</small>
+      </article>
+      <article class="metricPanel">
+        <span>Evidence model</span>
+        <strong>sanitized + receipt</strong>
+        <small>Private notes stay local; receipts exclude secrets.</small>
+      </article>
+      <article class="metricPanel">
+        <span>Worker path</span>
+        <strong>Opportunity Scout</strong>
+        <small>Returns public-source research through the delivery flow.</small>
+      </article>
+    </section>
+
+    <section class="workspaceGrid">
+      <form id="taskForm" class="panel taskPanel">
+        <div class="panelHeader">
+          <div>
+            <p class="eyebrow">Step 1</p>
+            <h2>Create a paid agent task</h2>
+          </div>
+          <span class="statusPill">buyer controlled</span>
+        </div>
+
         <label for="title">Task title</label>
-        <input id="title" name="title" value="Write a launch checklist for TenderBoard" required>
+        <input id="title" name="title" value="Find AI agent hackathons and useful builder opportunities" required>
 
         <label for="instructions">Worker instructions</label>
-        <textarea id="instructions" name="instructions" required>Make a short checklist for shipping the live TenderBoard product. Keep it practical.</textarea>
+        <textarea id="instructions" name="instructions" required>Search public sources for active AI agent hackathons, grants, and builder programs. Return the strongest opportunities with links, deadlines when visible, and a short recommendation.</textarea>
 
-        <label for="privateNotes">Private notes — never sent to worker</label>
-        <textarea id="privateNotes" name="privateNotes">Internal notes stay here. Do not send this field to the worker.</textarea>
+        <label for="acceptanceCriteria">Acceptance criteria</label>
+        <textarea id="acceptanceCriteria" name="acceptanceCriteria">Return at least 5 public-source opportunities with links.
+Flag deadline, sponsor, prize/funding, and fit when visible.
+End with a ranked recommendation and why.</textarea>
 
-        <label for="amount">Max payment in USDC</label>
-        <input id="amount" name="amount" value="0.05" required>
+        <label for="privateNotes">Private notes never sent to worker</label>
+        <textarea id="privateNotes" name="privateNotes">Internal angle: prioritize agent-commerce, MCP, verification, x402, and reputation ecosystems. Do not expose this field.</textarea>
 
-        <button type="submit">Send task</button>
+        <div class="inlineFields three">
+          <div>
+            <label for="amount">Max payment in USDC</label>
+            <input id="amount" name="amount" value="0.05" required>
+          </div>
+          <div>
+            <label for="checkerPack">Checker pack</label>
+            <select id="checkerPack" name="checkerPack">
+              <option value="research" selected>Research</option>
+              <option value="code">Code</option>
+              <option value="commerce">Commerce</option>
+            </select>
+          </div>
+          <button type="submit">Send safe task</button>
+        </div>
       </form>
 
-      <section class="card">
-        <h2>2. Safe version sent to worker</h2>
-        <pre id="sanitizedPreview">No task sent yet.</pre>
-        <div id="paymentBox" class="payment hidden">
-          <h3>Payment approval</h3>
-          <p>Approve payment only after an order exists. Live mode will require real CROO payment wiring.</p>
-          <button id="approveBtn">Approve payment</button>
-          <button id="cancelBtn" class="secondary">Cancel run</button>
+      <section class="panel previewPanel" aria-label="Sanitized worker task">
+        <div class="panelHeader">
+          <div>
+            <p class="eyebrow">Step 2</p>
+            <h2>Worker-facing packet</h2>
+          </div>
+          <span class="statusPill safe">redacted</span>
+        </div>
+        <pre id="sanitizedPreview">Create a task to preview the packet that will be sent to the worker agent.</pre>
+
+        <div id="paymentBox" class="approvalBox hidden">
+          <div>
+            <p class="eyebrow">Step 3</p>
+            <h3>Payment approval</h3>
+            <p id="approvalCopy">Approve only after the order exists. Live mode sends a real CROO payment; dry-run and mock mode never spend real funds.</p>
+          </div>
+          <div class="buttonRow">
+            <button id="approveBtn" type="button">Approve payment</button>
+            <button id="cancelBtn" class="secondary" type="button">Cancel run</button>
+          </div>
         </div>
       </section>
     </section>
 
-    <section class="grid">
-      <section class="card">
-        <h2>3. Live timeline</h2>
+    <section class="trustGrid" aria-label="Trust and verification">
+      <section class="panel trustPanel">
+        <div class="panelHeader">
+          <div>
+            <p class="eyebrow">Trust-inspired layer</p>
+            <h2>Trust gate</h2>
+          </div>
+          <span id="trustVerdict" class="statusPill">waiting</span>
+        </div>
+        <div id="trustDecision" class="trustDecision">Create a run to score the worker route.</div>
+      </section>
+
+      <section class="panel manifestPanel">
+        <div class="panelHeader">
+          <div>
+            <p class="eyebrow">Verification layer</p>
+            <h2>Verification manifest</h2>
+          </div>
+          <span id="manifestHash" class="statusPill">unanchored</span>
+        </div>
+        <div id="manifestChecks" class="manifestChecks">Create a run to anchor acceptance criteria and checks.</div>
+      </section>
+    </section>
+
+    <section class="proofGrid">
+      <section class="panel timelinePanel">
+        <div class="panelHeader">
+          <div>
+            <p class="eyebrow">Live proof</p>
+            <h2>Execution timeline</h2>
+          </div>
+          <span id="timelineCount" class="statusPill">0 events</span>
+        </div>
         <ol id="timeline" class="timeline"></ol>
       </section>
 
-      <section class="card">
-        <h2>4. Receipt</h2>
+      <section class="panel receiptPanel">
+        <div class="panelHeader">
+          <div>
+            <p class="eyebrow">Receipt</p>
+            <h2>Settlement and delivery</h2>
+          </div>
+          <span id="receiptStatus" class="statusPill">waiting</span>
+        </div>
         <div id="receipt" class="receipt">No receipt yet.</div>
       </section>
     </section>
 
-    <section class="card">
-      <div class="sectionHead">
-        <h2>Previous runs</h2>
-        <button id="refreshRunsBtn" class="secondary" type="button">Refresh runs</button>
+    <section class="productGrid" aria-label="Product thesis">
+      <article class="insightPanel">
+        <span class="panelIcon">01</span>
+        <h3>Trust before execution</h3>
+        <p>Inspired by TrustMCP: agent calls should be scored, sandboxed, throttled, or blocked before tools and private data are exposed.</p>
+      </article>
+      <article class="insightPanel">
+        <span class="panelIcon">02</span>
+        <h3>Proof before settlement</h3>
+        <p>Modeled after CTRL+Z Verify: payment should unlock only after evidence, checks, and an explicit operator decision.</p>
+      </article>
+      <article class="insightPanel">
+        <span class="panelIcon">03</span>
+        <h3>Receipts become reputation</h3>
+        <p>Every run produces a portable proof trail that can map to ERC-8004-style reputation instead of relying on self-attested trust.</p>
+      </article>
+    </section>
+
+    <section class="panel historyPanel" id="runHistoryPanel">
+      <div class="panelHeader">
+        <div>
+          <p class="eyebrow">Run ledger</p>
+          <h2>Previous runs</h2>
+        </div>
+        <button id="refreshRunsBtn" class="secondary compact" type="button">Refresh</button>
       </div>
       <div id="runHistory" class="runHistory">No runs loaded yet.</div>
     </section>

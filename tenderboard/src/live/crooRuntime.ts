@@ -1,6 +1,7 @@
 import { renderScoutReport, scoutOpportunities } from '../agents/opportunityScout.js';
 import { findSecretPatternMatches } from '../policy/secretPatterns.js';
 import { makeEvent, RunStore } from './runStore.js';
+import { finalizeVerificationManifest } from './trustProof.js';
 import type { RunEventBus } from './eventBus.js';
 import type { LiveRunReceipt, TenderBoardConfig } from './types.js';
 
@@ -268,6 +269,10 @@ export class LiveCrooRuntime {
       deliveryText: delivery.deliverableText ?? JSON.stringify(delivery),
     });
     await this.record(runId, makeEvent({ source: 'croo', type: 'order_completed', message: 'CROO order completed and delivery fetched.', data: { orderId } }));
+    const latest = await this.store.require(runId);
+    await this.store.update(runId, {
+      verificationManifest: finalizeVerificationManifest(latest, latest.deliveryText),
+    });
   }
 
   private async handleOrderRejected(event: CrooEvent): Promise<void> {

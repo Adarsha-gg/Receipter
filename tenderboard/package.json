@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Agent-native RFP and safe bidding layer for CROO agent commerce.",
+  "description": "Trust-gated agent work desk with safe worker packets, CROO payment approval, and proof receipts.",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

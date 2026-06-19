@@ -9,6 +9,10 @@ describe('renderReceiptProof', () => {
 
     expect(proof).toContain('# TenderBoard Run Proof: run_proof');
     expect(proof).toContain('Payment tx hash: 0xabc');
+    expect(proof).toContain('Trust verdict: allow');
+    expect(proof).toContain('Checker pack: research');
+    expect(proof).toContain('Safe task only.');
+    expect(proof).toContain('Spec hash: sha256:spec');
     expect(proof).toContain('Opportunity Scout Report');
     expect(proof).not.toContain('private strategy note');
   });
@@ -24,6 +28,26 @@ function sampleReceipt(): LiveRunReceipt {
     taskTitle: 'Find opportunities',
     sanitizedTask: 'Task: Find opportunities',
     maxPayment: { amount: '0.05', currency: 'USDC' },
+    trustDecision: {
+      workerAgentId: 'svc_worker',
+      score: 91,
+      tier: 'AA',
+      verdict: 'allow',
+      pricedMultiplier: 1,
+      reasons: ['No secret-looking lines were found in the public worker packet.'],
+      controls: ['Payment requires explicit approval.'],
+    },
+    verificationManifest: {
+      specHash: 'sha256:spec',
+      evidenceHash: 'sha256:evidence',
+      checkerPack: 'research',
+      acceptanceCriteria: ['Safe task only.'],
+      requiredChecks: [
+        { id: 'safe_packet', label: 'Safe worker packet', status: 'passed', detail: 'No forbidden secret pattern remains.' },
+      ],
+      settlementRule: 'Release after approval and delivery.',
+      reputationWriteback: 'Use receipt as feedback.',
+    },
     crooServiceId: 'svc_worker',
     negotiationId: 'neg_1',
     orderId: 'order_1',

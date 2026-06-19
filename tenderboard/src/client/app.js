@@ -1,5 +1,6 @@
 let currentRunId = null;
 let eventSource = null;
+let timelineEvents = 0;
 
 const el = (id) => document.getElementById(id);
 
@@ -13,26 +14,32 @@ function renderConfig(config) {
   const badge = el('modeBadge');
   badge.textContent = config.mode;
   badge.className = `badge ${config.mode}`;
+  el('paymentCap').textContent = `${config.maxPaymentUsdc} USDC`;
 
   if (config.mode === 'live') {
+    el('liveReadiness').textContent = config.readyForLive ? 'ready' : 'blocked';
     el('configText').textContent = config.readyForLive
-      ? 'Live setup looks ready. Payment still requires approval.'
-      : `Missing live setup: ${config.missingLiveSettings.join(', ')}`;
+      ? 'CROO live setup is configured. Payment still requires manual approval.'
+      : `Missing: ${config.missingLiveSettings.join(', ')}`;
     return;
   }
 
-  el('configText').textContent = `${config.mode} mode. No real CROO payment will be sent.`;
+  el('liveReadiness').textContent = 'simulated';
+  el('configText').textContent = `${config.mode} mode. The product flow runs without sending real funds.`;
 }
 
 el('taskForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   clearTimeline();
-  setReceiptText('Creating run…');
+  setReceiptText('Creating run...');
+  el('receiptStatus').textContent = 'creating';
 
   const body = {
     title: el('title').value,
     instructions: el('instructions').value,
     privateNotes: el('privateNotes').value,
+    acceptanceCriteria: splitLines(el('acceptanceCriteria').value),
+    checkerPack: el('checkerPack').value,
     maxPayment: { amount: el('amount').value, currency: 'USDC' },
   };
 
@@ -96,7 +103,12 @@ function openEvents(runId) {
     refreshReceipt().catch(() => {});
   });
   eventSource.onerror = () => {
-    addTimelineEvent({ at: new Date().toISOString(), source: 'app', type: 'event_stream_error', message: 'Live event stream disconnected.' });
+    addTimelineEvent({
+      at: new Date().toISOString(),
+      source: 'app',
+      type: 'event_stream_error',
+      message: 'Live event stream disconnected.',
+    });
   };
 }
 
@@ -116,39 +128,126 @@ async function loadRunHistory() {
   el('runHistory').innerHTML = runs
     .map(
       (run) =>
-        `<div class="runRow"><div><strong>${escapeHtml(run.taskTitle)}</strong><div class="small">${escapeHtml(run.runId)}</div></div><div>${escapeHtml(run.status)}</div><div>${escapeHtml(run.mode)}</div><div><button class="secondary" data-run="${escapeHtml(run.runId)}">Open</button> <a href="/api/runs/${encodeURIComponent(run.runId)}/receipt">Receipt</a></div></div>`,
+        `<div class="runRow">
+          <div>
+            <strong>${escapeHtml(run.taskTitle)}</strong>
+            <div class="small">${escapeHtml(run.runId)}</div>
+          </div>
+          <span class="rowBadge">${escapeHtml(run.status)}</span>
+          <span>${escapeHtml(run.mode)}</span>
+          <div class="runActions">
+            <button class="secondary compact" data-run="${escapeHtml(run.runId)}">Open</button>
+            <a href="/api/runs/${encodeURIComponent(run.runId)}/receipt">Receipt</a>
+          </div>
+        </div>`,
     )
     .join('');
 }
 
 function renderReceipt(receipt) {
+  el('receiptStatus').textContent = receipt.status;
+  el('paymentBox').classList.toggle('hidden', receipt.status === 'delivered' || receipt.status === 'cancelled' || receipt.status === 'failed');
+  renderTrustProof(receipt);
+
   const rows = [
     ['Run id', receipt.runId],
     ['Status', receipt.status],
     ['Mode', receipt.mode],
+    ['Service id', receipt.crooServiceId || 'not configured'],
+    ['Trust tier', receipt.trustDecision ? `${receipt.trustDecision.tier} / ${receipt.trustDecision.score}` : 'not evaluated'],
+    ['Spec hash', receipt.verificationManifest?.specHash || 'not anchored'],
+    ['Evidence hash', receipt.verificationManifest?.evidenceHash || 'not finalized'],
     ['Negotiation id', receipt.negotiationId || 'not created yet'],
     ['Order id', receipt.orderId || 'not created yet'],
     ['Payment tx', receipt.paymentTxHash || 'not paid yet'],
     ['Delivery', receipt.deliveryText || 'not delivered yet'],
   ];
 
+  const receiptLink = `<div class="receiptRow receiptDownload"><a href="/api/runs/${encodeURIComponent(receipt.runId)}/receipt">Download receipt JSON</a></div>`;
   el('receipt').innerHTML =
-    rows.map(([label, value]) => `<div class="receiptRow"><strong>${escapeHtml(label)}</strong>${escapeHtml(value)}</div>`).join('') +
-    `<div class="receiptRow"><a href="/api/runs/${encodeURIComponent(receipt.runId)}/receipt">Download receipt JSON</a></div>`;
+    rows.map(([label, value]) => `<div class="receiptRow"><strong>${escapeHtml(label)}</strong><span>${formatReceiptValue(value)}</span></div>`).join('') +
+    receiptLink;
+}
+
+function renderTrustProof(receipt) {
+  if (!receipt.trustDecision || !receipt.verificationManifest) {
+    el('trustVerdict').textContent = 'legacy';
+    el('trustVerdict').className = 'statusPill';
+    el('trustDecision').textContent = 'This older receipt was created before trust decisions were stored.';
+    el('manifestHash').textContent = 'legacy';
+    el('manifestChecks').textContent = 'This older receipt was created before verification manifests were stored.';
+    return;
+  }
+
+  const trust = receipt.trustDecision;
+  el('trustVerdict').textContent = `${trust.verdict} / ${trust.tier}`;
+  el('trustVerdict').className = `statusPill verdict-${trust.verdict}`;
+  el('trustDecision').innerHTML = `
+    <div class="scoreBlock">
+      <strong>${escapeHtml(trust.score)}/100</strong>
+      <span>${escapeHtml(trust.workerAgentId)} / price x${escapeHtml(trust.pricedMultiplier)}</span>
+    </div>
+    <div class="proofColumns">
+      <div>
+        <h3>Reasons</h3>
+        <ul>${trust.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('')}</ul>
+      </div>
+      <div>
+        <h3>Controls</h3>
+        <ul>${trust.controls.map((control) => `<li>${escapeHtml(control)}</li>`).join('')}</ul>
+      </div>
+    </div>`;
+
+  const manifest = receipt.verificationManifest;
+  el('manifestHash').textContent = manifest.evidenceHash ? 'finalized' : 'anchored';
+  el('manifestChecks').innerHTML = `
+    <div class="hashLine"><strong>Checker pack</strong><span>${escapeHtml(manifest.checkerPack || 'research')}</span></div>
+    <div class="hashLine"><strong>Spec</strong><span>${escapeHtml(manifest.specHash)}</span></div>
+    <div class="hashLine"><strong>Evidence</strong><span>${escapeHtml(manifest.evidenceHash || 'waiting for delivery')}</span></div>
+    <div class="criteriaList">
+      <strong>Acceptance criteria</strong>
+      <ol>${(manifest.acceptanceCriteria || []).map((criterion) => `<li>${escapeHtml(criterion)}</li>`).join('')}</ol>
+    </div>
+    <div class="checkList">
+      ${manifest.requiredChecks
+        .map(
+          (check) => `<div class="checkRow ${escapeHtml(check.status)}">
+            <span>${escapeHtml(check.status)}</span>
+            <div><strong>${escapeHtml(check.label)}</strong><small>${escapeHtml(check.detail)}</small></div>
+          </div>`,
+        )
+        .join('')}
+    </div>`;
 }
 
 function addTimelineEvent(event) {
+  timelineEvents += 1;
+  el('timelineCount').textContent = `${timelineEvents} event${timelineEvents === 1 ? '' : 's'}`;
+
   const item = document.createElement('li');
-  item.innerHTML = `<strong>${escapeHtml(event.message)}</strong><span>${escapeHtml(event.source)} · ${escapeHtml(event.type)} · ${escapeHtml(event.at)}</span>`;
+  item.className = `eventItem ${escapeHtml(event.source)}`;
+  item.innerHTML = `
+    <span class="eventDot"></span>
+    <div>
+      <strong>${escapeHtml(event.message)}</strong>
+      <span>${escapeHtml(event.source)} / ${escapeHtml(event.type)} / ${escapeHtml(event.at)}</span>
+    </div>`;
   el('timeline').appendChild(item);
 }
 
 function clearTimeline() {
+  timelineEvents = 0;
   el('timeline').innerHTML = '';
+  el('timelineCount').textContent = '0 events';
 }
 
 function setReceiptText(text, error = false) {
   el('receipt').innerHTML = `<div class="receiptRow ${error ? 'error' : ''}">${escapeHtml(text)}</div>`;
+  el('receiptStatus').textContent = error ? 'error' : 'waiting';
+  if (error) {
+    el('trustVerdict').textContent = 'error';
+    el('manifestHash').textContent = 'error';
+  }
 }
 
 async function request(url, options = {}) {
@@ -160,6 +259,19 @@ async function request(url, options = {}) {
   const json = await response.json();
   if (!response.ok) throw new Error(json.error || `Request failed: ${response.status}`);
   return json;
+}
+
+function formatReceiptValue(value) {
+  const escaped = escapeHtml(value);
+  if (escaped.length < 220) return escaped;
+  return `${escaped.slice(0, 220)}...`;
+}
+
+function splitLines(value) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 function escapeHtml(value) {

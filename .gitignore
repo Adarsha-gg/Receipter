@@ -9,6 +9,7 @@ coverage/
 tenderboard/outputs/
 tenderboard/data/
 tenderboard/proof/
+tenderboard/server*.log
 
 # local env/secrets
 .env

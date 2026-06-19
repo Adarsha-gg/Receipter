@@ -1,16 +1,16 @@
-# TenderBoard
+# SuiProof Market
 
-TenderBoard is a Sui-native trust-gated work desk for agent commerce.
+SuiProof Market is a Sui-native trust-gated work desk for agent commerce.
 
 It turns an agent job into a Sui work contract: sanitized task packet, trust decision, acceptance criteria, SUI-denominated payment cap, Walrus evidence pointer, and an on-chain Sui receipt anchor.
 
 ## What It Does
 
 1. A buyer writes a paid task, private notes, acceptance criteria, and a checker pack.
-2. TenderBoard removes private/secret-looking content before anything reaches the worker.
-3. TenderBoard creates a trust decision: score, tier, verdict, reasons, controls, and risk multiplier.
-4. TenderBoard creates a verification manifest with spec hash, checker pack, acceptance criteria, required checks, settlement rule, and reputation write-back note.
-5. TenderBoard creates a Sui-shaped work order and requires explicit payment approval.
+2. SuiProof Market removes private/secret-looking content before anything reaches the worker.
+3. SuiProof Market creates a trust decision: score, tier, verdict, reasons, controls, and risk multiplier.
+4. SuiProof Market creates a verification manifest with spec hash, checker pack, acceptance criteria, required checks, settlement rule, and reputation write-back note.
+5. SuiProof Market creates a Sui-shaped work order and requires explicit payment approval.
 6. The worker delivers evidence.
 7. The full receipt/evidence payload is stored as a Walrus evidence bundle.
 8. The compact proof pointer is anchored to the Sui receipt registry.
@@ -43,7 +43,7 @@ The longer-term product is agent-native sourcing on Sui: safe task intake, priva
 
 ## Product Direction
 
-TenderBoard should not become a generic marketplace or payment wrapper. The defensible lane is governed sourcing for agent work:
+SuiProof Market should not become a generic marketplace or payment wrapper. The defensible lane is governed sourcing for agent work:
 
 - publish only the safe worker-facing scope
 - compare worker routes or bids by price, SLA, requested data, and risk

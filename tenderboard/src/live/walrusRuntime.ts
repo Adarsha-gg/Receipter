@@ -30,6 +30,7 @@ export interface EvidenceBundle {
   };
   paymentIntentPlan: LiveRunReceipt['paymentIntentPlan'];
   receiptPlan: LiveRunReceipt['receiptPlan'];
+  reputationSnapshot: LiveRunReceipt['reputationSnapshot'];
   privacy: LiveRunReceipt['privacy'];
   workerBidBoard: LiveRunReceipt['workerBidBoard'];
   trust: LiveRunReceipt['trustDecision'];
@@ -67,6 +68,7 @@ export function buildEvidenceBundle(receipt: LiveRunReceipt): EvidenceBundle {
     },
     paymentIntentPlan: receipt.paymentIntentPlan,
     receiptPlan: receipt.receiptPlan,
+    reputationSnapshot: receipt.reputationSnapshot,
     privacy: receipt.privacy,
     workerBidBoard: receipt.workerBidBoard,
     trust: receipt.trustDecision,

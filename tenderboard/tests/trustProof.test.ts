@@ -41,7 +41,8 @@ describe('trust proof model', () => {
       status: 'passed',
     });
     expect(finalized.requiredChecks.find((check) => check.id === 'reputation_signal')).toMatchObject({
-      status: 'passed',
+      status: 'pending',
+      detail: 'Receipt is a reputation candidate; waiting for Sui anchor before WorkerReputationUpdated.',
     });
     expect(finalized.requiredChecks.find((check) => check.id === 'order_bound_approval')).toMatchObject({
       status: 'passed',

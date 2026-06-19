@@ -21,6 +21,19 @@ export interface SuiAnchorPlan {
     coinType: string;
     receiverAddress: string;
     paymentDigest: string | undefined;
+    paymentUri: string | undefined;
+    paymentKitMode: string | undefined;
+  };
+  reputation: {
+    eventName: 'WorkerReputationUpdated';
+    workerAgentId: string;
+    anchoredRunCountAfter: number;
+    walrusEvidenceCountAfter: number;
+    sourceEvidenceCountAfter: number;
+    averageTrustScoreAfter: number;
+    tierCountsAfter: string;
+    totalMistEarnedAfter: string;
+    lastEvidenceHash: string;
   };
   moveCall: {
     packageId: string | undefined;
@@ -36,6 +49,7 @@ export function buildSuiAnchorPlan(
   walrusBlobId?: string,
 ): SuiAnchorPlan {
   const payment = paymentPlanFields(receipt, config);
+  const reputation = reputationPlanFields(receipt, walrusBlobId);
   const paymentReference = payment.paymentDigest ?? receipt.suiPaymentDigest ?? receipt.workOrderId ?? 'not-paid';
   const argumentsForMove = [
     config.suiReceiptRegistryId ?? '<SUI_RECEIPT_REGISTRY_ID>',
@@ -53,6 +67,13 @@ export function buildSuiAnchorPlan(
     payment.receiverAddress,
     payment.settlementNonce,
     payment.duplicatePreventionKey,
+    reputation.workerAgentId,
+    String(reputation.anchoredRunCountAfter),
+    String(reputation.walrusEvidenceCountAfter),
+    String(reputation.sourceEvidenceCountAfter),
+    String(reputation.averageTrustScoreAfter),
+    reputation.tierCountsAfter,
+    reputation.totalMistEarnedAfter,
   ];
 
   return {
@@ -67,6 +88,7 @@ export function buildSuiAnchorPlan(
       blobId: walrusBlobId ?? receipt.walrusBlobId,
     },
     payment,
+    reputation,
     moveCall: {
       packageId: config.suiPackageId,
       module: 'receipts',
@@ -78,7 +100,7 @@ export function buildSuiAnchorPlan(
 
 export function renderSuiAnchorPlan(plan: SuiAnchorPlan): string {
   const lines = [
-    '# TenderBoard Sui Anchor Plan',
+    '# SuiProof Market Sui Anchor Plan',
     '',
     `- Ready: ${plan.ready ? 'yes' : 'no'}`,
     `- Network: ${plan.network}`,
@@ -95,6 +117,16 @@ export function renderSuiAnchorPlan(plan: SuiAnchorPlan): string {
     `- Coin type: ${plan.payment.coinType}`,
     `- Receiver: ${plan.payment.receiverAddress}`,
     `- Payment digest: ${plan.payment.paymentDigest ?? 'not paid / no digest'}`,
+    `- Payment URI: ${plan.payment.paymentUri ?? 'missing'}`,
+    `- PaymentKit mode: ${plan.payment.paymentKitMode ?? 'missing'}`,
+    `- Reputation event: ${plan.reputation.eventName}`,
+    `- Reputation worker: ${plan.reputation.workerAgentId}`,
+    `- Reputation anchored runs after: ${plan.reputation.anchoredRunCountAfter}`,
+    `- Reputation Walrus proofs after: ${plan.reputation.walrusEvidenceCountAfter}`,
+    `- Reputation source evidence after: ${plan.reputation.sourceEvidenceCountAfter}`,
+    `- Reputation average trust after: ${plan.reputation.averageTrustScoreAfter}`,
+    `- Reputation tier counts after: ${plan.reputation.tierCountsAfter}`,
+    `- Reputation total MIST after: ${plan.reputation.totalMistEarnedAfter}`,
     '',
   ];
 
@@ -142,5 +174,45 @@ function paymentPlanFields(
     receiverAddress:
       receipt.receiptPlan?.receiverAddress ?? receipt.paymentIntentPlan?.receiverAddress ?? config.suiOperatorAddress ?? '<SUI_OPERATOR_ADDRESS>',
     paymentDigest: receipt.receiptPlan?.paymentDigest ?? receipt.suiPaymentDigest,
+    paymentUri: receipt.receiptPlan?.paymentUri ?? receipt.paymentIntentPlan?.paymentUri,
+    paymentKitMode: receipt.receiptPlan?.paymentKitMode ?? receipt.paymentIntentPlan?.paymentKitMode,
+  };
+}
+
+function reputationPlanFields(receipt: LiveRunReceipt, walrusBlobId: string | undefined): SuiAnchorPlan['reputation'] {
+  const snapshot = receipt.reputationSnapshot;
+  const alreadyAnchored = receipt.status === 'anchored' && Boolean(receipt.suiAnchorDigest ?? receipt.receiptPlan?.anchorDigest);
+  const includeCurrentRun = alreadyAnchored ? 0 : 1;
+  const currentTier = receipt.trustDecision.tier;
+  const tierCounts = {
+    AAA: snapshot?.tierCounts.AAA ?? 0,
+    AA: snapshot?.tierCounts.AA ?? 0,
+    A: snapshot?.tierCounts.A ?? 0,
+    B: snapshot?.tierCounts.B ?? 0,
+    C: snapshot?.tierCounts.C ?? 0,
+  };
+  if (includeCurrentRun) tierCounts[currentTier] += 1;
+
+  const currentMist = BigInt(receipt.receiptPlan?.amountMist ?? receipt.paymentIntentPlan?.amountMist ?? '0');
+  const priorMist = BigInt(snapshot?.totalMistEarned ?? '0');
+  const currentRunCount = snapshot?.anchoredRunCount ?? 0;
+  const anchoredRunCountAfter = currentRunCount + includeCurrentRun;
+  const priorAverage = snapshot?.averageTrustScore ?? 0;
+  const averageTrustScoreAfter =
+    anchoredRunCountAfter > 0
+      ? Math.round(((priorAverage * currentRunCount + (includeCurrentRun ? receipt.trustDecision.score : 0)) / anchoredRunCountAfter) * 10) / 10
+      : 0;
+
+  return {
+    eventName: 'WorkerReputationUpdated',
+    workerAgentId: receipt.workerAgentId,
+    anchoredRunCountAfter,
+    walrusEvidenceCountAfter: (snapshot?.walrusEvidenceCount ?? 0) + (includeCurrentRun && (walrusBlobId ?? receipt.walrusBlobId) ? 1 : 0),
+    sourceEvidenceCountAfter:
+      (snapshot?.sourceEvidenceCount ?? 0) + (includeCurrentRun ? receipt.workerEvidence?.sourceReceipt.observations.length ?? 0 : 0),
+    averageTrustScoreAfter,
+    tierCountsAfter: `AAA:${tierCounts.AAA},AA:${tierCounts.AA},A:${tierCounts.A},B:${tierCounts.B},C:${tierCounts.C}`,
+    totalMistEarnedAfter: (priorMist + (includeCurrentRun ? currentMist : 0n)).toString(),
+    lastEvidenceHash: receipt.verificationManifest.evidenceHash ?? '<EVIDENCE_HASH>',
   };
 }

@@ -141,7 +141,7 @@ export function buildVerificationManifest(input: BuildTrustProofInput): Verifica
       id: 'reputation_signal',
       label: 'Reputation signal',
       status: 'pending',
-      detail: 'Waiting for final receipt to become a write-back candidate.',
+      detail: 'Waiting for the Sui receipt anchor before reputation can be updated.',
     },
   ];
 
@@ -160,7 +160,7 @@ export function buildVerificationManifest(input: BuildTrustProofInput): Verifica
     acceptanceCriteria,
     requiredChecks: checks,
     settlementRule: 'Release payment only after safe packet creation, Sui work order creation, explicit operator approval, delivery receipt, Walrus evidence upload, and Sui anchor readiness.',
-    reputationWriteback: 'Use the final Sui-anchored receipt as the worker and checker reputation signal.',
+    reputationWriteback: 'Use only Sui-anchored receipts as worker reputation signals.',
   };
 }
 
@@ -194,8 +194,10 @@ export function finalizeVerificationManifest(receipt: LiveRunReceipt, deliveryTe
     if (check.id === 'reputation_signal') {
       return {
         ...check,
-        status: deliveryText ? 'passed' : 'pending',
-        detail: deliveryText ? 'Receipt is complete enough to become reputation feedback.' : 'Waiting for delivery before reputation write-back.',
+        status: 'pending',
+        detail: deliveryText
+          ? 'Receipt is a reputation candidate; waiting for Sui anchor before WorkerReputationUpdated.'
+          : 'Waiting for delivery and Sui anchor before reputation write-back.',
       } satisfies VerificationCheck;
     }
     if (check.id === 'criteria_coverage') {

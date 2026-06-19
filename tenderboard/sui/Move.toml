@@ -1,5 +1,5 @@
 [package]
-name = "TenderBoardReceipts"
+name = "SuiProofMarketReceipts"
 edition = "2024.beta"
 
 [dependencies]

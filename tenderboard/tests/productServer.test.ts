@@ -18,7 +18,7 @@ afterEach(async () => {
   await rm(tempDir, { recursive: true, force: true });
 });
 
-describe('TenderBoard Sui product server', () => {
+describe('SuiProof Market product server', () => {
   it('serves Sui readiness without exposing private env values', async () => {
     const { baseUrl, close } = await startTestServer({
       TENDERBOARD_MODE: 'sui',
@@ -77,17 +77,35 @@ describe('TenderBoard Sui product server', () => {
         coinType: '0x2::sui::SUI',
         receiverAddress: '<SUI_OPERATOR_ADDRESS>',
         expectedNetwork: 'testnet',
+        paymentKitMode: 'sui_pay_uri_metadata_only',
+        paymentKitCompatibility: 'sui:pay-uri-v1',
       });
-      expect(receipt.paymentIntentPlan.paymentNonce).toMatch(/^payment_/);
-      expect(receipt.paymentIntentPlan.settlementNonce).toMatch(/^settlement_/);
+      expect(receipt.paymentIntentPlan.paymentUri).toContain('sui:pay?');
+      expect(receipt.paymentIntentPlan.paymentUri).toContain('amountMist=35000000');
+      expect(receipt.paymentIntentPlan.paymentUri).toContain('coinType=0x2%3A%3Asui%3A%3ASUI');
+      expect(receipt.paymentIntentPlan.paymentUri).toContain(`runId=${created.runId}`);
+      expect(receipt.paymentIntentPlan.paymentUri).toContain('selectedBidId=public_scout_standard');
+      expect(receipt.paymentIntentPlan.paymentUri).not.toContain('Make%20it%20useful');
+      expect(receipt.paymentIntentPlan.paymentUri).not.toContain('do_not_leak');
+      expect(receipt.paymentIntentPlan.paymentNonce).toMatch(/^pay_[0-9a-f]{32}$/);
+      expect(receipt.paymentIntentPlan.paymentNonce.length).toBeLessThanOrEqual(36);
+      expect(receipt.paymentIntentPlan.settlementNonce).toMatch(/^set_[0-9a-f]{32}$/);
+      expect(receipt.paymentIntentPlan.settlementNonce.length).toBeLessThanOrEqual(36);
       expect(receipt.receiptPlan).toMatchObject({
         intentId: receipt.paymentIntentPlan.intentId,
         paymentNonce: receipt.paymentIntentPlan.paymentNonce,
         settlementNonce: receipt.paymentIntentPlan.settlementNonce,
         amountMist: '35000000',
         selectedBidId: 'public_scout_standard',
+        paymentUri: receipt.paymentIntentPlan.paymentUri,
+        paymentKitMode: 'sui_pay_uri_metadata_only',
       });
       expect(receipt.receiptPlan.paymentDigest).toBeUndefined();
+      expect(receipt.reputationSnapshot).toMatchObject({
+        workerAgentId: 'sui_opportunity_scout',
+        anchoredRunCount: 0,
+        walrusEvidenceCount: 0,
+      });
       expect(receiptText).toContain('trustDecision');
       expect(receiptText).toContain('verificationManifest');
       expect(receiptText).toContain('workerBidBoard');
@@ -205,13 +223,17 @@ describe('TenderBoard Sui product server', () => {
       const before = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
       expect(before.suiPaymentDigest).toBeUndefined();
       expect(before.deliveryText).toBeUndefined();
-      expect(before.paymentIntentPlan.paymentNonce).toMatch(/^payment_/);
-      expect(before.paymentIntentPlan.settlementNonce).toMatch(/^settlement_/);
+      expect(before.reputationSnapshot.anchoredRunCount).toBe(0);
+      expect(before.paymentIntentPlan.paymentNonce).toMatch(/^pay_[0-9a-f]{32}$/);
+      expect(before.paymentIntentPlan.paymentNonce.length).toBeLessThanOrEqual(36);
+      expect(before.paymentIntentPlan.settlementNonce).toMatch(/^set_[0-9a-f]{32}$/);
+      expect(before.paymentIntentPlan.settlementNonce.length).toBeLessThanOrEqual(36);
       expect(before.paymentIntentPlan.amountMist).toBe('35000000');
       expect(before.receiptPlan.paymentDigest).toBeUndefined();
 
       const after = await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
       expect(after.status).toBe('delivered');
+      expect(after.reputationSnapshot.anchoredRunCount).toBe(0);
       expect(after.suiPaymentDigest).toContain('sui_dev_payment_');
       expect(after.receiptPlan.paymentDigest).toBe(after.suiPaymentDigest);
       expect(after.deliveryText).toContain('Opportunity Scout Report');
@@ -241,6 +263,7 @@ describe('TenderBoard Sui product server', () => {
 
       const withEvidence = await postJson(`${baseUrl}/api/runs/${created.runId}/store-evidence`, {});
       expect(withEvidence.status).toBe('anchoring');
+      expect(withEvidence.reputationSnapshot.anchoredRunCount).toBe(0);
       expect(withEvidence.walrusBlobId).toContain('walrus_dev_blob_');
       expect(withEvidence.walrusBlobObjectId).toMatch(/^0x/);
       expect(withEvidence.receiptPlan).toMatchObject({
@@ -265,12 +288,42 @@ describe('TenderBoard Sui product server', () => {
       expect(anchored.status).toBe('anchored');
       expect(anchored.suiAnchorDigest).toContain('sui_dev_anchor_');
       expect(anchored.receiptPlan.anchorDigest).toBe(anchored.suiAnchorDigest);
+      expect(anchored.reputationSnapshot).toMatchObject({
+        workerAgentId: 'sui_opportunity_scout',
+        anchoredRunCount: 1,
+        walrusEvidenceCount: 1,
+        sourceEvidenceCount: expect.any(Number),
+        totalMistEarned: '35000000',
+        lastAnchoredRunId: created.runId,
+        lastWalrusBlobId: anchored.walrusBlobId,
+        lastEvidenceHash: anchored.verificationManifest.evidenceHash,
+      });
+      expect(anchored.verificationManifest.requiredChecks.find((check: any) => check.id === 'reputation_signal')).toMatchObject({
+        status: 'passed',
+      });
       expect(anchored.clearingDecision.verdict).toBe('anchored');
       expect(anchored.settlementInstruction).toMatchObject({
         action: 'record_settlement',
         suiAnchorDigest: anchored.suiAnchorDigest,
       });
       expect(JSON.stringify(anchored.events)).toContain('sui_dev_receipt_anchored');
+      expect(JSON.stringify(anchored.events)).toContain('worker_reputation_updated');
+
+      const second = await postJson(`${baseUrl}/api/runs`, {
+        title: 'Find another Sui ecosystem opportunity',
+        instructions: 'Use public sources only.',
+        maxPayment: { amount: '0.050', currency: 'SUI' },
+      });
+      const secondReceipt = await (await fetch(`${baseUrl}/api/runs/${second.runId}`)).json();
+      expect(secondReceipt.reputationSnapshot).toMatchObject({
+        workerAgentId: 'sui_opportunity_scout',
+        anchoredRunCount: 1,
+        walrusEvidenceCount: 1,
+        lastAnchoredRunId: created.runId,
+      });
+
+      const runs = await (await fetch(`${baseUrl}/api/runs`)).json();
+      expect(runs.find((run: any) => run.runId === created.runId).reputationSnapshot.anchoredRunCount).toBe(1);
     } finally {
       await close();
     }

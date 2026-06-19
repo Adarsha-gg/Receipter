@@ -150,6 +150,26 @@ export interface SelectedBidReference {
   requestedDataLabel: TaskDataLabel;
 }
 
+export type PaymentKitMode = 'sui_pay_uri_metadata_only';
+
+export interface WorkerReputationCard {
+  objectType: 'tenderboard.worker_reputation_passport.v1';
+  workerAgentId: string;
+  generatedAt: string;
+  anchoredRunCount: number;
+  walrusEvidenceCount: number;
+  sourceEvidenceCount: number;
+  averageTrustScore: number | undefined;
+  tierCounts: Record<TrustTier, number>;
+  totalMistEarned: string;
+  totalSuiEarned: string;
+  lastAnchoredRunId: string | undefined;
+  lastAnchoredAt: string | undefined;
+  lastWalrusBlobId: string | undefined;
+  lastEvidenceHash: string | undefined;
+  lastAnchorDigest: string | undefined;
+}
+
 export interface PaymentIntentPlan {
   objectType: 'tenderboard.payment_intent_plan.v1';
   intentId: string;
@@ -163,6 +183,9 @@ export interface PaymentIntentPlan {
   selectedBid: SelectedBidReference | undefined;
   specHash: string;
   expectedNetwork: string;
+  paymentUri: string;
+  paymentKitMode: PaymentKitMode;
+  paymentKitCompatibility: 'sui:pay-uri-v1';
   expiresAt: string;
   createdAt: string;
 }
@@ -182,6 +205,9 @@ export interface ReceiptPlan {
   workerAgentId: string;
   specHash: string;
   expectedNetwork: string;
+  paymentUri: string;
+  paymentKitMode: PaymentKitMode;
+  paymentKitCompatibility: 'sui:pay-uri-v1';
   paymentDigest: string | undefined;
   walrusBlobId: string | undefined;
   walrusBlobObjectId: string | undefined;
@@ -273,6 +299,7 @@ export interface LiveRunSummary {
   suiPaymentDigest: string | undefined;
   suiAnchorDigest: string | undefined;
   walrusBlobId: string | undefined;
+  reputationSnapshot?: WorkerReputationCard | undefined;
 }
 
 export interface LiveRunReceipt {
@@ -290,6 +317,7 @@ export interface LiveRunReceipt {
   verificationManifest: VerificationManifest;
   paymentIntentPlan?: PaymentIntentPlan;
   receiptPlan?: ReceiptPlan;
+  reputationSnapshot?: WorkerReputationCard | undefined;
   obligationObject?: ObligationObject;
   evidenceEnvelope?: EvidenceEnvelope;
   clearingDecision?: ClearingDecision;

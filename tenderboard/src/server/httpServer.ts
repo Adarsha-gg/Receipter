@@ -8,6 +8,7 @@ import { loadTenderBoardConfig } from '../live/config.js';
 import { loadDotEnvFile } from '../live/dotenv.js';
 import { RunEventBus, formatSseEvent } from '../live/eventBus.js';
 import { makeEvent, makeRunId, RunStore } from '../live/runStore.js';
+import { buildWorkerReputationCard, markReputationSignalAnchored } from '../live/reputation.js';
 import { sanitizeTaskForWorker } from '../live/sanitizeTask.js';
 import { buildWorkerDelivery, makeSuiDevDigest, makeSuiDevObjectId } from '../live/suiRuntime.js';
 import { buildTrustProof, finalizeVerificationManifest } from '../live/trustProof.js';
@@ -78,7 +79,7 @@ async function route(
   }
 
   if (method === 'GET' && url.pathname === '/api/runs') {
-    sendJson(res, 200, await store.list());
+    sendJson(res, 200, await listRunsWithReputation(store));
     return;
   }
 
@@ -195,6 +196,11 @@ async function createRun(
     config,
   });
   const receiptPlan = buildInitialReceiptPlan(paymentIntentPlan, selectedBid?.workerAgentId ?? config.workerAgentId, now);
+  const reputationSnapshot = buildWorkerReputationCard(
+    selectedBid?.workerAgentId ?? config.workerAgentId,
+    await loadAllReceipts(store),
+    now,
+  );
   const receipt: LiveRunReceipt = {
     runId,
     mode: config.mode,
@@ -210,6 +216,7 @@ async function createRun(
     verificationManifest: trustProof.verificationManifest,
     paymentIntentPlan,
     receiptPlan,
+    reputationSnapshot,
     workerAgentId: selectedBid?.workerAgentId ?? config.workerAgentId,
     workOrderId,
     suiNetwork: config.suiNetwork,
@@ -256,6 +263,20 @@ async function createRun(
           coinType: paymentIntentPlan.coinType,
           receiverAddress: paymentIntentPlan.receiverAddress,
           network: config.suiNetwork,
+          paymentUri: paymentIntentPlan.paymentUri,
+          paymentKitMode: paymentIntentPlan.paymentKitMode,
+        },
+      }),
+      makeEvent({
+        at: now,
+        source: 'app',
+        type: 'worker_reputation_snapshot_attached',
+        message: 'Pre-run worker reputation passport attached from anchored public receipts.',
+        data: {
+          workerAgentId: reputationSnapshot.workerAgentId,
+          anchoredRunCount: reputationSnapshot.anchoredRunCount,
+          walrusEvidenceCount: reputationSnapshot.walrusEvidenceCount,
+          averageTrustScore: reputationSnapshot.averageTrustScore,
         },
       }),
       makeEvent({ at: now, source: 'sui', type: 'verification_manifest_created', message: 'Verification manifest is ready for Sui anchoring.', data: { specHash: trustProof.verificationManifest.specHash } }),
@@ -497,8 +518,60 @@ async function anchorReceipt(
 
   const latest = await store.require(runId);
   await store.update(runId, buildClearingObjects(latest));
+  const latestWithClearing = await store.require(runId);
+  const reputationSnapshot = buildWorkerReputationCard(
+    latestWithClearing.workerAgentId,
+    await loadAllReceipts(store),
+    now,
+  );
+  const verificationManifest = markReputationSignalAnchored(latestWithClearing, reputationSnapshot);
+  const reputationReceipt = {
+    ...latestWithClearing,
+    reputationSnapshot,
+    verificationManifest,
+  };
+  await store.update(runId, {
+    reputationSnapshot,
+    verificationManifest,
+    ...buildClearingObjects(reputationReceipt),
+  });
+
+  const reputationEvent = makeEvent({
+    at: now,
+    source: 'sui',
+    type: 'worker_reputation_updated',
+    message: 'Worker reputation passport updated from the anchored Sui receipt.',
+    data: {
+      eventName: 'WorkerReputationUpdated',
+      workerAgentId: reputationSnapshot.workerAgentId,
+      anchoredRunCount: reputationSnapshot.anchoredRunCount,
+      walrusEvidenceCount: reputationSnapshot.walrusEvidenceCount,
+      sourceEvidenceCount: reputationSnapshot.sourceEvidenceCount,
+      averageTrustScore: reputationSnapshot.averageTrustScore,
+      totalMistEarned: reputationSnapshot.totalMistEarned,
+      lastWalrusBlobId: reputationSnapshot.lastWalrusBlobId,
+      lastEvidenceHash: reputationSnapshot.lastEvidenceHash,
+    },
+  });
+  await store.appendEvent(runId, reputationEvent);
+  bus.publish(runId, reputationEvent);
 
   return store.require(runId);
+}
+
+async function listRunsWithReputation(store: RunStore): Promise<Awaited<ReturnType<RunStore['list']>>> {
+  const summaries = await store.list();
+  const receipts = await Promise.all(summaries.map((summary) => store.get(summary.runId)));
+  return summaries.map((summary, index) => ({
+    ...summary,
+    reputationSnapshot: receipts[index]?.reputationSnapshot,
+  }));
+}
+
+async function loadAllReceipts(store: RunStore): Promise<LiveRunReceipt[]> {
+  const summaries = await store.list();
+  const receipts = await Promise.all(summaries.map((summary) => store.get(summary.runId)));
+  return receipts.filter((receipt): receipt is LiveRunReceipt => Boolean(receipt));
 }
 
 function toSelectedBidReference(bid: WorkerBid): SelectedBidReference {
@@ -635,7 +708,7 @@ export function startTenderBoardServer(): void {
   const config = loadTenderBoardConfig();
   const server = createTenderBoardServer({ config });
   server.listen(config.port, () => {
-    console.log(`TenderBoard Sui server running at http://127.0.0.1:${config.port}`);
+    console.log(`SuiProof Market server running at http://127.0.0.1:${config.port}`);
     console.log(`Mode: ${config.mode}`);
   });
 }

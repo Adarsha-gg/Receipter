@@ -1,8 +1,8 @@
-# TenderBoard Implementation Log
+# SuiProof Market Implementation Log
 
 ## 2026-06-18 - Buyer-Side Sourcing Prototype
 
-Built the first TenderBoard shape around safe task intake, privacy-labeled request fields, worker-agent offers, budget checks, blocked unsafe data requests, and award decisions.
+Built the first SuiProof Market shape around safe task intake, privacy-labeled request fields, worker-agent offers, budget checks, blocked unsafe data requests, and award decisions.
 
 Useful ideas kept for the Sui version:
 

@@ -1,18 +1,20 @@
-# TenderBoard - Sui Trust-Gated Agent Work Desk
+# SuiProof Market - Sui Trust-Gated Agent Work Market
 
-TenderBoard is a Sui-native operator console for hiring worker agents safely. It exists to make paid agent work verifiable: every task becomes a Sui-shaped work order, every delivery gets evidence, and every completed run can be anchored to a Sui receipt registry with Walrus storing the larger payload.
+SuiProof Market is a Sui-native operator console for hiring worker agents safely. It exists to make paid agent work verifiable: every task becomes a Sui-shaped work order, every delivery gets evidence, and every completed run can be anchored to a Sui receipt registry with Walrus storing the larger payload.
 
 ## Core Product Loop
 
 1. Buyer writes task, private notes, acceptance criteria, checker pack, and max SUI payment.
-2. TenderBoard strips private notes and secret-looking lines.
-3. TenderBoard creates a worker-facing safe packet.
-4. TenderBoard scores the worker route before execution.
-5. TenderBoard creates a verification manifest and Sui work order id.
-6. Operator approves payment for that exact work order.
-7. Worker delivers public-source evidence.
-8. Full receipt/evidence is stored as a Walrus bundle.
-9. Compact proof fields are committed to the Sui receipt registry.
+2. SuiProof Market strips private notes and secret-looking lines.
+3. SuiProof Market creates a worker-facing safe packet.
+4. SuiProof Market scores the worker route before execution.
+5. SuiProof Market creates a verification manifest and Sui work order id.
+6. SuiProof Market generates a Payment Kit-compatible SUI payment URI and receipt plan for that exact work order.
+7. Operator approves payment for that exact work order.
+8. Worker delivers public-source evidence.
+9. Full receipt/evidence is stored as a Walrus bundle.
+10. Compact proof fields are committed to the Sui receipt registry.
+11. The worker reputation passport updates only after the Sui receipt anchor is recorded.
 
 ## Sui Proof Layer
 
@@ -44,6 +46,8 @@ npm run sui:anchor-plan <run-id>
 Do not claim deployed Sui anchoring until the package is published and at least one receipt is anchored on testnet or mainnet.
 
 In `sui-dev` mode the app records deterministic Sui dev digests and Walrus dev blob/object ids so the full product loop can be demoed locally. In `sui` mode payment approval requires a real Sui payment transaction digest, the Walrus evidence step uses the configured HTTP publisher, and the Sui anchor step records the real receipt-registry transaction digest.
+
+SuiProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning; it does not execute a wallet payment locally or claim wallet confirmation unless a real transaction digest is supplied. In this environment the Move package is source-level because the Sui CLI is not installed.
 
 ## Run
 

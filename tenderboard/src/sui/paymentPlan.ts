@@ -35,13 +35,29 @@ export function suiAmountToMist(amount: string): string {
 export function buildPaymentIntentPlan(input: BuildPaymentPlansInput): PaymentIntentPlan {
   const amountSui = input.selectedBid?.priceSui ?? input.maxPayment.amount;
   const operatorAddress = input.config.suiOperatorAddress ?? PLACEHOLDER_OPERATOR_ADDRESS;
+  const amountMist = suiAmountToMist(amountSui);
+  const paymentNonce = makeNonce('payment');
+  const settlementNonce = makeNonce('settlement');
+  const paymentUri = buildPaymentUri({
+    receiverAddress: operatorAddress,
+    operatorAddress,
+    amountMist,
+    paymentNonce,
+    settlementNonce,
+    network: input.config.suiNetwork,
+    runId: input.runId,
+    intentId: `payment_intent_${input.runId}`,
+    selectedBid: input.selectedBid,
+    packageId: input.config.suiPackageId,
+    receiptRegistryId: input.config.suiReceiptRegistryId,
+  });
 
   return {
     objectType: 'tenderboard.payment_intent_plan.v1',
     intentId: `payment_intent_${input.runId}`,
-    paymentNonce: makeNonce('payment', input.runId),
-    settlementNonce: makeNonce('settlement', input.runId),
-    amountMist: suiAmountToMist(amountSui),
+    paymentNonce,
+    settlementNonce,
+    amountMist,
     amountSui,
     coinType: SUI_COIN_TYPE,
     receiverAddress: operatorAddress,
@@ -49,6 +65,9 @@ export function buildPaymentIntentPlan(input: BuildPaymentPlansInput): PaymentIn
     selectedBid: input.selectedBid,
     specHash: input.specHash,
     expectedNetwork: input.config.suiNetwork,
+    paymentUri,
+    paymentKitMode: 'sui_pay_uri_metadata_only',
+    paymentKitCompatibility: 'sui:pay-uri-v1',
     expiresAt: new Date(new Date(input.createdAt).getTime() + 24 * 60 * 60 * 1000).toISOString(),
     createdAt: input.createdAt,
   };
@@ -70,6 +89,9 @@ export function buildInitialReceiptPlan(intent: PaymentIntentPlan, workerAgentId
     workerAgentId,
     specHash: intent.specHash,
     expectedNetwork: intent.expectedNetwork,
+    paymentUri: intent.paymentUri,
+    paymentKitMode: intent.paymentKitMode,
+    paymentKitCompatibility: intent.paymentKitCompatibility,
     paymentDigest: undefined,
     walrusBlobId: undefined,
     walrusBlobObjectId: undefined,
@@ -109,6 +131,46 @@ export function bindAnchorDigest(plan: ReceiptPlan, anchorDigest: string, update
   };
 }
 
-function makeNonce(prefix: string, runId: string): string {
-  return `${prefix}_${runId}_${randomBytes(16).toString('hex')}`;
+function makeNonce(prefix: string): string {
+  const marker = prefix === 'payment' ? 'pay' : 'set';
+  return `${marker}_${randomBytes(16).toString('hex')}`;
+}
+
+function buildPaymentUri(input: {
+  receiverAddress: string;
+  operatorAddress: string;
+  amountMist: string;
+  paymentNonce: string;
+  settlementNonce: string;
+  network: string;
+  runId: string;
+  intentId: string;
+  selectedBid: SelectedBidReference | undefined;
+  packageId: string | undefined;
+  receiptRegistryId: string | undefined;
+}): string {
+  const params = new URLSearchParams({
+    recipient: input.receiverAddress,
+    receiver: input.receiverAddress,
+    operator: input.operatorAddress,
+    amount: input.amountMist,
+    amountMist: input.amountMist,
+    coinType: SUI_COIN_TYPE,
+    paymentNonce: input.paymentNonce,
+    settlementNonce: input.settlementNonce,
+    network: input.network,
+    runId: input.runId,
+    intentId: input.intentId,
+  });
+
+  if (input.selectedBid) {
+    params.set('selectedBidId', input.selectedBid.bidId);
+    params.set('workerAgentId', input.selectedBid.workerAgentId);
+    params.set('bidPriceSui', input.selectedBid.priceSui);
+    params.set('sla', input.selectedBid.sla);
+  }
+  if (input.packageId) params.set('packageId', input.packageId);
+  if (input.receiptRegistryId) params.set('receiptRegistryId', input.receiptRegistryId);
+
+  return `sui:pay?${params.toString()}`;
 }

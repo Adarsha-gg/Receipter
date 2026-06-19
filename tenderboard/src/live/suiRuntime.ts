@@ -16,7 +16,7 @@ export async function buildWorkerDelivery(
 ): Promise<{ deliveryText: string; workerEvidence: ScoutEvidence }> {
   const report = await scoutOpportunities(`${receipt.taskTitle}\n${receipt.sanitizedTask}`, options);
   const deliveryText = [
-    `TenderBoard worker completed: ${receipt.taskTitle}`,
+    `SuiProof Market worker completed: ${receipt.taskTitle}`,
     '',
     'What I did:',
     '- Received only the Sui-bound safe task text.',

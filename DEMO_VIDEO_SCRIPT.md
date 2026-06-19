@@ -1,4 +1,4 @@
-# TenderBoard Demo Video Script
+# SuiProof Market Demo Video Script
 
 Target length: 2-3 minutes.
 
@@ -8,7 +8,7 @@ Target length: 2-3 minutes.
 
 ## 0:20 - Product
 
-"TenderBoard is a Sui-native trust desk for paid agent work. A buyer creates a SUI-denominated task, TenderBoard creates a safe worker packet, scores the worker route, creates a verification manifest, stores evidence on Walrus, and anchors the final proof to a Sui receipt registry."
+"SuiProof Market is a Sui-native trust desk for paid agent work. A buyer creates a SUI-denominated task, SuiProof Market creates a safe worker packet, scores the worker route, creates a verification manifest, stores evidence on Walrus, and anchors the final proof to a Sui receipt registry."
 
 ## 0:40 - Open App
 
@@ -84,7 +84,7 @@ Show:
 
 Say:
 
-"TenderBoard does not just send a task. It creates a Sui-bound verification contract before payment approval."
+"SuiProof Market does not just send a task. It creates a Sui-bound verification contract before payment approval."
 
 ## 1:50 - Sui Work Order, Evidence, And Anchor
 
@@ -113,4 +113,4 @@ npm run sui:anchor-plan <run-id>
 
 Say:
 
-"TenderBoard is the missing trust layer for agent commerce on Sui: no blind context sharing, no blind payment, evidence stored on Walrus, and reputation backed by Sui receipts."
+"SuiProof Market is the missing trust layer for agent commerce on Sui: no blind context sharing, no blind payment, evidence stored on Walrus, and reputation backed by Sui receipts."

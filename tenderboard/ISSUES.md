@@ -1,4 +1,4 @@
-# TenderBoard Issues Log
+# SuiProof Market Issues Log
 
 This file tracks concrete issues encountered during implementation. Do not use it as a task wishlist.
 

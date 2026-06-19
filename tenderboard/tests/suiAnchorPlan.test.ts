@@ -36,9 +36,25 @@ describe('Sui anchor plan', () => {
       '0xoperator',
       'settlement_nonce_456',
       'testnet:payment_intent_run_sui:payment_nonce_123:settlement_nonce_456',
+      'sui_worker',
+      '1',
+      '1',
+      '0',
+      '91',
+      'AAA:0,AA:1,A:0,B:0,C:0',
+      '35000000',
     ]);
     expect(renderSuiAnchorPlan(plan)).toContain('Payment nonce: payment_nonce_123');
     expect(renderSuiAnchorPlan(plan)).toContain('Amount MIST: 35000000');
+    expect(renderSuiAnchorPlan(plan)).toContain('Payment URI: sui:pay?');
+    expect(renderSuiAnchorPlan(plan)).toContain('Reputation event: WorkerReputationUpdated');
+    expect(plan.reputation).toMatchObject({
+      eventName: 'WorkerReputationUpdated',
+      workerAgentId: 'sui_worker',
+      anchoredRunCountAfter: 1,
+      walrusEvidenceCountAfter: 1,
+      totalMistEarnedAfter: '35000000',
+    });
   });
 
   it('converts decimal SUI amounts to MIST without floating point rounding', () => {
@@ -127,6 +143,9 @@ function sampleReceipt(): LiveRunReceipt {
       },
       specHash: 'sha256:spec',
       expectedNetwork: 'testnet',
+      paymentUri: 'sui:pay?recipient=0xoperator&amountMist=35000000&coinType=0x2%3A%3Asui%3A%3ASUI&paymentNonce=payment_nonce_123&network=testnet&runId=run_sui',
+      paymentKitMode: 'sui_pay_uri_metadata_only',
+      paymentKitCompatibility: 'sui:pay-uri-v1',
       expiresAt: '2026-06-20T01:00:00.000Z',
       createdAt: '2026-06-19T01:00:00.000Z',
     },
@@ -145,6 +164,9 @@ function sampleReceipt(): LiveRunReceipt {
       workerAgentId: 'sui_worker',
       specHash: 'sha256:spec',
       expectedNetwork: 'testnet',
+      paymentUri: 'sui:pay?recipient=0xoperator&amountMist=35000000&coinType=0x2%3A%3Asui%3A%3ASUI&paymentNonce=payment_nonce_123&network=testnet&runId=run_sui',
+      paymentKitMode: 'sui_pay_uri_metadata_only',
+      paymentKitCompatibility: 'sui:pay-uri-v1',
       paymentDigest: '0xsui_payment',
       walrusBlobId: undefined,
       walrusBlobObjectId: undefined,

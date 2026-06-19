@@ -1,6 +1,6 @@
-# TenderBoardReceipts
+# SuiProofMarketReceipts
 
-Sui Move receipt registry for TenderBoard proof receipts.
+Sui Move receipt registry for SuiProof Market proof receipts.
 
 The full receipt and worker evidence should be stored on Walrus. This package stores the compact on-chain pointer by emitting `ReceiptAnchored` events.
 

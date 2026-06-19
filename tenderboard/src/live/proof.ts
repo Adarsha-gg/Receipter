@@ -2,7 +2,7 @@ import type { LiveRunReceipt } from './types.js';
 
 export function renderReceiptProof(receipt: LiveRunReceipt): string {
   const lines = [
-    `# TenderBoard Sui Run Proof: ${receipt.runId}`,
+    `# SuiProof Market Run Proof: ${receipt.runId}`,
     '',
     `- Mode: ${receipt.mode}`,
     `- Status: ${receipt.status}`,
@@ -25,8 +25,15 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     `- Expected payment network: ${receipt.paymentIntentPlan?.expectedNetwork ?? receipt.receiptPlan?.expectedNetwork ?? receipt.suiNetwork}`,
     `- Payment intent expiry: ${receipt.paymentIntentPlan?.expiresAt ?? 'not planned'}`,
     `- Receipt duplicate-prevention key: ${receipt.receiptPlan?.duplicatePreventionKey ?? 'not planned'}`,
+    `- Payment URI: ${receipt.paymentIntentPlan?.paymentUri ?? receipt.receiptPlan?.paymentUri ?? 'not planned'}`,
+    `- PaymentKit mode: ${receipt.paymentIntentPlan?.paymentKitMode ?? receipt.receiptPlan?.paymentKitMode ?? 'not planned'}`,
     `- Clearing verdict: ${receipt.clearingDecision?.verdict ?? 'not recorded'}`,
     `- Settlement action: ${receipt.settlementInstruction?.action ?? 'not recorded'}`,
+    `- Reputation anchored runs: ${receipt.reputationSnapshot?.anchoredRunCount ?? 0}`,
+    `- Reputation Walrus proofs: ${receipt.reputationSnapshot?.walrusEvidenceCount ?? 0}`,
+    `- Reputation average trust score: ${receipt.reputationSnapshot?.averageTrustScore ?? 'none'}`,
+    `- Reputation last blob: ${receipt.reputationSnapshot?.lastWalrusBlobId ?? 'none'}`,
+    `- Reputation last evidence hash: ${receipt.reputationSnapshot?.lastEvidenceHash ?? 'none'}`,
     `- Sui network: ${receipt.suiNetwork}`,
     `- Sui package id: ${receipt.suiPackageId ?? 'not configured'}`,
     `- Sui receipt registry id: ${receipt.suiReceiptRegistryId ?? 'not configured'}`,
@@ -52,6 +59,10 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     '## Clearing objects',
     '',
     ...renderClearingObjects(receipt),
+    '',
+    '## Worker Reputation Passport',
+    '',
+    ...renderWorkerReputation(receipt),
     '',
     '## Trust gate',
     '',
@@ -86,6 +97,24 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+function renderWorkerReputation(receipt: LiveRunReceipt): string[] {
+  const snapshot = receipt.reputationSnapshot;
+  if (!snapshot) return ['No worker reputation snapshot recorded.'];
+
+  return [
+    `- Worker: ${snapshot.workerAgentId}`,
+    `- Anchored runs: ${snapshot.anchoredRunCount}`,
+    `- Walrus proofs: ${snapshot.walrusEvidenceCount}`,
+    `- Source observations: ${snapshot.sourceEvidenceCount}`,
+    `- Average trust score: ${snapshot.averageTrustScore ?? 'none'}`,
+    `- Tier counts: AAA ${snapshot.tierCounts.AAA}, AA ${snapshot.tierCounts.AA}, A ${snapshot.tierCounts.A}, B ${snapshot.tierCounts.B}, C ${snapshot.tierCounts.C}`,
+    `- Total earned: ${snapshot.totalSuiEarned} SUI (${snapshot.totalMistEarned} MIST)`,
+    `- Last anchored run: ${snapshot.lastAnchoredRunId ?? 'none'}`,
+    `- Last Walrus blob: ${snapshot.lastWalrusBlobId ?? 'none'}`,
+    `- Last evidence hash: ${snapshot.lastEvidenceHash ?? 'none'}`,
+  ];
 }
 
 function renderWorkerEvidence(receipt: LiveRunReceipt): string[] {

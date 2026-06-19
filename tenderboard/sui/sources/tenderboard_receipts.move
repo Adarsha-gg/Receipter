@@ -16,6 +16,7 @@ const E_DUPLICATE_RECEIPT: u64 = 1;
 public struct Registry has key {
     id: UID,
     receipt_count: u64,
+    reputation_update_count: u64,
     duplicate_prevention_keys: vector<vector<u8>>,
 }
 
@@ -38,10 +39,27 @@ public struct ReceiptAnchored has copy, drop {
     duplicate_prevention_key: vector<u8>,
 }
 
+public struct WorkerReputationUpdated has copy, drop {
+    sequence: u64,
+    receipt_sequence: u64,
+    sender: address,
+    worker_agent_id: vector<u8>,
+    anchored_run_count: u64,
+    walrus_evidence_count: u64,
+    source_evidence_count: u64,
+    average_trust_score: u16,
+    tier_counts: vector<u8>,
+    total_mist_earned: vector<u8>,
+    last_run_id: vector<u8>,
+    last_walrus_blob_id: vector<u8>,
+    last_evidence_hash: vector<u8>,
+}
+
 fun init(ctx: &mut TxContext) {
     let registry = Registry {
         id: object::new(ctx),
         receipt_count: 0,
+        reputation_update_count: 0,
         duplicate_prevention_keys: vector::empty<vector<u8>>(),
     };
     transfer::share_object(registry);
@@ -63,6 +81,13 @@ public entry fun anchor_receipt(
     receiver: vector<u8>,
     settlement_nonce: vector<u8>,
     duplicate_prevention_key: vector<u8>,
+    worker_agent_id: vector<u8>,
+    anchored_run_count: u64,
+    walrus_evidence_count: u64,
+    source_evidence_count: u64,
+    average_trust_score: u16,
+    tier_counts: vector<u8>,
+    total_mist_earned: vector<u8>,
     ctx: &mut TxContext,
 ) {
     assert_new_duplicate_prevention_key(registry, &duplicate_prevention_key);
@@ -72,14 +97,14 @@ public entry fun anchor_receipt(
     event::emit(ReceiptAnchored {
         sequence: registry.receipt_count,
         sender: tx_context::sender(ctx),
-        run_id,
+        run_id: copy run_id,
         spec_hash,
-        evidence_hash,
+        evidence_hash: copy evidence_hash,
         trust_score,
         trust_verdict,
         checker_pack,
         payment_reference,
-        walrus_blob_id,
+        walrus_blob_id: copy walrus_blob_id,
         payment_nonce,
         amount_mist,
         coin_type,
@@ -87,10 +112,31 @@ public entry fun anchor_receipt(
         settlement_nonce,
         duplicate_prevention_key,
     });
+
+    registry.reputation_update_count = registry.reputation_update_count + 1;
+    event::emit(WorkerReputationUpdated {
+        sequence: registry.reputation_update_count,
+        receipt_sequence: registry.receipt_count,
+        sender: tx_context::sender(ctx),
+        worker_agent_id,
+        anchored_run_count,
+        walrus_evidence_count,
+        source_evidence_count,
+        average_trust_score,
+        tier_counts,
+        total_mist_earned,
+        last_run_id: run_id,
+        last_walrus_blob_id: walrus_blob_id,
+        last_evidence_hash: evidence_hash,
+    });
 }
 
 public fun receipt_count(registry: &Registry): u64 {
     registry.receipt_count
+}
+
+public fun reputation_update_count(registry: &Registry): u64 {
+    registry.reputation_update_count
 }
 
 fun assert_new_duplicate_prevention_key(registry: &Registry, duplicate_prevention_key: &vector<u8>) {

@@ -1,21 +1,21 @@
-# TenderBoard Sui Overflow Pivot
+# SuiProof Market Sui Overflow Pivot
 
 ## Goal
 
-Make TenderBoard a credible Sui Overflow 2026 project that cannot exist without Sui.
+Make SuiProof Market a credible Sui Overflow 2026 project that cannot exist without Sui.
 
 ## Current Truth
 
-TenderBoard now treats Sui as the core product surface: work orders, SUI-denominated caps, receipt registry, evidence anchors, and reputation signals.
+SuiProof Market now treats Sui as the core product surface: work orders, SUI-denominated caps, receipt registry, evidence anchors, and reputation signals.
 
 ## Product Direction
 
-TenderBoard becomes a Sui trust-gated work desk for agent commerce:
+SuiProof Market becomes a Sui trust-gated work desk for agent commerce:
 
 1. Buyer creates a worker-agent task.
-2. TenderBoard strips private notes and secret-looking content.
-3. TenderBoard records a trust decision for the worker route.
-4. TenderBoard records a verification manifest with buyer-defined acceptance criteria.
+2. SuiProof Market strips private notes and secret-looking content.
+3. SuiProof Market records a trust decision for the worker route.
+4. SuiProof Market records a verification manifest with buyer-defined acceptance criteria.
 5. Worker delivers evidence.
 6. Full receipt/evidence JSON is stored on Walrus through the product flow.
 7. A compact proof pointer is anchored to Sui through a Move receipt registry.
@@ -26,7 +26,7 @@ The retired commerce branches had useful product strategy even though their old 
 
 Keep these ideas:
 
-- TenderBoard is buyer-side sourcing, not a generic marketplace.
+- SuiProof Market is buyer-side sourcing, not a generic marketplace.
 - The valuable workflow is intake -> safe scope -> worker selection -> budget/risk gate -> award -> paid work order -> evidence -> reputation.
 - Privacy labels matter: `PUBLIC`, `PRIVATE_AFTER_AWARD`, `LOCAL_ONLY`, and `NEVER_SHARE`.
 - Competitive bids should eventually show price, SLA, requested data, risk flags, accept/reject reason, and award recommendation.
@@ -80,7 +80,7 @@ Do not claim:
 Allowed claims:
 
 - includes a Sui Move receipt registry package
-- generates Sui anchor plans from TenderBoard receipts
+- generates Sui anchor plans from SuiProof Market receipts
 - stores deterministic Walrus/Sui dev receipts locally in `sui-dev`
 - can store evidence through a configured Walrus HTTP publisher in `sui`
 

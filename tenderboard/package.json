@@ -1,9 +1,9 @@
 {
-  "name": "tenderboard",
+  "name": "suiproof-market",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Sui-native trust-gated agent work desk with Walrus evidence and on-chain proof receipts.",
+  "description": "Sui-native agent work market with Walrus evidence, Payment Kit-compatible plans, and receipt-backed reputation.",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

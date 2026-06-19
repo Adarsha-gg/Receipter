@@ -6,6 +6,7 @@ let currentConfig = null;
 const el = (id) => document.getElementById(id);
 
 async function boot() {
+  ensureReputationPanel();
   const config = await request('/api/config');
   currentConfig = config;
   renderConfig(config);
@@ -211,6 +212,7 @@ function renderReceipt(receipt) {
   renderWorkerBidBoard(receipt);
   renderTrustProof(receipt);
   renderSuiRail(receipt);
+  renderReputationPassport(receipt);
 
   const rows = [
     ['Run id', receipt.runId],
@@ -222,6 +224,8 @@ function renderReceipt(receipt) {
     ['Sui network', receipt.suiNetwork || 'not configured'],
     ['Sui package', receipt.suiPackageId || 'not configured'],
     ['Receipt registry', receipt.suiReceiptRegistryId || 'not configured'],
+    ['Payment URI', receipt.paymentIntentPlan?.paymentUri || receipt.receiptPlan?.paymentUri || 'not planned'],
+    ['PaymentKit mode', receipt.paymentIntentPlan?.paymentKitMode || receipt.receiptPlan?.paymentKitMode || 'not planned'],
     ['Work order object', receipt.suiWorkOrderObjectId || 'pending real Sui tx'],
     ['Escrow object', receipt.suiEscrowObjectId || 'pending real Sui tx'],
     ['Trust tier', receipt.trustDecision ? `${receipt.trustDecision.tier} / ${receipt.trustDecision.score}` : 'not evaluated'],
@@ -242,6 +246,24 @@ function renderReceipt(receipt) {
   el('receipt').innerHTML =
     rows.map(([label, value]) => `<div class="receiptRow"><strong>${escapeHtml(label)}</strong><span>${formatReceiptValue(value)}</span></div>`).join('') +
     receiptLink;
+}
+
+function ensureReputationPanel() {
+  if (el('reputationPassport')) return;
+  const panel = document.createElement('section');
+  panel.className = 'panel reputationPanel';
+  panel.setAttribute('aria-label', 'Worker reputation passport');
+  panel.innerHTML = `
+    <div class="panelHeader">
+      <div>
+        <p class="eyebrow">Worker Reputation Passport</p>
+        <h2>Anchored worker record</h2>
+      </div>
+      <span id="reputationStatus" class="statusPill">waiting</span>
+    </div>
+    <div id="reputationPassport" class="reputationPassport">Create a run to view the selected worker passport.</div>`;
+  const bidPanel = document.querySelector('.bidBoardPanel');
+  bidPanel?.parentNode?.insertBefore(panel, bidPanel);
 }
 
 function renderWorkerBidBoard(receipt) {
@@ -288,6 +310,7 @@ function renderWorkerBidBoard(receipt) {
 }
 
 function renderSuiRail(receipt) {
+  const paymentPlan = receipt.paymentIntentPlan || receipt.receiptPlan;
   const steps = [
     {
       label: 'Work order object',
@@ -313,6 +336,21 @@ function renderSuiRail(receipt) {
 
   const doneCount = steps.filter((step) => step.done).length;
   el('chainStatus').textContent = `${doneCount}/4 bound`;
+  const paymentCard = paymentPlan
+    ? `<div class="paymentIntentCard">
+        <div>
+          <strong>PaymentKit-compatible URI</strong>
+          <small>${escapeHtml(paymentPlan.paymentKitMode || 'metadata only')}</small>
+        </div>
+        <code>${escapeHtml(paymentPlan.paymentUri || 'not planned')}</code>
+        <div class="paymentMeta">
+          <span>${escapeHtml(paymentPlan.amountMist || '0')} MIST</span>
+          <span>${escapeHtml(paymentPlan.coinType || '0x2::sui::SUI')}</span>
+          <span>${escapeHtml(paymentPlan.expectedNetwork || receipt.suiNetwork || 'testnet')}</span>
+        </div>
+      </div>`
+    : '';
+
   el('suiRail').innerHTML = steps
     .map(
       (step, index) => `<div class="railStep ${step.done ? 'done' : 'pending'}">
@@ -321,7 +359,42 @@ function renderSuiRail(receipt) {
         <small>${escapeHtml(step.detail)}</small>
       </div>`,
     )
-    .join('');
+    .join('') + paymentCard;
+}
+
+function renderReputationPassport(receipt) {
+  const status = el('reputationStatus');
+  const target = el('reputationPassport');
+  if (!status || !target) return;
+  const snapshot = receipt.reputationSnapshot;
+  if (!snapshot) {
+    status.textContent = 'legacy';
+    status.className = 'statusPill';
+    target.textContent = 'This receipt does not include a worker reputation snapshot.';
+    return;
+  }
+
+  status.textContent = receipt.status === 'anchored' ? 'updated' : 'pre-run';
+  status.className = `statusPill ${receipt.status === 'anchored' ? 'verdict-allow' : ''}`;
+  target.innerHTML = `
+    <div class="passportHero">
+      <div>
+        <strong>${escapeHtml(snapshot.workerAgentId)}</strong>
+        <small>${escapeHtml(snapshot.anchoredRunCount)} anchored run${snapshot.anchoredRunCount === 1 ? '' : 's'} / ${escapeHtml(snapshot.totalSuiEarned)} SUI earned</small>
+      </div>
+      <div>
+        <strong>${escapeHtml(snapshot.averageTrustScore ?? 'none')}</strong>
+        <small>average trust</small>
+      </div>
+    </div>
+    <div class="passportGrid">
+      <div><strong>Walrus proofs</strong><span>${escapeHtml(snapshot.walrusEvidenceCount)}</span></div>
+      <div><strong>Source observations</strong><span>${escapeHtml(snapshot.sourceEvidenceCount)}</span></div>
+      <div><strong>Tier counts</strong><span>AAA ${escapeHtml(snapshot.tierCounts.AAA)} / AA ${escapeHtml(snapshot.tierCounts.AA)} / A ${escapeHtml(snapshot.tierCounts.A)}</span></div>
+      <div><strong>Last run</strong><span>${escapeHtml(snapshot.lastAnchoredRunId || 'none')}</span></div>
+      <div><strong>Last blob</strong><span>${escapeHtml(snapshot.lastWalrusBlobId || 'none')}</span></div>
+      <div><strong>Last evidence hash</strong><span>${escapeHtml(snapshot.lastEvidenceHash || 'none')}</span></div>
+    </div>`;
 }
 
 function renderTrustProof(receipt) {
@@ -403,6 +476,7 @@ function setReceiptText(text, error = false) {
     el('trustVerdict').textContent = 'error';
     el('manifestHash').textContent = 'error';
     el('bidBoardStatus').textContent = 'error';
+    if (el('reputationStatus')) el('reputationStatus').textContent = 'error';
   }
 }
 

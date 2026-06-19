@@ -2,11 +2,11 @@
 
 ## 2026-06-19 - Sui gap identified
 
-TenderBoard had a useful agent-commerce product shape, but its live chain path was not Sui-oriented. For Sui Overflow, that was not enough. Decision: keep the trust/proof product, but make Sui the receipt anchor and Walrus the evidence layer.
+SuiProof Market had a useful agent-commerce product shape, but its live chain path was not Sui-oriented. For Sui Overflow, that was not enough. Decision: keep the trust/proof product, but make Sui the receipt anchor and Walrus the evidence layer.
 
 ## 2026-06-19 - Sui proof package added
 
-Added `tenderboard/sui` with a Move package named `TenderBoardReceipts`.
+Added `tenderboard/sui` with a Move package named `SuiProofMarketReceipts`.
 
 The package defines:
 
@@ -19,7 +19,7 @@ The package defines:
 
 Added `src/sui/anchorPlan.ts` and `npm run sui:anchor-plan`.
 
-The CLI loads a TenderBoard receipt and writes a judge-readable Sui call plan under `proof/`.
+The CLI loads a SuiProof Market receipt and writes a judge-readable Sui call plan under `proof/`.
 
 ## 2026-06-19 - Readiness surfaced
 

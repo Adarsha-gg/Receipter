@@ -54,15 +54,16 @@ Everything in this doc serves one sentence the judges should be able to repeat:
 | --- | --- | --- |
 | Verifiable long-term memory | `agent_memory_record.v1` + `agent_memory_passport.v1` per worker | **built** |
 | Persistent data/file access on Walrus | `storeEvidenceOnWalrus` → blob id + read URL | **built; real testnet round-trip proven** |
-| Inspect/debug/manage agent memory on Walrus | global memory index + per-agent passport endpoints | **built (API); UI later** |
+| Inspect/debug/manage agent memory on Walrus | Agent Passport directory + per-record inspector and verify action | **built** |
 | Multi-agent coordination / task delegation | hirer agent ↔ worker bids ↔ award (`preferredBidId`) ↔ delivery | **built** |
 | Artifact-driven workflows | evidence bundles generated, stored, **reused in next trust gate** | **built** |
 | Long-running state over time | passports accrue track record across jobs | **built** |
 | Tooling to help devs adopt Walrus / MemWal | `MemoryStore` interface + MemWal adapter + `smoke:memwal-live` | **backend built; live credentials/package install remain** |
 
-**Gap to close:** credentialed live MemWal write + demo video. Real testnet blob readback,
-Sui receipt anchor, deterministic seed data, MemWal backend shape, oracle-gated stake/slash,
-and the visible passport inspector are now proven.
+**Submission-ready state:** real testnet blob readback, Sui receipt anchor, deterministic seed
+data, MemWal adapter shape, oracle-gated stake/slash, final submission package, logo, and visible
+passport inspector are proven. Remaining work is human/demo logistics plus optional credentialed
+MemWal live write.
 
 ---
 
@@ -104,7 +105,7 @@ pattern in `TenderBoardServerOptions`).
   `ReceiptAnchored`, `WorkerReputationUpdated`.
 - 36/36 tests pass; typecheck clean.
 
-### NOT real yet (must fix before submission)
+### Not real yet / optional stretch
 - **No credentialed live MemWal write yet.** `MemWalMemoryStore` exists as a raw-Walrus + MemWal
   semantic overlay, and `npm run smoke:memwal-live` is now the live harness, but the environment
   still needs `@mysten-incubation/memwal`, delegate key, account id, and server URL for a real write.
@@ -224,6 +225,8 @@ WalrusProof
 ### Milestone E — Submission polish
 12. Identity cleanup (Section 12), demo video, README/SUBMISSION aligned, blob id + package
     id + explorer links pasted into the submission.
+    - **Done except recording:** `SUBMISSION_PACKAGE.md` now contains copy/paste fields and
+      `assets/walrusproof-logo.png` is the 1:1 logo.
 
 ---
 
@@ -291,7 +294,8 @@ Then: publish package → set ids → run one job in `sui` mode → confirm real
 - [x] One oracle-gated live stake/slash smoke transaction pair.
 - [x] MemWal adapter and live smoke harness merged (fake-client tested); credentialed live MemWal run remains.
 - [x] Passport directory + Verify-on-Walrus UI.
-- [ ] Demo video following Section 10.
+- [x] Submission package + 1:1 logo.
+- [ ] Demo video recording following Section 10.
 - [x] README + SUBMISSION aligned to one product name.
 - [x] Tests green; typecheck clean.
 
@@ -331,7 +335,7 @@ and data fixtures, not public branding. The old CROO/RetainerHub plan was moved 
 - Added `npm run seed:memory` (drives the real loop over HTTP).
 - Verified: 3 workers / 6 records / 6 Walrus(-dev) blobs / 2 anchored; 36 tests green.
 - Open follow-up: deterministic seed (Milestone B #4) so all workers anchor reliably.
-- Published package v3 with `reputation_stake`; ran oracle-gated live stake/slash smoke on Sui testnet.
+- Published package v4 with `reputation_stake`; ran oracle-gated live stake/slash smoke on Sui testnet.
 - Added challenge assessment oracle and slash executor guard.
 - Added `MemWalMemoryStore` semantic overlay behind `MEMORY_BACKEND=memwal`.
 - Hardened `seed:memory` into an acceptance check; temp `sui-dev` smoke produced 3 workers / 6

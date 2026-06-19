@@ -166,16 +166,17 @@ escrow → reputation becomes a **yield-bearing economic asset**, not a vanity s
 | Source-claim verification + admission gate | ✅ built | `trustProof.ts`, `clearingObjects.ts` |
 | PoWM record + passport + global index | ✅ built | `agentMemory.ts` |
 | Walrus evidence storage | ✅ live round-trip proven | real blob `lDssvU3Jw6eRyE2N0X0fvCE3b_oCV5peftFj4UkAklw`; `walrusRuntime.ts` |
-| Sui receipt anchor (Move pkg) | ✅ deployed + anchored | package v3 `0x2aaaa1b3e8700ef4ef6313833a7f20d475c01fc6d933fbb052a2dc88f8c77320`; receipt anchor `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP` |
+| Sui receipt anchor (Move pkg) | ✅ deployed + anchored | package v4 `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`; receipt anchor `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP` |
 | Multi-worker award | ✅ built (this week) | `preferredBidId` |
 | **Passport bound to Sui address** | ✅ API-level built / on-chain object pending | `AgentMemoryPassport.ownerAddress`, owner oracle route; Move `passport` object remains |
 | **Stake + slash** | ✅ live primitive + oracle decision object | Move `reputation_stake`; `/api/oracle/records/:runId/challenges/assess`; decision tx `FCsWy75sSrheYpk2ah1B9MFLzbHodx6SHhu2396Lf4Li`, slash tx `GJz9y9nac2sgwMi9xp9PkuYryWU99wcgvbhAMyiYwCzA` |
 | **Reputation Oracle SDK / MCP / LangGraph** | ✅ REST + TS client started | `src/oracle`; MCP/LangGraph remains |
-| **Explorer UI (verify-on-Walrus)** | 🆕 | new web surface on existing APIs |
+| **Explorer UI (verify-on-Walrus)** | ✅ built | Agent Passport directory + per-record Verify action |
 | **Seal-gated deep-memory sharing** | 🆕 | Seal + Harbor |
 | **Cross-platform portability demo** | 🆕 | second "marketplace" frontend reading same passport |
 
-Roughly **60% exists**; the net-new is the part that turns it from app → protocol.
+Roughly **80% exists** for the hackathon submission; the remaining work is hosted deployment,
+demo recording, and optional credentialed MemWal / Seal / MCP stretch integrations.
 
 ---
 
@@ -201,12 +202,11 @@ protocol every agent — including Synapse — can publish to and be verified by
 
 ## 7. Phased build (each phase is demoable on its own)
 
-**Phase 0 — Table stakes (existential, do first).** One real Walrus blob (via Harbor), one
-deployed + anchored Move receipt, deterministic seed so the graph is populated. *Without this we
-are not in the conversation.* (= `WALRUS_TRACK_PLAN.md` Milestone A + B.)
+**Phase 0 — Table stakes.** Complete: one real Walrus blob, one deployed + anchored Move receipt,
+deterministic seed data, and live stake/slash proof.
 
-**Phase 1 — The Explorer.** Public passport directory + per-job blob viewer + **Verify** button
-(recompute hash, match Sui anchor). This alone is a winning demo and uses existing endpoints.
+**Phase 1 — The Explorer.** Complete: public passport directory + per-job Walrus link + **Verify**
+button backed by `/api/oracle/records/:runId/verify`.
 
 **Phase 2 — The Oracle SDK.** `verifyPassport()` as npm + REST + **MCP server**. Independent
 re-verification from Walrus blobs + Sui events. The protocol moment.
@@ -243,9 +243,8 @@ integration into an existing agent framework.
 
 ## 9. Identity
 
-Reposition from "market/console" to **protocol**. Candidate names: **WalrusProof** (keep, but
-subtitle = *"verifiable reputation for the agent economy"*), or **Provenance / Proofwork /
-Vouch**. Pick one, make every file agree, archive the stale CROO doc. (See plan §12.)
+Public identity is **WalrusProof**. The old CROO/RetainerHub doc is archived, and submission
+copy, demo script, README, logo, and UI all use the same public name.
 
 ---
 

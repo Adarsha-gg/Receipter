@@ -71,7 +71,9 @@ tenderboard/                                      main TypeScript app
 tenderboard/sui                                  Sui Move receipt + reputation stake package
 specs/2026-06-19-sui-overflow-tenderboard         Sui Overflow product spec
 SUBMISSION.md                                     submission copy
+SUBMISSION_PACKAGE.md                             copy/paste submission fields
 DEMO_VIDEO_SCRIPT.md                              demo script
+assets/walrusproof-logo.png                       1:1 project logo
 ```
 
 ## Run Locally

@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildAgentPair, handoffStatusForRun } from '../live/agentPair.js';
+import { buildAgentMarketCard } from '../live/agentMarketCard.js';
 import { buildAgentMemoryPassport, buildAgentMemoryRecord, buildWalrusMemoryIndex } from '../live/agentMemory.js';
 import { buildPrivacyLabeledTask, buildWorkerBidBoard, availableWorkerBids } from '../live/bidBoard.js';
 import { buildClearingObjects } from '../live/clearingObjects.js';
@@ -93,6 +94,11 @@ async function route(
     return;
   }
 
+  if (method === 'GET' && url.pathname === '/.well-known/agent-card.json') {
+    sendJson(res, 200, buildAgentMarketCard(config.workerAgentId, config, await loadAllReceipts(store)));
+    return;
+  }
+
   if (method === 'GET' && url.pathname === '/api/runs') {
     sendJson(res, 200, await listRunsWithReputation(store));
     return;
@@ -114,6 +120,13 @@ async function route(
   if (method === 'GET' && agentMemoryMatch) {
     const workerAgentId = decodeURIComponent(agentMemoryMatch[1]!);
     sendJson(res, 200, buildAgentMemoryPassport(workerAgentId, await loadAllReceipts(store)));
+    return;
+  }
+
+  const agentCardMatch = url.pathname.match(/^\/api\/agents\/([^/]+)\/card$/);
+  if (method === 'GET' && agentCardMatch) {
+    const workerAgentId = decodeURIComponent(agentCardMatch[1]!);
+    sendJson(res, 200, buildAgentMarketCard(workerAgentId, config, await loadAllReceipts(store)));
     return;
   }
 

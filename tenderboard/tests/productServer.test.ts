@@ -660,6 +660,55 @@ describe('WalrusProof Market product server', () => {
         latestWalrusBlobId: anchored.walrusBlobId,
       });
 
+      const marketCard = await (await fetch(`${baseUrl}/api/agents/sui_opportunity_scout/card`)).json();
+      expect(marketCard).toMatchObject({
+        objectType: 'walrusproof.agent_market_card.v1',
+        agentId: 'sui_opportunity_scout',
+        service: {
+          category: 'research',
+          priceSui: '0.035',
+          sla: '24h',
+          requestedDataLabel: 'public',
+          checkerPacks: ['research'],
+        },
+        protocols: {
+          a2aDiscovery: true,
+          x402PaymentRequired: true,
+          walrusMemoryRequired: true,
+          suiFinalitySupported: true,
+        },
+        endpoints: {
+          createRun: '/api/runs',
+          workerTaskTemplate: '/api/runs/{runId}/worker-task',
+          x402Verify: '/api/x402/verify',
+          walrusMemoryIndex: '/api/walrus/memory',
+          memoryPassport: '/api/walrus/memory/sui_opportunity_scout',
+        },
+        memoryPassport: {
+          memoryCount: 1,
+          walrusMemoryCount: 1,
+          anchoredMemoryCount: 1,
+          latestMemoryId: anchored.memoryRecord.memoryId,
+        },
+      });
+      expect(marketCard.marketplaceProofGates).toEqual([
+        'payment_bound',
+        'worker_selected',
+        'source_verified',
+        'walrus_stored',
+        'sui_anchored',
+      ]);
+
+      const wellKnownCard = await (await fetch(`${baseUrl}/.well-known/agent-card.json`)).json();
+      expect(wellKnownCard).toMatchObject({
+        objectType: 'walrusproof.agent_market_card.v1',
+        agentId: 'sui_opportunity_scout',
+        protocols: {
+          a2aDiscovery: true,
+          x402PaymentRequired: true,
+        },
+      });
+
       const second = await postJson(`${baseUrl}/api/runs`, {
         title: 'Find another Sui ecosystem opportunity',
         instructions: 'Use public sources only.',

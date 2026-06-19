@@ -305,6 +305,44 @@ export interface WalrusMemoryIndex {
   passports: AgentMemoryPassport[];
 }
 
+export interface AgentMarketCard {
+  objectType: 'walrusproof.agent_market_card.v1';
+  agentId: string;
+  displayName: string;
+  generatedAt: string;
+  service: {
+    category: 'research';
+    skillIds: string[];
+    priceSui: string;
+    sla: string;
+    requestedDataLabel: TaskDataLabel;
+    checkerPacks: CheckerPackId[];
+    requiredEvidence: string[];
+  };
+  protocols: {
+    a2aDiscovery: true;
+    x402PaymentRequired: true;
+    walrusMemoryRequired: true;
+    suiFinalitySupported: true;
+  };
+  endpoints: {
+    createRun: string;
+    workerTaskTemplate: string;
+    x402Verify: string;
+    walrusMemoryIndex: string;
+    memoryPassport: string;
+  };
+  marketplaceProofGates: string[];
+  memoryPassport: {
+    memoryCount: number;
+    walrusMemoryCount: number;
+    anchoredMemoryCount: number;
+    averageClaimSupport: number | undefined;
+    latestMemoryId: string | undefined;
+    latestWalrusBlobId: string | undefined;
+  };
+}
+
 export interface PaymentIntentPlan {
   objectType: 'tenderboard.payment_intent_plan.v1';
   intentId: string;

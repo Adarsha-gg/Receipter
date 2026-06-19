@@ -295,6 +295,11 @@ layer ON TOP of MemWal.** We adopt the sponsor's memory primitive and add the th
 *payment-bound, stake-secured, cross-buyer work reputation.* Directly answers "help devs adopt
 MemWal." Slots behind our `MemoryStore` interface as `MemWalMemoryStore`.
 
+**Update:** `MemWalMemoryStore` is implemented as a semantic overlay: the full evidence bundle
+still lands on raw Walrus as the proof artifact, then WalrusProof writes a distilled reputation
+fact to MemWal via `remember(...)` under `MEMORY_BACKEND=memwal`. Tests cover fake-client writes
+and SDK client construction; remaining work is a live MemWal credential smoke.
+
 ### 11.2 Walrus Quilt as the PoWM storage substrate ✅ adopt
 **Quilt** batches up to **~660 small blobs** into one unit, **106–420× cheaper** for 10–100 KB
 files, with **per-file immutable tags/IDs** and **individual read-back** (no full-batch download).

@@ -58,10 +58,11 @@ Everything in this doc serves one sentence the judges should be able to repeat:
 | Multi-agent coordination / task delegation | hirer agent ↔ worker bids ↔ award (`preferredBidId`) ↔ delivery | **built** |
 | Artifact-driven workflows | evidence bundles generated, stored, **reused in next trust gate** | **built** |
 | Long-running state over time | passports accrue track record across jobs | **built** |
-| Tooling to help devs adopt Walrus / MemWal | `MemoryStore` interface + MemWal adapter | **interface built; MemWal backend remains** |
+| Tooling to help devs adopt Walrus / MemWal | `MemoryStore` interface + MemWal adapter | **backend built; live credentials/package install remain** |
 
-**Gap to close:** MemWal adapter + visible inspector UI + deterministic seed data. Real testnet
-blob readback, Sui receipt anchor, and the first stake/slash primitive are now proven.
+**Gap to close:** visible inspector UI + deterministic seed data + live MemWal credential smoke.
+Real testnet blob readback, Sui receipt anchor, MemWal backend shape, and oracle-gated stake/slash
+are now proven.
 
 ---
 
@@ -104,7 +105,9 @@ pattern in `TenderBoardServerOptions`).
 - 36/36 tests pass; typecheck clean.
 
 ### NOT real yet (must fix before submission)
-- **No MemWal integration.** `MemoryStore` exists, but the backend is still raw Walrus.
+- **No live MemWal smoke yet.** `MemWalMemoryStore` exists as a raw-Walrus + MemWal semantic
+  overlay, but the environment still needs `@mysten-incubation/memwal`, delegate key, account id,
+  and server URL for a real write.
 - **No inspector UI** (passport directory / blob viewer / hash-match).
 - **Demo data depends on live HN/GitHub luck** — rapid seed runs return thin results, so
   some workers show `undefined` claim support / 0 anchored. Looks broken.
@@ -200,7 +203,10 @@ WalrusProof
    - **Done:** `src/live/memoryStore.ts` defines the interface and default Walrus backend;
      `createTenderBoardServer` accepts an injected `memoryStore`.
 7. `MemWalMemoryStore` backend behind `MEMORY_BACKEND=memwal`.
+   - **Done:** backend writes the full proof bundle to raw Walrus, then writes a distilled
+     reputation fact to MemWal via `remember(...)`.
 8. Tests for both backends behind a fake transport.
+   - **Done:** fake Walrus + fake MemWal client tests cover overlay behavior and SDK client creation.
 
 ### Milestone D — Visible product surface (UI, after the above)
 9. **Agent Passport directory** page (reads `/api/walrus/memory`): cards per worker
@@ -278,7 +284,7 @@ Then: publish package → set ids → run one job in `sui` mode → confirm real
 - [x] One real Walrus blob id + working aggregator read-back link in the submission.
 - [x] Published Move package id + `Registry` id + explorer link to a `ReceiptAnchored` event.
 - [x] One oracle-gated live stake/slash smoke transaction pair.
-- [ ] MemWal adapter merged (or documented + demoed) — the adoption/tooling story.
+- [x] MemWal adapter merged (fake-client tested); live MemWal smoke remains.
 - [ ] Passport directory + Verify-on-Walrus UI.
 - [ ] Demo video following Section 10.
 - [ ] README + SUBMISSION aligned to one product name.
@@ -321,4 +327,5 @@ Actions:
 - Open follow-up: deterministic seed (Milestone B #4) so all workers anchor reliably.
 - Published package v3 with `reputation_stake`; ran oracle-gated live stake/slash smoke on Sui testnet.
 - Added challenge assessment oracle and slash executor guard.
-- Current checks: 53 tests green; typecheck clean.
+- Added `MemWalMemoryStore` semantic overlay behind `MEMORY_BACKEND=memwal`.
+- Current checks: 57 tests green; typecheck clean.

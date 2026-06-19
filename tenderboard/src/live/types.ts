@@ -622,6 +622,13 @@ export interface SafeConfig {
   maxPaymentSui: string;
   receiptsDir: string;
   workerAgentId: string;
+  memory: {
+    backend: 'walrus' | 'memwal';
+    memwalConfigured: boolean;
+    memwalServerConfigured: boolean;
+    memwalAccountConfigured: boolean;
+    memwalNamespace: string | undefined;
+  };
   sui: {
     network: string;
     rpcUrlConfigured: boolean;
@@ -642,6 +649,11 @@ export interface TenderBoardConfig {
   maxPaymentSui: string;
   receiptsDir: string;
   workerAgentId: string;
+  memoryBackend: 'walrus' | 'memwal';
+  memwalDelegateKey: string | undefined;
+  memwalAccountId: string | undefined;
+  memwalServerUrl: string | undefined;
+  memwalNamespace: string | undefined;
   suiNetwork: string;
   suiRpcUrl: string | undefined;
   suiPackageId: string | undefined;

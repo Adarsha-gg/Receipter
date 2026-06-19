@@ -5,6 +5,7 @@ const DEFAULT_PORT = 4174;
 const DEFAULT_MAX_PAYMENT_SUI = '0.05';
 const DEFAULT_RECEIPTS_DIR = 'data/runs';
 const DEFAULT_WORKER_AGENT_ID = 'sui_opportunity_scout';
+const DEFAULT_MEMWAL_NAMESPACE = 'walrusproof';
 
 export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): TenderBoardConfig {
   const mode = parseMode(env.TENDERBOARD_MODE ?? 'sui-dev');
@@ -12,6 +13,11 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
   const maxPaymentSui = parseAmount(env.TENDERBOARD_MAX_PAYMENT_SUI ?? DEFAULT_MAX_PAYMENT_SUI);
   const receiptsDir = path.resolve(env.TENDERBOARD_RECEIPTS_DIR ?? DEFAULT_RECEIPTS_DIR);
   const workerAgentId = blankToUndefined(env.TENDERBOARD_WORKER_AGENT_ID) ?? DEFAULT_WORKER_AGENT_ID;
+  const memoryBackend = parseMemoryBackend(env.MEMORY_BACKEND ?? 'walrus');
+  const memwalDelegateKey = blankToUndefined(env.MEMWAL_DELEGATE_KEY);
+  const memwalAccountId = blankToUndefined(env.MEMWAL_ACCOUNT_ID);
+  const memwalServerUrl = blankToUndefined(env.MEMWAL_SERVER_URL);
+  const memwalNamespace = blankToUndefined(env.MEMWAL_NAMESPACE) ?? DEFAULT_MEMWAL_NAMESPACE;
   const suiNetwork = blankToUndefined(env.SUI_NETWORK) ?? 'testnet';
   const suiRpcUrl = blankToUndefined(env.SUI_RPC_URL) ?? defaultSuiRpcUrl(suiNetwork);
   const suiPackageId = blankToUndefined(env.SUI_PACKAGE_ID);
@@ -37,6 +43,13 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     maxPaymentSui,
     receiptsDir,
     workerAgentId,
+    memory: {
+      backend: memoryBackend,
+      memwalConfigured: Boolean(memwalDelegateKey && memwalAccountId && memwalServerUrl),
+      memwalServerConfigured: Boolean(memwalServerUrl),
+      memwalAccountConfigured: Boolean(memwalAccountId),
+      memwalNamespace,
+    },
     sui: {
       network: suiNetwork,
       rpcUrlConfigured: Boolean(suiRpcUrl),
@@ -57,6 +70,11 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     maxPaymentSui,
     receiptsDir,
     workerAgentId,
+    memoryBackend,
+    memwalDelegateKey,
+    memwalAccountId,
+    memwalServerUrl,
+    memwalNamespace,
     suiNetwork,
     suiRpcUrl,
     suiPackageId,
@@ -88,6 +106,14 @@ function parseMode(value: string): TenderBoardMode {
   }
 
   throw new Error(`Invalid TENDERBOARD_MODE: ${value}. Expected sui-dev or sui.`);
+}
+
+function parseMemoryBackend(value: string): 'walrus' | 'memwal' {
+  if (value === 'walrus' || value === 'memwal') {
+    return value;
+  }
+
+  throw new Error(`Invalid MEMORY_BACKEND: ${value}. Expected walrus or memwal.`);
 }
 
 function parsePort(value: string | undefined): number {

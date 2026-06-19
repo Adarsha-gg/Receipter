@@ -33,6 +33,7 @@ The longer-term product is portable agent reputation: safe task intake, privacy 
 - Sui Move receipt registry package
 - Sui/Walrus readiness checks
 - Walrus evidence-bundle storage flow
+- optional MemWal semantic memory overlay behind `MEMORY_BACKEND=memwal`
 - Sui receipt-anchor flow
 - owner-bound agent memory passports
 - Sui `reputation_stake` module for worker stake, challenge, and slash
@@ -104,3 +105,23 @@ Current testnet deployment:
 - upgrade cap: `0xc50924def84e7bcadb6aaaea58f887017903102ace49363f82b9e18bad698b7d`
 
 To run live mode locally, set `SUI_OPERATOR_ADDRESS`, `SUI_PACKAGE_ID`, `SUI_RECEIPT_REGISTRY_ID`, `SUI_CLI_PATH`, `SUI_CLIENT_CONFIG`, `WALRUS_PUBLISHER_URL`, and `WALRUS_AGGREGATOR_URL`.
+
+## Memory Backend
+
+Default:
+
+```text
+MEMORY_BACKEND=walrus
+```
+
+Optional MemWal overlay:
+
+```text
+MEMORY_BACKEND=memwal
+MEMWAL_DELEGATE_KEY=...
+MEMWAL_ACCOUNT_ID=...
+MEMWAL_SERVER_URL=...
+MEMWAL_NAMESPACE=walrusproof
+```
+
+In MemWal mode, WalrusProof still stores the full evidence bundle on raw Walrus, then writes a distilled searchable reputation fact to MemWal.

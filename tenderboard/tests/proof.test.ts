@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildClearingObjects } from '../src/live/clearingObjects.js';
-import { WalrusMemoryStore } from '../src/live/memoryStore.js';
+import { buildMemWalReputationFact, createMemWalClient, MemWalMemoryStore, WalrusMemoryStore, type MemoryStore } from '../src/live/memoryStore.js';
 import { renderReceiptProof } from '../src/live/proof.js';
 import { makeEvent } from '../src/live/runStore.js';
 import { buildEvidenceBundle, storeEvidenceOnWalrus } from '../src/live/walrusRuntime.js';
@@ -128,12 +128,24 @@ describe('renderReceiptProof', () => {
         maxPaymentSui: '0.050',
         receiptsDir: 'memory',
         workerAgentId: 'sui_worker',
+        memoryBackend: 'walrus',
+        memwalDelegateKey: undefined,
+        memwalAccountId: undefined,
+        memwalServerUrl: undefined,
+        memwalNamespace: 'walrusproof',
         safe: {
           mode: 'sui',
           port: 0,
           maxPaymentSui: '0.050',
           receiptsDir: 'memory',
           workerAgentId: 'sui_worker',
+          memory: {
+            backend: 'walrus',
+            memwalConfigured: false,
+            memwalServerConfigured: false,
+            memwalAccountConfigured: false,
+            memwalNamespace: 'walrusproof',
+          },
           sui: {
             network: 'testnet',
             rpcUrlConfigured: true,
@@ -193,12 +205,24 @@ describe('renderReceiptProof', () => {
         maxPaymentSui: '0.050',
         receiptsDir: 'memory',
         workerAgentId: 'sui_worker',
+        memoryBackend: 'walrus',
+        memwalDelegateKey: undefined,
+        memwalAccountId: undefined,
+        memwalServerUrl: undefined,
+        memwalNamespace: 'walrusproof',
         safe: {
           mode: 'sui',
           port: 0,
           maxPaymentSui: '0.050',
           receiptsDir: 'memory',
           workerAgentId: 'sui_worker',
+          memory: {
+            backend: 'walrus',
+            memwalConfigured: false,
+            memwalServerConfigured: false,
+            memwalAccountConfigured: false,
+            memwalNamespace: 'walrusproof',
+          },
           sui: {
             network: 'testnet',
             rpcUrlConfigured: true,
@@ -253,12 +277,24 @@ describe('renderReceiptProof', () => {
         maxPaymentSui: '0.050',
         receiptsDir: 'memory',
         workerAgentId: 'sui_worker',
+        memoryBackend: 'walrus',
+        memwalDelegateKey: undefined,
+        memwalAccountId: undefined,
+        memwalServerUrl: undefined,
+        memwalNamespace: 'walrusproof',
         safe: {
           mode: 'sui',
           port: 0,
           maxPaymentSui: '0.050',
           receiptsDir: 'memory',
           workerAgentId: 'sui_worker',
+          memory: {
+            backend: 'walrus',
+            memwalConfigured: false,
+            memwalServerConfigured: false,
+            memwalAccountConfigured: false,
+            memwalNamespace: 'walrusproof',
+          },
           sui: {
             network: 'testnet',
             rpcUrlConfigured: true,
@@ -281,6 +317,88 @@ describe('renderReceiptProof', () => {
       endEpoch: 500,
       readUrl: 'https://aggregator.walrus-testnet.walrus.space/v1/blobs/walrus_blob_from_store',
     });
+  });
+
+  it('writes a distilled reputation fact to MemWal after storing the full Walrus bundle', async () => {
+    const remembered: string[] = [];
+    const waited: string[] = [];
+    const walrusStore: MemoryStore = {
+      backend: 'walrus',
+      putEvidenceBundle: async () => ({
+        blobId: 'walrus_blob_for_memwal',
+        blobObjectId: '0xwalrus',
+        certifiedEpoch: undefined,
+        endEpoch: 500,
+        readUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/walrus_blob_for_memwal',
+      }),
+    };
+    const store = new MemWalMemoryStore(
+      walrusStore,
+      {
+        remember: async (text, namespace) => {
+          remembered.push(`${namespace}:${text}`);
+          return { job_id: 'job_1', blob_id: 'memwal_blob_1' };
+        },
+        waitForRememberJob: async (jobId) => {
+          waited.push(jobId);
+        },
+      },
+      'worker:sui_worker',
+    );
+
+    await expect(store.putEvidenceBundle(sampleReceipt())).resolves.toMatchObject({
+      blobId: 'walrus_blob_for_memwal',
+      readUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/walrus_blob_for_memwal',
+    });
+    expect(waited).toEqual(['job_1']);
+    expect(remembered[0]).toContain('worker:sui_worker:WalrusProof verified work memory for agent sui_worker.');
+    expect(remembered[0]).toContain('Walrus blob: walrus_blob_for_memwal.');
+    expect(remembered[0]).toContain('Sui payment digest: 0xsui.');
+  });
+
+  it('builds a MemWal SDK client from configured credentials without leaking them through safe config', () => {
+    const created: any[] = [];
+    const client = { remember: async () => ({ job_id: 'job_1' }) };
+
+    expect(
+      createMemWalClient(
+        {
+          memwalDelegateKey: 'delegate_secret',
+          memwalAccountId: 'account_1',
+          memwalServerUrl: 'https://memory.walrus.example',
+          memwalNamespace: 'walrusproof',
+        } as any,
+        () => ({
+          MemWal: {
+            create: (options) => {
+              created.push(options);
+              return client;
+            },
+          },
+        }),
+      ),
+    ).toBe(client);
+    expect(created[0]).toEqual({
+      key: 'delegate_secret',
+      accountId: 'account_1',
+      serverUrl: 'https://memory.walrus.example',
+      namespace: 'walrusproof',
+    });
+  });
+
+  it('renders the MemWal reputation fact as a searchable work-memory summary', () => {
+    const fact = buildMemWalReputationFact(sampleReceipt(), {
+      blobId: 'walrus_blob_fact',
+      blobObjectId: undefined,
+      certifiedEpoch: undefined,
+      endEpoch: undefined,
+      readUrl: 'https://aggregator.example/v1/blobs/walrus_blob_fact',
+    });
+
+    expect(fact).toContain('WalrusProof verified work memory for agent sui_worker.');
+    expect(fact).toContain('Run: run_proof.');
+    expect(fact).toContain('Walrus blob: walrus_blob_fact.');
+    expect(fact).toContain('Claim verification: 0 supported, 0 failed.');
   });
 });
 

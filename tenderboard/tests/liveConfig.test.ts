@@ -16,6 +16,11 @@ describe('loadTenderBoardConfig', () => {
       SUI_CLIENT_CONFIG: 'C:\\secret\\client.yaml',
       WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
       WALRUS_AGGREGATOR_URL: 'https://aggregator.walrus.testnet.example',
+      MEMORY_BACKEND: 'memwal',
+      MEMWAL_DELEGATE_KEY: 'memwal_secret',
+      MEMWAL_ACCOUNT_ID: 'memwal_account',
+      MEMWAL_SERVER_URL: 'https://memory.walrus.example',
+      MEMWAL_NAMESPACE: 'walrusproof-test',
       PRIVATE_KEY: 'do_not_leak',
     });
 
@@ -27,8 +32,17 @@ describe('loadTenderBoardConfig', () => {
     expect(config.suiCliPath).toBe('C:\\sui\\sui.exe');
     expect(config.suiClientConfig).toBe('C:\\secret\\client.yaml');
     expect(config.workerAgentId).toBe('sui_worker');
+    expect(config.memoryBackend).toBe('memwal');
+    expect(config.safe.memory).toMatchObject({
+      backend: 'memwal',
+      memwalConfigured: true,
+      memwalServerConfigured: true,
+      memwalAccountConfigured: true,
+      memwalNamespace: 'walrusproof-test',
+    });
     expect(safeText).not.toContain('do_not_leak');
     expect(safeText).not.toContain('client.yaml');
+    expect(safeText).not.toContain('memwal_secret');
   });
 
   it('reports missing Sui settings plainly', () => {
@@ -47,5 +61,9 @@ describe('loadTenderBoardConfig', () => {
 
   it('rejects non-Sui modes', () => {
     expect(() => loadTenderBoardConfig({ TENDERBOARD_MODE: 'live' })).toThrow('Expected sui-dev or sui');
+  });
+
+  it('rejects unknown memory backends', () => {
+    expect(() => loadTenderBoardConfig({ MEMORY_BACKEND: 'postgres' })).toThrow('Expected walrus or memwal');
   });
 });

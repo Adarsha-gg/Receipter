@@ -246,6 +246,11 @@ export interface AgentMemoryRecord {
   workerAgentId: string;
   runId: string;
   taskTitle: string;
+  workOrderId: string | undefined;
+  paymentIntentId: string | undefined;
+  selectedBidId: string | undefined;
+  amountMist: string | undefined;
+  amountSui: string | undefined;
   createdAt: string;
   updatedAt: string;
   status: LiveRunStatus;
@@ -259,10 +264,18 @@ export interface AgentMemoryRecord {
   verificationAdmissibility: VerificationAdmissibility;
   evidenceStrength: VerificationEvidenceStrength;
   settlementAction: SettlementAction | undefined;
+  paymentDigest: string | undefined;
   walrusBlobId: string | undefined;
   walrusReadUrl: string | undefined;
   suiAnchorDigest: string | undefined;
   evidenceHash: string | undefined;
+  marketplaceProof: {
+    paymentBound: boolean;
+    workerSelected: boolean;
+    sourceVerified: boolean;
+    walrusStored: boolean;
+    suiAnchored: boolean;
+  };
   memoryHash: string;
 }
 

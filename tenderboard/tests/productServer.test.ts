@@ -504,8 +504,21 @@ describe('WalrusProof Market product server', () => {
         objectType: 'suiproof.agent_memory_record.v1',
         workerAgentId: 'sui_opportunity_scout',
         runId: created.runId,
+        workOrderId: before.workOrderId,
+        paymentIntentId: before.paymentIntentPlan.intentId,
+        selectedBidId: 'public_scout_standard',
+        amountMist: '35000000',
+        amountSui: '0.035',
+        paymentDigest: after.suiPaymentDigest,
         evidenceStrength: 'source_receipt',
         settlementAction: 'store_walrus_evidence',
+        marketplaceProof: {
+          paymentBound: true,
+          workerSelected: true,
+          sourceVerified: true,
+          walrusStored: false,
+          suiAnchored: false,
+        },
       });
       expect(JSON.stringify(delivered.events)).toContain('walrus_upload_pending');
 
@@ -533,9 +546,19 @@ describe('WalrusProof Market product server', () => {
       });
       expect(withEvidence.settlementInstruction.action).toBe('anchor_sui_receipt');
       expect(withEvidence.memoryRecord).toMatchObject({
+        workOrderId: before.workOrderId,
+        paymentIntentId: before.paymentIntentPlan.intentId,
+        selectedBidId: 'public_scout_standard',
         walrusBlobId: withEvidence.walrusBlobId,
         evidenceStrength: 'walrus_backed',
         settlementAction: 'anchor_sui_receipt',
+        marketplaceProof: {
+          paymentBound: true,
+          workerSelected: true,
+          sourceVerified: true,
+          walrusStored: true,
+          suiAnchored: false,
+        },
       });
       expect(withEvidence.memoryRecord.memoryHash).toMatch(/^sha256:/);
 
@@ -558,9 +581,19 @@ describe('WalrusProof Market product server', () => {
         lastEvidenceHash: anchored.verificationManifest.evidenceHash,
       });
       expect(anchored.memoryRecord).toMatchObject({
+        workOrderId: before.workOrderId,
+        paymentIntentId: before.paymentIntentPlan.intentId,
+        selectedBidId: 'public_scout_standard',
         suiAnchorDigest: anchored.suiAnchorDigest,
         evidenceStrength: 'sui_anchored',
         settlementAction: 'record_settlement',
+        marketplaceProof: {
+          paymentBound: true,
+          workerSelected: true,
+          sourceVerified: true,
+          walrusStored: true,
+          suiAnchored: true,
+        },
       });
       expect(anchored.verificationManifest.requiredChecks.find((check: any) => check.id === 'reputation_signal')).toMatchObject({
         status: 'passed',
@@ -602,8 +635,18 @@ describe('WalrusProof Market product server', () => {
         objectType: 'suiproof.agent_memory_record.v1',
         memoryId: anchored.memoryRecord.memoryId,
         runId: created.runId,
+        workOrderId: before.workOrderId,
+        paymentIntentId: before.paymentIntentPlan.intentId,
+        selectedBidId: 'public_scout_standard',
         walrusBlobId: anchored.walrusBlobId,
         suiAnchorDigest: anchored.suiAnchorDigest,
+        marketplaceProof: {
+          paymentBound: true,
+          workerSelected: true,
+          sourceVerified: true,
+          walrusStored: true,
+          suiAnchored: true,
+        },
       });
 
       const memoryIndex = await (await fetch(`${baseUrl}/api/walrus/memory`)).json();

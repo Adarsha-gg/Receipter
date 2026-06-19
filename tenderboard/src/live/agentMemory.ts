@@ -10,13 +10,27 @@ export function buildAgentMemoryRecord(receipt: LiveRunReceipt): AgentMemoryReco
       ? Math.round((claimResults.reduce((total, result) => total + result.supportScore, 0) / claimResults.length) * 10) / 10
       : undefined;
   const sourceObservationCount = receipt.workerEvidence?.sourceReceipt.observations.length ?? 0;
+  const selectedBidId = receipt.agentHandoff?.selectedBidId ?? receipt.workerBidBoard?.selectedBidId;
+  const marketplaceProof = {
+    paymentBound: Boolean(receipt.suiPaymentDigest ?? receipt.receiptPlan?.paymentDigest),
+    workerSelected: Boolean(selectedBidId && receipt.workerAgentId),
+    sourceVerified: supportedClaimCount > 0 && failedClaimCount === 0,
+    walrusStored: Boolean(receipt.walrusBlobId),
+    suiAnchored: Boolean(receipt.suiAnchorDigest),
+  };
   const body = {
     workerAgentId: receipt.workerAgentId,
     runId: receipt.runId,
     taskTitle: receipt.taskTitle,
+    workOrderId: receipt.workOrderId,
+    paymentIntentId: receipt.paymentIntentPlan?.intentId ?? receipt.receiptPlan?.intentId,
+    selectedBidId,
+    amountMist: receipt.paymentIntentPlan?.amountMist ?? receipt.receiptPlan?.amountMist,
     evidenceHash: receipt.verificationManifest.evidenceHash,
     walrusBlobId: receipt.walrusBlobId,
     suiAnchorDigest: receipt.suiAnchorDigest,
+    paymentDigest: receipt.suiPaymentDigest,
+    marketplaceProof,
     claimResults,
   };
   const memoryHash = stableHash(body);
@@ -27,6 +41,11 @@ export function buildAgentMemoryRecord(receipt: LiveRunReceipt): AgentMemoryReco
     workerAgentId: receipt.workerAgentId,
     runId: receipt.runId,
     taskTitle: receipt.taskTitle,
+    workOrderId: receipt.workOrderId,
+    paymentIntentId: receipt.paymentIntentPlan?.intentId ?? receipt.receiptPlan?.intentId,
+    selectedBidId,
+    amountMist: receipt.paymentIntentPlan?.amountMist ?? receipt.receiptPlan?.amountMist,
+    amountSui: receipt.paymentIntentPlan?.amountSui ?? receipt.receiptPlan?.amountSui,
     createdAt: receipt.createdAt,
     updatedAt: receipt.updatedAt,
     status: receipt.status,
@@ -40,10 +59,12 @@ export function buildAgentMemoryRecord(receipt: LiveRunReceipt): AgentMemoryReco
     verificationAdmissibility: receipt.verificationManifest.summary?.admissibility ?? receipt.clearingDecision?.verificationAdmissibility ?? 'pending',
     evidenceStrength: receipt.verificationManifest.summary?.evidenceStrength ?? receipt.clearingDecision?.evidenceStrength ?? 'none',
     settlementAction: receipt.settlementInstruction?.action,
+    paymentDigest: receipt.suiPaymentDigest,
     walrusBlobId: receipt.walrusBlobId,
     walrusReadUrl: receipt.walrusReadUrl,
     suiAnchorDigest: receipt.suiAnchorDigest,
     evidenceHash: receipt.verificationManifest.evidenceHash,
+    marketplaceProof,
     memoryHash,
   };
 }

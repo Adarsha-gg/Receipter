@@ -5,8 +5,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { loadTenderBoardConfig } from '../src/live/config.js';
 import { RunStore } from '../src/live/runStore.js';
-import type { LiveRunReceipt } from '../src/live/types.js';
-import { createTenderBoardServer, type LiveRuntime } from '../src/server/httpServer.js';
+import { createTenderBoardServer } from '../src/server/httpServer.js';
 import { fakeScoutFetch } from './helpers/fakeScoutFetch.js';
 
 let tempDir: string;
@@ -19,16 +18,18 @@ afterEach(async () => {
   await rm(tempDir, { recursive: true, force: true });
 });
 
-describe('TenderBoard product server', () => {
-  it('serves safe config and does not expose SDK keys', async () => {
+describe('TenderBoard Sui product server', () => {
+  it('serves Sui readiness without exposing private env values', async () => {
     const { baseUrl, close } = await startTestServer({
-      TENDERBOARD_MODE: 'live',
+      TENDERBOARD_MODE: 'sui',
       TENDERBOARD_RECEIPTS_DIR: tempDir,
-      CROO_API_URL: 'https://api.croo.network',
-      CROO_WS_URL: 'wss://api.croo.network/ws',
-      CROO_REQUESTER_SDK_KEY: 'croo_sk_requester_secret',
-      CROO_WORKER_SDK_KEY: 'croo_sk_worker_secret',
-      CROO_WORKER_SERVICE_ID: 'svc_worker',
+      SUI_NETWORK: 'testnet',
+      SUI_OPERATOR_ADDRESS: '0xoperator',
+      SUI_PACKAGE_ID: '0xpackage',
+      SUI_RECEIPT_REGISTRY_ID: '0xregistry',
+      WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
+      WALRUS_AGGREGATOR_URL: 'https://aggregator.walrus.testnet.example',
+      PRIVATE_KEY: 'do_not_leak',
     });
 
     try {
@@ -36,50 +37,75 @@ describe('TenderBoard product server', () => {
       const text = await response.text();
 
       expect(response.status).toBe(200);
-      expect(text).toContain('readyForLive');
-      expect(text).not.toContain('croo_sk_requester_secret');
-      expect(text).not.toContain('croo_sk_worker_secret');
+      expect(text).toContain('readyForSui');
+      expect(text).toContain('packageIdConfigured');
+      expect(text).not.toContain('do_not_leak');
     } finally {
       await close();
     }
   });
 
-  it('creates a run without storing private notes', async () => {
+  it('creates a Sui work order without storing private notes', async () => {
     const { baseUrl, close } = await startTestServer({
-      TENDERBOARD_MODE: 'mock',
+      TENDERBOARD_MODE: 'sui-dev',
       TENDERBOARD_RECEIPTS_DIR: tempDir,
     });
 
     try {
       const created = await postJson(`${baseUrl}/api/runs`, {
-        title: 'Write launch checklist',
+        title: 'Write Sui launch checklist',
         instructions: 'Make it useful.',
-        acceptanceCriteria: ['Return three concrete launch steps.', 'Include owner and risk for each step.'],
+        acceptanceCriteria: ['Return three concrete Sui launch steps.', 'Include owner and risk for each step.'],
         checkerPack: 'research',
         privateNotes: 'do not send this field to the worker',
-        maxPayment: { amount: '0.05', currency: 'USDC' },
+        maxPayment: { amount: '0.050', currency: 'SUI' },
       });
 
       const receiptResponse = await fetch(`${baseUrl}/api/runs/${created.runId}`);
       const receiptText = await receiptResponse.text();
 
       expect(created.status).toBe('awaiting_payment_approval');
-      expect(created.sanitizedTask).toContain('Write launch checklist');
-      expect(created.sanitizedTask).toContain('Return three concrete launch steps.');
+      expect(created.sanitizedTask).toContain('Write Sui launch checklist');
       expect(receiptText).not.toContain('do not send this field');
-      expect(receiptText).toContain('negotiation_created');
+      expect(receiptText).toContain('sui_work_order_created');
       expect(receiptText).toContain('trustDecision');
       expect(receiptText).toContain('verificationManifest');
       expect(receiptText).toContain('public_sources');
-      expect(receiptText).toContain('trust_evaluated');
     } finally {
       await close();
     }
   });
 
-  it('lists runs and serves downloadable receipt JSON', async () => {
+  it('requires approval before delivery and records a Sui dev digest', async () => {
     const { baseUrl, close } = await startTestServer({
-      TENDERBOARD_MODE: 'mock',
+      TENDERBOARD_MODE: 'sui-dev',
+      TENDERBOARD_RECEIPTS_DIR: tempDir,
+    });
+
+    try {
+      const created = await postJson(`${baseUrl}/api/runs`, {
+        title: 'Find Sui ecosystem opportunities',
+        instructions: 'Make it useful.',
+        maxPayment: { amount: '0.050', currency: 'SUI' },
+      });
+
+      const before = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
+      expect(before.suiPaymentDigest).toBeUndefined();
+      expect(before.deliveryText).toBeUndefined();
+
+      const after = await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
+      expect(after.status).toBe('delivered');
+      expect(after.suiPaymentDigest).toContain('sui_dev_payment_');
+      expect(after.deliveryText).toContain('Opportunity Scout Report');
+      expect(JSON.stringify(after.events)).toContain('walrus_upload_pending');
+    } finally {
+      await close();
+    }
+  });
+
+  it('lists runs and serves downloadable Sui receipt JSON', async () => {
+    const { baseUrl, close } = await startTestServer({
+      TENDERBOARD_MODE: 'sui-dev',
       TENDERBOARD_RECEIPTS_DIR: tempDir,
     });
 
@@ -88,7 +114,7 @@ describe('TenderBoard product server', () => {
         title: 'Run history task',
         instructions: 'Make it useful.',
         privateNotes: 'do not send this field',
-        maxPayment: { amount: '0.05', currency: 'USDC' },
+        maxPayment: { amount: '0.050', currency: 'SUI' },
       });
 
       const runs = await (await fetch(`${baseUrl}/api/runs`)).json();
@@ -99,149 +125,18 @@ describe('TenderBoard product server', () => {
       const receiptText = await receiptResponse.text();
       expect(receiptResponse.headers.get('content-disposition')).toContain(`${created.runId}.json`);
       expect(receiptText).toContain(created.runId);
+      expect(receiptText).toContain('suiNetwork');
       expect(receiptText).not.toContain('do not send this field');
-    } finally {
-      await close();
-    }
-  });
-
-  it('requires payment approval before mock delivery is saved', async () => {
-    const { baseUrl, close } = await startTestServer({
-      TENDERBOARD_MODE: 'mock',
-      TENDERBOARD_RECEIPTS_DIR: tempDir,
-    });
-
-    try {
-      const created = await postJson(`${baseUrl}/api/runs`, {
-        title: 'Write launch checklist',
-        instructions: 'Make it useful.',
-        maxPayment: { amount: '0.05', currency: 'USDC' },
-      });
-
-      const before = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
-      expect(before.paymentTxHash).toBeUndefined();
-      expect(before.deliveryText).toBeUndefined();
-
-      const after = await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
-      expect(after.status).toBe('delivered');
-      expect(after.paymentTxHash).toContain('mock_tx_');
-      expect(after.deliveryText).toContain('Opportunity Scout Report');
-    } finally {
-      await close();
-    }
-  });
-
-  it('does not invent a transaction hash in dry-run mode', async () => {
-    const { baseUrl, close } = await startTestServer({
-      TENDERBOARD_MODE: 'dry-run',
-      TENDERBOARD_RECEIPTS_DIR: tempDir,
-    });
-
-    try {
-      const created = await postJson(`${baseUrl}/api/runs`, {
-        title: 'Dry run task',
-        instructions: 'Make it useful.',
-        maxPayment: { amount: '0.05', currency: 'USDC' },
-      });
-
-      const after = await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
-      expect(after.status).toBe('delivered');
-      expect(after.deliveryText).toContain('Opportunity Scout Report');
-      expect(after.paymentTxHash).toBeUndefined();
-      expect(JSON.stringify(after.events)).toContain('payment_skipped_dry_run');
-    } finally {
-      await close();
-    }
-  });
-
-  it('delegates live runs and live payments to the live runtime without creating mock tx hashes', async () => {
-    const fakeLiveRuntime: LiveRuntime = {
-      async startRun(receipt: LiveRunReceipt) {
-        return {
-          ...receipt,
-          status: 'awaiting_payment_approval',
-          negotiationId: 'real_neg_123',
-          orderId: 'real_order_123',
-        };
-      },
-      async approvePayment(runId: string) {
-        return {
-          runId,
-          mode: 'live',
-          status: 'paid',
-          createdAt: '2026-06-18T19:30:00.000Z',
-          updatedAt: '2026-06-18T19:31:00.000Z',
-          taskTitle: 'Write launch checklist',
-          sanitizedTask: 'Task: Write launch checklist',
-          maxPayment: { amount: '0.05', currency: 'USDC' },
-          trustDecision: {
-            workerAgentId: 'svc_worker',
-            score: 91,
-            tier: 'AA',
-            verdict: 'allow',
-            pricedMultiplier: 1,
-            reasons: ['No secret-looking lines were found in the public worker packet.'],
-            controls: ['Payment requires explicit approval.'],
-          },
-          verificationManifest: {
-            specHash: 'sha256:spec',
-            evidenceHash: undefined,
-            checkerPack: 'research',
-            acceptanceCriteria: ['Safe task only.'],
-            requiredChecks: [
-              { id: 'safe_packet', label: 'Safe worker packet', status: 'passed', detail: 'No forbidden secret pattern remains.' },
-            ],
-            settlementRule: 'Release after approval and delivery.',
-            reputationWriteback: 'Use receipt as feedback.',
-          },
-          crooServiceId: 'svc_worker',
-          negotiationId: 'real_neg_123',
-          orderId: 'real_order_123',
-          paymentTxHash: '0xrealpaymenttx',
-          deliveryText: undefined,
-          error: undefined,
-          events: [],
-        };
-      },
-    };
-    const { baseUrl, close } = await startTestServer(
-      {
-        TENDERBOARD_MODE: 'live',
-        TENDERBOARD_RECEIPTS_DIR: tempDir,
-        CROO_API_URL: 'https://api.croo.network',
-        CROO_WS_URL: 'wss://api.croo.network/ws',
-        CROO_REQUESTER_SDK_KEY: 'croo_sk_requester_secret',
-        CROO_WORKER_SDK_KEY: 'croo_sk_worker_secret',
-        CROO_WORKER_SERVICE_ID: 'svc_worker',
-      },
-      fakeLiveRuntime,
-    );
-
-    try {
-      const created = await postJson(`${baseUrl}/api/runs`, {
-        title: 'Write launch checklist',
-        instructions: 'Make it useful.',
-        maxPayment: { amount: '0.05', currency: 'USDC' },
-      });
-
-      const paid = await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
-      expect(paid.paymentTxHash).toBe('0xrealpaymenttx');
-      expect(paid.paymentTxHash).not.toContain('mock_tx_');
     } finally {
       await close();
     }
   });
 });
 
-async function startTestServer(
-  env: NodeJS.ProcessEnv,
-  liveRuntime?: LiveRuntime,
-): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+async function startTestServer(env: NodeJS.ProcessEnv): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   const config = loadTenderBoardConfig(env);
   const store = new RunStore(config.receiptsDir);
-  const server = liveRuntime
-    ? createTenderBoardServer({ config, store, liveRuntime, scoutFetch: fakeScoutFetch as typeof fetch })
-    : createTenderBoardServer({ config, store, scoutFetch: fakeScoutFetch as typeof fetch });
+  const server = createTenderBoardServer({ config, store, scoutFetch: fakeScoutFetch as typeof fetch });
   await new Promise<void>((resolve) => server.listen(0, resolve));
   const address = server.address() as AddressInfo;
   return {

@@ -53,8 +53,9 @@ export class RunStore {
         taskTitle: receipt.taskTitle,
         createdAt: receipt.createdAt,
         updatedAt: receipt.updatedAt,
-        orderId: receipt.orderId,
-        paymentTxHash: receipt.paymentTxHash,
+        workOrderId: receipt.workOrderId,
+        suiPaymentDigest: receipt.suiPaymentDigest,
+        suiAnchorDigest: receipt.suiAnchorDigest,
       }))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }

@@ -4,11 +4,12 @@ import { makeEvent } from '../src/live/runStore.js';
 import type { LiveRunReceipt } from '../src/live/types.js';
 
 describe('renderReceiptProof', () => {
-  it('renders a judge-readable proof without private notes', () => {
+  it('renders a judge-readable Sui proof without private notes', () => {
     const proof = renderReceiptProof(sampleReceipt());
 
-    expect(proof).toContain('# TenderBoard Run Proof: run_proof');
-    expect(proof).toContain('Payment tx hash: 0xabc');
+    expect(proof).toContain('# TenderBoard Sui Run Proof: run_proof');
+    expect(proof).toContain('Sui payment digest: 0xsui');
+    expect(proof).toContain('Walrus blob id: walrus_blob_1');
     expect(proof).toContain('Trust verdict: allow');
     expect(proof).toContain('Checker pack: research');
     expect(proof).toContain('Safe task only.');
@@ -21,21 +22,21 @@ describe('renderReceiptProof', () => {
 function sampleReceipt(): LiveRunReceipt {
   return {
     runId: 'run_proof',
-    mode: 'live',
+    mode: 'sui',
     status: 'delivered',
-    createdAt: '2026-06-18T20:00:00.000Z',
-    updatedAt: '2026-06-18T20:05:00.000Z',
+    createdAt: '2026-06-19T20:00:00.000Z',
+    updatedAt: '2026-06-19T20:05:00.000Z',
     taskTitle: 'Find opportunities',
     sanitizedTask: 'Task: Find opportunities',
-    maxPayment: { amount: '0.05', currency: 'USDC' },
+    maxPayment: { amount: '0.050', currency: 'SUI' },
     trustDecision: {
-      workerAgentId: 'svc_worker',
+      workerAgentId: 'sui_worker',
       score: 91,
       tier: 'AA',
       verdict: 'allow',
       pricedMultiplier: 1,
       reasons: ['No secret-looking lines were found in the public worker packet.'],
-      controls: ['Payment requires explicit approval.'],
+      controls: ['Sui payment approval is bound to the exact work order before delivery.'],
     },
     verificationManifest: {
       specHash: 'sha256:spec',
@@ -45,15 +46,19 @@ function sampleReceipt(): LiveRunReceipt {
       requiredChecks: [
         { id: 'safe_packet', label: 'Safe worker packet', status: 'passed', detail: 'No forbidden secret pattern remains.' },
       ],
-      settlementRule: 'Release after approval and delivery.',
-      reputationWriteback: 'Use receipt as feedback.',
+      settlementRule: 'Release after Sui approval and delivery.',
+      reputationWriteback: 'Use receipt as Sui feedback.',
     },
-    crooServiceId: 'svc_worker',
-    negotiationId: 'neg_1',
-    orderId: 'order_1',
-    paymentTxHash: '0xabc',
+    workerAgentId: 'sui_worker',
+    workOrderId: 'sui_work_order_1',
+    suiNetwork: 'testnet',
+    suiPackageId: '0xpackage',
+    suiReceiptRegistryId: '0xregistry',
+    suiPaymentDigest: '0xsui',
+    suiAnchorDigest: undefined,
+    walrusBlobId: 'walrus_blob_1',
     deliveryText: 'Opportunity Scout Report\nLink: https://example.com',
     error: undefined,
-    events: [makeEvent({ source: 'croo', type: 'payment_paid', message: 'CROO payment transaction sent.' })],
+    events: [makeEvent({ source: 'sui', type: 'sui_dev_payment_recorded', message: 'Sui dev payment digest recorded.' })],
   };
 }

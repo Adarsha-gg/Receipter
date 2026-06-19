@@ -2,49 +2,44 @@ import { describe, expect, it } from 'vitest';
 import { loadTenderBoardConfig } from '../src/live/config.js';
 
 describe('loadTenderBoardConfig', () => {
-  it('returns safe config without leaking SDK keys', () => {
+  it('returns safe Sui config without leaking unrelated env secrets', () => {
     const config = loadTenderBoardConfig({
-      TENDERBOARD_MODE: 'live',
+      TENDERBOARD_MODE: 'sui',
       TENDERBOARD_PORT: '4174',
-      TENDERBOARD_MAX_PAYMENT_USDC: '0.05',
-      CROO_API_URL: 'https://api.croo.network',
-      CROO_WS_URL: 'wss://api.croo.network/ws',
-      CROO_REQUESTER_SDK_KEY: 'croo_sk_requester_secret',
-      CROO_WORKER_SDK_KEY: 'croo_sk_worker_secret',
-      CROO_WORKER_SERVICE_ID: 'svc_worker',
+      TENDERBOARD_MAX_PAYMENT_SUI: '0.050',
+      TENDERBOARD_WORKER_AGENT_ID: 'sui_worker',
       SUI_NETWORK: 'testnet',
+      SUI_OPERATOR_ADDRESS: '0xoperator',
       SUI_PACKAGE_ID: '0xpackage',
       SUI_RECEIPT_REGISTRY_ID: '0xregistry',
       WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
       WALRUS_AGGREGATOR_URL: 'https://aggregator.walrus.testnet.example',
+      PRIVATE_KEY: 'do_not_leak',
     });
 
     const safeText = JSON.stringify(config.safe);
-    expect(config.safe.readyForLive).toBe(true);
-    expect(config.safe.sui.readyForSuiAnchor).toBe(true);
-    expect(safeText).not.toContain('croo_sk_requester_secret');
-    expect(safeText).not.toContain('croo_sk_worker_secret');
+    expect(config.safe.mode).toBe('sui');
+    expect(config.safe.maxPaymentSui).toBe('0.050');
+    expect(config.safe.sui.readyForSui).toBe(true);
+    expect(config.workerAgentId).toBe('sui_worker');
+    expect(safeText).not.toContain('do_not_leak');
   });
 
-  it('reports missing live settings plainly', () => {
-    const config = loadTenderBoardConfig({ TENDERBOARD_MODE: 'live' });
-
-    expect(config.safe.readyForLive).toBe(false);
-    expect(config.safe.missingLiveSettings).toContain('CROO_API_URL');
-    expect(config.safe.missingLiveSettings).toContain('CROO_REQUESTER_SDK_KEY');
-    expect(config.safe.missingLiveSettings).toContain('CROO_WORKER_SDK_KEY');
-  });
-
-  it('reports missing Sui anchor settings separately from CROO live settings', () => {
-    const config = loadTenderBoardConfig({ TENDERBOARD_MODE: 'mock' });
+  it('reports missing Sui settings plainly', () => {
+    const config = loadTenderBoardConfig({ TENDERBOARD_MODE: 'sui-dev' });
 
     expect(config.safe.sui.network).toBe('testnet');
-    expect(config.safe.sui.readyForSuiAnchor).toBe(false);
+    expect(config.safe.sui.readyForSui).toBe(false);
     expect(config.safe.sui.missingSuiSettings).toEqual([
       'SUI_PACKAGE_ID',
       'SUI_RECEIPT_REGISTRY_ID',
+      'SUI_OPERATOR_ADDRESS',
       'WALRUS_PUBLISHER_URL',
       'WALRUS_AGGREGATOR_URL',
     ]);
+  });
+
+  it('rejects non-Sui modes', () => {
+    expect(() => loadTenderBoardConfig({ TENDERBOARD_MODE: 'live' })).toThrow('Expected sui-dev or sui');
   });
 });

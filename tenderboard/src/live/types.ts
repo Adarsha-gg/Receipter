@@ -1,21 +1,21 @@
-export type TenderBoardMode = 'mock' | 'dry-run' | 'live';
+export type TenderBoardMode = 'sui-dev' | 'sui';
 
 export type LiveRunStatus =
   | 'draft'
   | 'sanitized'
-  | 'negotiating'
-  | 'accepted'
   | 'awaiting_payment_approval'
   | 'paying'
   | 'paid'
   | 'working'
   | 'delivered'
+  | 'anchoring'
+  | 'anchored'
   | 'failed'
   | 'cancelled';
 
 export interface LiveRunEvent {
   at: string;
-  source: 'app' | 'task-giver' | 'worker' | 'croo';
+  source: 'app' | 'task-giver' | 'worker' | 'sui' | 'walrus';
   type: string;
   message: string;
   data?: Record<string, unknown>;
@@ -23,7 +23,7 @@ export interface LiveRunEvent {
 
 export interface MoneyInput {
   amount: string;
-  currency: 'USDC';
+  currency: 'SUI';
 }
 
 export type CheckerPackId = 'research' | 'code' | 'commerce';
@@ -76,8 +76,9 @@ export interface LiveRunSummary {
   taskTitle: string;
   createdAt: string;
   updatedAt: string;
-  orderId: string | undefined;
-  paymentTxHash: string | undefined;
+  workOrderId: string | undefined;
+  suiPaymentDigest: string | undefined;
+  suiAnchorDigest: string | undefined;
 }
 
 export interface LiveRunReceipt {
@@ -91,10 +92,14 @@ export interface LiveRunReceipt {
   maxPayment: MoneyInput;
   trustDecision: TrustDecision;
   verificationManifest: VerificationManifest;
-  crooServiceId: string | undefined;
-  negotiationId: string | undefined;
-  orderId: string | undefined;
-  paymentTxHash: string | undefined;
+  workerAgentId: string;
+  workOrderId: string | undefined;
+  suiNetwork: string;
+  suiPackageId: string | undefined;
+  suiReceiptRegistryId: string | undefined;
+  suiPaymentDigest: string | undefined;
+  suiAnchorDigest: string | undefined;
+  walrusBlobId: string | undefined;
   deliveryText: string | undefined;
   events: LiveRunEvent[];
   error: string | undefined;
@@ -103,46 +108,31 @@ export interface LiveRunReceipt {
 export interface SafeConfig {
   mode: TenderBoardMode;
   port: number;
-  maxPaymentUsdc: string;
+  maxPaymentSui: string;
   receiptsDir: string;
-  embeddedWorker: boolean;
+  workerAgentId: string;
   sui: {
     network: string;
     packageIdConfigured: boolean;
     receiptRegistryIdConfigured: boolean;
+    operatorAddressConfigured: boolean;
     walrusPublisherConfigured: boolean;
     walrusAggregatorConfigured: boolean;
-    readyForSuiAnchor: boolean;
+    readyForSui: boolean;
     missingSuiSettings: string[];
   };
-  croo: {
-    apiUrlConfigured: boolean;
-    wsUrlConfigured: boolean;
-    requesterSdkKeyConfigured: boolean;
-    workerSdkKeyConfigured: boolean;
-    workerServiceIdConfigured: boolean;
-    baseRpcUrlConfigured: boolean;
-  };
-  readyForLive: boolean;
-  missingLiveSettings: string[];
 }
 
 export interface TenderBoardConfig {
   mode: TenderBoardMode;
   port: number;
-  maxPaymentUsdc: string;
+  maxPaymentSui: string;
   receiptsDir: string;
-  crooApiUrl: string | undefined;
-  crooWsUrl: string | undefined;
-  baseRpcUrl: string | undefined;
-  requesterSdkKey: string | undefined;
-  workerSdkKey: string | undefined;
-  workerServiceId: string | undefined;
-  embeddedWorker: boolean;
-  missingLiveSettings: string[];
+  workerAgentId: string;
   suiNetwork: string;
   suiPackageId: string | undefined;
   suiReceiptRegistryId: string | undefined;
+  suiOperatorAddress: string | undefined;
   walrusPublisherUrl: string | undefined;
   walrusAggregatorUrl: string | undefined;
   missingSuiSettings: string[];

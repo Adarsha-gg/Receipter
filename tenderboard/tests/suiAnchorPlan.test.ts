@@ -6,8 +6,9 @@ import { buildSuiAnchorPlan, renderSuiAnchorPlan } from '../src/sui/anchorPlan.j
 describe('Sui anchor plan', () => {
   it('maps a finalized receipt into the Move call arguments', () => {
     const config = loadTenderBoardConfig({
-      TENDERBOARD_MODE: 'mock',
+      TENDERBOARD_MODE: 'sui',
       SUI_NETWORK: 'testnet',
+      SUI_OPERATOR_ADDRESS: '0xoperator',
       SUI_PACKAGE_ID: '0xpackage',
       SUI_RECEIPT_REGISTRY_ID: '0xregistry',
       WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
@@ -26,13 +27,13 @@ describe('Sui anchor plan', () => {
       '91',
       'allow',
       'research',
-      '0xsui_or_payment_tx',
+      '0xsui_payment',
       'walrus_blob_123',
     ]);
   });
 
   it('renders missing deployment settings without overclaiming readiness', () => {
-    const config = loadTenderBoardConfig({ TENDERBOARD_MODE: 'mock' });
+    const config = loadTenderBoardConfig({ TENDERBOARD_MODE: 'sui-dev' });
     const plan = buildSuiAnchorPlan(sampleReceipt(), config);
     const rendered = renderSuiAnchorPlan(plan);
 
@@ -48,15 +49,15 @@ describe('Sui anchor plan', () => {
 function sampleReceipt(): LiveRunReceipt {
   return {
     runId: 'run_sui',
-    mode: 'mock',
+    mode: 'sui-dev',
     status: 'delivered',
     createdAt: '2026-06-19T01:00:00.000Z',
     updatedAt: '2026-06-19T01:00:00.000Z',
     taskTitle: 'Find Sui agent opportunities',
     sanitizedTask: 'Task: Find Sui agent opportunities',
-    maxPayment: { amount: '0.05', currency: 'USDC' },
+    maxPayment: { amount: '0.050', currency: 'SUI' },
     trustDecision: {
-      workerAgentId: 'sui_worker_service',
+      workerAgentId: 'sui_worker',
       score: 91,
       tier: 'AA',
       verdict: 'allow',
@@ -70,16 +71,20 @@ function sampleReceipt(): LiveRunReceipt {
       checkerPack: 'research',
       acceptanceCriteria: ['Return public Sui links.'],
       requiredChecks: [
-        { id: 'order_bound_approval', label: 'Order-bound approval', status: 'passed', detail: 'Approved.' },
+        { id: 'order_bound_approval', label: 'Sui work-order approval', status: 'passed', detail: 'Approved.' },
         { id: 'delivery_evidence', label: 'Delivery evidence', status: 'passed', detail: 'Delivered.' },
       ],
-      settlementRule: 'Release after approval and delivery.',
-      reputationWriteback: 'Use receipt as feedback.',
+      settlementRule: 'Release after Sui approval and delivery.',
+      reputationWriteback: 'Use receipt as Sui feedback.',
     },
-    crooServiceId: 'sui_worker_service',
-    negotiationId: 'neg_1',
-    orderId: 'order_1',
-    paymentTxHash: '0xsui_or_payment_tx',
+    workerAgentId: 'sui_worker',
+    workOrderId: 'sui_work_order_1',
+    suiNetwork: 'testnet',
+    suiPackageId: '0xpackage',
+    suiReceiptRegistryId: '0xregistry',
+    suiPaymentDigest: '0xsui_payment',
+    suiAnchorDigest: undefined,
+    walrusBlobId: undefined,
     deliveryText: 'Sui opportunity report',
     error: undefined,
     events: [],

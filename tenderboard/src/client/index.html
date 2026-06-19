@@ -10,7 +10,7 @@
   <main class="appShell">
     <header class="topbar">
       <div>
-        <p class="kicker">TrustMCP-inspired / CTRL+Z-style</p>
+        <p class="kicker">Sui-native agent work contracts</p>
         <h1>TenderBoard</h1>
       </div>
       <div class="topActions">
@@ -22,8 +22,8 @@
     <section class="commandBand" aria-label="Product overview">
       <div class="commandCopy">
         <p class="eyebrow">Agent work desk</p>
-        <h2>Hire worker agents with trust gates, verifiable work, and controlled settlement.</h2>
-        <p class="lead">TenderBoard maps TrustMCP-inspired runtime trust checks to a CTRL+Z-style pay-on-proof workflow. The buyer sees what leaves the boundary, approves payment only after an order exists, and can anchor receipt hashes to Sui with full evidence stored on Walrus.</p>
+        <h2>Hire worker agents through Sui work orders, Walrus evidence, and on-chain receipt proofs.</h2>
+        <p class="lead">TenderBoard makes every agent job a Sui-native work contract. The buyer sees what leaves the boundary, approves a SUI-denominated work order, stores evidence on Walrus, and anchors the final receipt to a Sui registry.</p>
       </div>
       <div class="networkMap" aria-hidden="true">
         <div class="node buyer">Buyer</div>
@@ -39,10 +39,10 @@
       <article class="metricPanel">
         <span>Payment cap</span>
         <strong id="paymentCap">--</strong>
-        <small>Hard limit before any run can move money.</small>
+        <small>Hard SUI limit before any work order can move forward.</small>
       </article>
       <article class="metricPanel">
-        <span>Live readiness</span>
+        <span>Sui mode</span>
         <strong id="liveReadiness">checking</strong>
         <small id="configText">Checking setup...</small>
       </article>
@@ -53,13 +53,13 @@
       </article>
       <article class="metricPanel">
         <span>Evidence model</span>
-        <strong>sanitized + receipt</strong>
-        <small>Private notes stay local; receipts can be anchored to Sui.</small>
+        <strong>Walrus + Sui</strong>
+        <small>Private notes stay local; public evidence gets a Sui receipt anchor.</small>
       </article>
       <article class="metricPanel">
         <span>Worker path</span>
         <strong>Opportunity Scout</strong>
-        <small>Returns public-source research through the delivery flow.</small>
+        <small>Returns public-source research for a Sui-bound delivery receipt.</small>
       </article>
     </section>
 
@@ -85,12 +85,12 @@ Flag deadline, sponsor, prize/funding, and fit when visible.
 End with a ranked recommendation and why.</textarea>
 
         <label for="privateNotes">Private notes never sent to worker</label>
-        <textarea id="privateNotes" name="privateNotes">Internal angle: prioritize agent-commerce, MCP, verification, x402, and reputation ecosystems. Do not expose this field.</textarea>
+        <textarea id="privateNotes" name="privateNotes">Internal angle: prioritize Sui primitives, Walrus evidence, object ownership, verifiable settlement, and ecosystem growth. Do not expose this field.</textarea>
 
         <div class="inlineFields three">
           <div>
-            <label for="amount">Max payment in USDC</label>
-            <input id="amount" name="amount" value="0.05" required>
+            <label for="amount">Max payment in SUI</label>
+            <input id="amount" name="amount" value="0.050" required>
           </div>
           <div>
             <label for="checkerPack">Checker pack</label>
@@ -118,7 +118,7 @@ End with a ranked recommendation and why.</textarea>
           <div>
             <p class="eyebrow">Step 3</p>
             <h3>Payment approval</h3>
-            <p id="approvalCopy">Approve only after the order exists. Live mode sends a real CROO payment; dry-run and mock mode never spend real funds.</p>
+            <p id="approvalCopy">Approve only after the Sui work order exists. Sui-dev records a dev digest; Sui mode requires a real transaction digest before submission.</p>
           </div>
           <div class="buttonRow">
             <button id="approveBtn" type="button">Approve payment</button>
@@ -180,12 +180,12 @@ End with a ranked recommendation and why.</textarea>
       <article class="insightPanel">
         <span class="panelIcon">01</span>
         <h3>Trust before execution</h3>
-        <p>Inspired by TrustMCP: agent calls should be scored, sandboxed, throttled, or blocked before tools and private data are exposed.</p>
+        <p>Each Sui work order is scored before worker execution, so private data and payment authority never move blindly.</p>
       </article>
       <article class="insightPanel">
         <span class="panelIcon">02</span>
         <h3>Proof before settlement</h3>
-        <p>Modeled after CTRL+Z Verify: payment should unlock only after evidence, checks, and an explicit operator decision.</p>
+        <p>Payment approval, evidence hash, Walrus blob id, and receipt anchor become one Sui-native verification trail.</p>
       </article>
       <article class="insightPanel">
         <span class="panelIcon">03</span>

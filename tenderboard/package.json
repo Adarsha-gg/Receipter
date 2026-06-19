@@ -3,25 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Trust-gated agent work desk with safe worker packets, CROO payment approval, and proof receipts.",
+  "description": "Sui-native trust-gated agent work desk with Walrus evidence and on-chain proof receipts.",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "start": "tsx src/server/httpServer.ts",
-    "worker": "tsx src/agents/workerAgent.ts",
     "proof:latest": "tsx src/cli/exportProof.ts",
-    "sui:anchor-plan": "tsx src/cli/exportSuiAnchorPlan.ts",
-    "live:preflight": "tsx src/cli/livePreflight.ts",
-    "live:start": "tsx src/cli/startLive.ts",
-    "live:worker": "tsx src/cli/startWorkerLive.ts"
+    "sui:anchor-plan": "tsx src/cli/exportSuiAnchorPlan.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.3",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
     "vitest": "^4.1.9"
-  },
-  "dependencies": {
-    "@croo-network/sdk": "^0.2.1"
   }
 }

@@ -2,7 +2,7 @@ import type { LiveRunReceipt } from './types.js';
 
 export function renderReceiptProof(receipt: LiveRunReceipt): string {
   const lines = [
-    `# TenderBoard Run Proof: ${receipt.runId}`,
+    `# TenderBoard Sui Run Proof: ${receipt.runId}`,
     '',
     `- Mode: ${receipt.mode}`,
     `- Status: ${receipt.status}`,
@@ -14,10 +14,13 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     `- Checker pack: ${receipt.verificationManifest.checkerPack}`,
     `- Spec hash: ${receipt.verificationManifest.specHash}`,
     `- Evidence hash: ${receipt.verificationManifest.evidenceHash ?? 'not finalized'}`,
-    `- CROO service id: ${receipt.crooServiceId ?? 'not set'}`,
-    `- Negotiation id: ${receipt.negotiationId ?? 'not created'}`,
-    `- Order id: ${receipt.orderId ?? 'not created'}`,
-    `- Payment tx hash: ${receipt.paymentTxHash ?? 'not paid / no tx hash'}`,
+    `- Sui network: ${receipt.suiNetwork}`,
+    `- Sui package id: ${receipt.suiPackageId ?? 'not configured'}`,
+    `- Sui receipt registry id: ${receipt.suiReceiptRegistryId ?? 'not configured'}`,
+    `- Sui work order id: ${receipt.workOrderId ?? 'not created'}`,
+    `- Sui payment digest: ${receipt.suiPaymentDigest ?? 'not paid / no digest'}`,
+    `- Sui anchor digest: ${receipt.suiAnchorDigest ?? 'not anchored'}`,
+    `- Walrus blob id: ${receipt.walrusBlobId ?? 'not uploaded'}`,
     '',
     '## Safe task sent to worker',
     '',
@@ -46,7 +49,7 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
   ];
 
   for (const event of receipt.events) {
-    lines.push(`- ${event.at} — ${event.source}/${event.type}: ${event.message}`);
+    lines.push(`- ${event.at} - ${event.source}/${event.type}: ${event.message}`);
   }
 
   if (receipt.error) {

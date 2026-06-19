@@ -16,7 +16,7 @@ afterEach(async () => {
 });
 
 describe('RunStore', () => {
-  it('writes and reads receipts', async () => {
+  it('writes and reads Sui receipts', async () => {
     const store = new RunStore(tempDir);
     const receipt = sampleReceipt();
 
@@ -25,6 +25,7 @@ describe('RunStore', () => {
     expect(await store.get(receipt.runId)).toMatchObject({
       runId: receipt.runId,
       status: 'awaiting_payment_approval',
+      workOrderId: 'sui_work_order_1',
     });
   });
 
@@ -35,7 +36,7 @@ describe('RunStore', () => {
 
     await store.appendEvent(
       receipt.runId,
-      makeEvent({ source: 'app', type: 'checked', message: 'Private notes were excluded.' }),
+      makeEvent({ source: 'sui', type: 'checked', message: 'Private notes were excluded.' }),
     );
 
     const stored = await store.require(receipt.runId);
@@ -43,7 +44,7 @@ describe('RunStore', () => {
     expect(JSON.stringify(stored)).not.toContain('do not send this field');
   });
 
-  it('lists receipt summaries newest first', async () => {
+  it('lists Sui receipt summaries newest first', async () => {
     const store = new RunStore(tempDir);
     await store.create(sampleReceipt({ runId: 'run_old', createdAt: '2026-06-18T18:00:00.000Z' }));
     await store.create(sampleReceipt({ runId: 'run_new', createdAt: '2026-06-18T19:00:00.000Z' }));
@@ -51,6 +52,7 @@ describe('RunStore', () => {
     const summaries = await store.list();
 
     expect(summaries.map((summary) => summary.runId)).toEqual(['run_new', 'run_old']);
+    expect(summaries[0]).toMatchObject({ workOrderId: 'sui_work_order_1' });
     expect(JSON.stringify(summaries)).not.toContain('sanitizedTask');
   });
 });
@@ -58,21 +60,21 @@ describe('RunStore', () => {
 function sampleReceipt(overrides: Partial<LiveRunReceipt> = {}): LiveRunReceipt {
   return {
     runId: 'run_test',
-    mode: 'mock',
+    mode: 'sui-dev',
     status: 'awaiting_payment_approval',
     createdAt: '2026-06-18T18:00:00.000Z',
     updatedAt: '2026-06-18T18:00:00.000Z',
     taskTitle: 'Write checklist',
     sanitizedTask: 'Task: Write checklist',
-    maxPayment: { amount: '0.05', currency: 'USDC' },
+    maxPayment: { amount: '0.050', currency: 'SUI' },
     trustDecision: {
-      workerAgentId: 'mock_worker_service',
+      workerAgentId: 'sui_worker',
       score: 91,
       tier: 'AA',
       verdict: 'allow',
       pricedMultiplier: 1,
       reasons: ['No secret-looking lines were found in the public worker packet.'],
-      controls: ['Payment requires explicit approval.'],
+      controls: ['Sui payment approval is bound to the exact work order before delivery.'],
     },
     verificationManifest: {
       specHash: 'sha256:spec',
@@ -82,13 +84,17 @@ function sampleReceipt(overrides: Partial<LiveRunReceipt> = {}): LiveRunReceipt 
       requiredChecks: [
         { id: 'safe_packet', label: 'Safe worker packet', status: 'passed', detail: 'No forbidden secret pattern remains.' },
       ],
-      settlementRule: 'Release after approval and delivery.',
-      reputationWriteback: 'Use receipt as feedback.',
+      settlementRule: 'Release after Sui approval and delivery.',
+      reputationWriteback: 'Use receipt as Sui feedback.',
     },
-    crooServiceId: undefined,
-    negotiationId: undefined,
-    orderId: undefined,
-    paymentTxHash: undefined,
+    workerAgentId: 'sui_worker',
+    workOrderId: 'sui_work_order_1',
+    suiNetwork: 'testnet',
+    suiPackageId: undefined,
+    suiReceiptRegistryId: undefined,
+    suiPaymentDigest: undefined,
+    suiAnchorDigest: undefined,
+    walrusBlobId: undefined,
     deliveryText: undefined,
     error: undefined,
     events: [makeEvent({ source: 'app', type: 'run_created', message: 'Task created.' })],

@@ -2,11 +2,11 @@
 
 ## Goal
 
-Make TenderBoard a credible Sui Overflow 2026 project instead of a CROO-first agent commerce demo.
+Make TenderBoard a credible Sui Overflow 2026 project that cannot exist without Sui.
 
 ## Current Truth
 
-Before this pivot, TenderBoard was not meaningfully using Sui. The implemented chain path was the optional CROO runtime, with `BASE_RPC_URL` configured for Base. That is not enough for a Sui hackathon.
+TenderBoard now treats Sui as the core product surface: work orders, SUI-denominated caps, receipt registry, evidence anchors, and reputation signals.
 
 ## Product Direction
 
@@ -46,12 +46,9 @@ Do not claim:
 - deployed Sui package until `SUI_PACKAGE_ID` exists
 - on-chain anchoring until `anchor_receipt` is called on testnet/mainnet
 - Walrus evidence storage until a real blob id is produced
-- TrustMCP or ERC-8004 integration
 
 Allowed claims:
 
-- inspired by TrustMCP and CTRL+Z
-- maps to receipt-backed reputation patterns
 - includes a Sui Move receipt registry package
 - generates Sui anchor plans from TenderBoard receipts
 

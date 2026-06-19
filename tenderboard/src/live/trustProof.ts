@@ -21,15 +21,16 @@ export interface BuildTrustProofInput {
 
 export function buildTrustDecision(input: BuildTrustProofInput): TrustDecision {
   const amount = Number(input.request.maxPayment.amount);
-  const cap = Number(input.config.maxPaymentUsdc);
+  const cap = Number(input.config.maxPaymentSui);
   const amountRatio = Number.isFinite(amount) && Number.isFinite(cap) && cap > 0 ? amount / cap : 1;
   const unsafeInPacket = findSecretPatternMatches([input.sanitizedTask]);
   const reasons: string[] = [];
   const controls = [
     'Private notes are never included in the worker packet.',
     'Secret-looking task lines are removed before worker dispatch.',
-    'CROO payment cannot execute until the operator approves this exact order.',
-    `Payment is capped at ${input.config.maxPaymentUsdc} USDC by config.`,
+    'Sui payment approval is bound to the exact work order before delivery.',
+    `Payment is capped at ${input.config.maxPaymentSui} SUI by config.`,
+    'Final evidence must produce a Walrus blob id before Sui anchoring.',
     'Receipts exclude SDK keys, private notes, wallet secrets, and .env values.',
   ];
 
@@ -60,7 +61,7 @@ export function buildTrustDecision(input: BuildTrustProofInput): TrustDecision {
     reasons.push('Buyer-defined acceptance criteria were anchored before dispatch.');
   }
 
-  const workerAgentId = input.config.workerServiceId ?? 'mock_worker_service';
+  const workerAgentId = input.config.workerAgentId;
   reasons.push(`Worker route is pinned to ${workerAgentId}.`);
 
   const boundedScore = clamp(Math.round(score), 0, 100);
@@ -84,8 +85,8 @@ export function buildVerificationManifest(input: BuildTrustProofInput): Verifica
     ...buyerCriteria,
     'Worker must only receive the sanitized task packet.',
     'Worker output must answer the task using public-source evidence where possible.',
-    'Payment requires an order id and explicit operator approval.',
-    'Final receipt must include status, order id, payment tx hash when live, delivery, and event timeline.',
+    'Payment requires a Sui work order id and explicit operator approval.',
+    'Final receipt must include status, Sui work order id, Sui payment digest when available, delivery, Walrus blob id when uploaded, and event timeline.',
     'Receipt must not contain private notes, SDK keys, wallet secrets, or .env values.',
   ];
   const checkerPack = input.request.checkerPack ?? 'research';
@@ -101,13 +102,13 @@ export function buildVerificationManifest(input: BuildTrustProofInput): Verifica
       id: 'payment_cap',
       label: 'Payment cap',
       status: 'passed',
-      detail: `${input.request.maxPayment.amount} ${input.request.maxPayment.currency} is within the ${input.config.maxPaymentUsdc} USDC configured cap.`,
+      detail: `${input.request.maxPayment.amount} ${input.request.maxPayment.currency} is within the ${input.config.maxPaymentSui} SUI configured cap.`,
     },
     {
       id: 'order_bound_approval',
-      label: 'Order-bound approval',
+      label: 'Sui work-order approval',
       status: 'pending',
-      detail: 'Waiting for CROO order id and operator approval.',
+      detail: 'Waiting for Sui work order id and operator approval.',
     },
     {
       id: 'delivery_evidence',
@@ -142,16 +143,18 @@ export function buildVerificationManifest(input: BuildTrustProofInput): Verifica
     checkerPack,
     acceptanceCriteria,
     requiredChecks: checks,
-    settlementRule: 'Release payment only after safe packet creation, CROO order creation, explicit operator approval, and delivery receipt.',
-    reputationWriteback: 'Use the final receipt as a feedback candidate that can map to ERC-8004-style worker and checker reputation.',
+    settlementRule: 'Release payment only after safe packet creation, Sui work order creation, explicit operator approval, delivery receipt, Walrus evidence upload, and Sui anchor readiness.',
+    reputationWriteback: 'Use the final Sui-anchored receipt as the worker and checker reputation signal.',
   };
 }
 
 export function finalizeVerificationManifest(receipt: LiveRunReceipt, deliveryText: string | undefined): VerificationManifest {
   const evidenceHash = stableHash({
     runId: receipt.runId,
-    orderId: receipt.orderId,
-    paymentTxHash: receipt.paymentTxHash,
+    workOrderId: receipt.workOrderId,
+    suiPaymentDigest: receipt.suiPaymentDigest,
+    suiAnchorDigest: receipt.suiAnchorDigest,
+    walrusBlobId: receipt.walrusBlobId,
     deliveryText,
     eventCount: receipt.events.length,
   });
@@ -160,8 +163,8 @@ export function finalizeVerificationManifest(receipt: LiveRunReceipt, deliveryTe
     if (check.id === 'order_bound_approval') {
       return {
         ...check,
-        status: receipt.orderId ? 'passed' : 'requires_review',
-        detail: receipt.orderId ? `Order ${receipt.orderId} was bound before payment approval.` : 'No order id was recorded.',
+        status: receipt.workOrderId ? 'passed' : 'requires_review',
+        detail: receipt.workOrderId ? `Sui work order ${receipt.workOrderId} was bound before payment approval.` : 'No Sui work order id was recorded.',
       } satisfies VerificationCheck;
     }
     if (check.id === 'delivery_evidence') {

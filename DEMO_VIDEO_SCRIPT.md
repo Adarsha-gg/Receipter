@@ -4,11 +4,11 @@ Target length: 2-3 minutes.
 
 ## 0:00 - Problem
 
-"Agents can already discover services and move money, but buyers still do not have a safe way to hire unknown worker agents. You should not leak private notes, internal strategy, keys, or repo context, and you should not pay just because a response has the right shape."
+"Agent commerce cannot scale if buyers leak private context to unknown worker agents or pay just because a response looks valid. Before agents can hire other agents, we need work orders, privacy boundaries, acceptance criteria, evidence, and reputation."
 
 ## 0:20 - Product
 
-"TenderBoard is a Sui trust-gated work desk for agent commerce. It is inspired by TrustMCP's runtime trust-gating idea and CTRL+Z Verify's proof-before-settlement model. A buyer creates a paid task, TenderBoard makes a safe worker packet, scores the worker route, anchors acceptance criteria, stores evidence on Walrus, and anchors compact receipt proofs to Sui."
+"TenderBoard is a Sui-native trust desk for paid agent work. A buyer creates a SUI-denominated task, TenderBoard creates a safe worker packet, scores the worker route, creates a verification manifest, prepares evidence for Walrus, and anchors the final proof to a Sui receipt registry."
 
 ## 0:40 - Open App
 
@@ -21,8 +21,9 @@ http://127.0.0.1:4174
 Point out:
 
 - mode badge
-- payment cap
-- Sui anchor readiness
+- SUI payment cap
+- Sui readiness
+- Walrus readiness
 - task form
 - acceptance criteria
 - checker pack selector
@@ -30,22 +31,22 @@ Point out:
 - safe worker packet preview
 - trust gate panel
 - verification manifest panel
-- live timeline
+- execution timeline
 - receipt panel
 - run ledger
 
-## 1:00 - Create A Work Contract
+## 1:00 - Create A Sui Work Contract
 
 Task example:
 
 ```text
-Find AI agent hackathons and useful builder opportunities.
+Find Sui agent grants and useful builder opportunities.
 ```
 
 Acceptance criteria:
 
 ```text
-Return at least 5 public-source opportunities with links.
+Return at least 5 public-source Sui opportunities with links.
 Flag deadline, sponsor, prize/funding, and fit when visible.
 End with a ranked recommendation and why.
 ```
@@ -59,14 +60,14 @@ research
 Private notes example:
 
 ```text
-Prioritize agent-commerce, MCP, verification, x402, and reputation ecosystems. Do not expose this field.
+Prioritize Sui primitives, Walrus evidence, object ownership, verifiable settlement, and ecosystem growth. Do not expose this field.
 ```
 
 Click **Send safe task**.
 
 Say:
 
-"The worker packet keeps the acceptance criteria but removes private notes and secret-looking content."
+"The worker packet keeps acceptance criteria but removes private notes and secret-looking content. This is the privacy boundary."
 
 ## 1:25 - Trust Gate And Verification Manifest
 
@@ -82,26 +83,23 @@ Show:
 
 Say:
 
-"This is the key product upgrade. TenderBoard does not just send a task. It creates a trust decision and an anchored verification contract before payment."
+"TenderBoard does not just send a task. It creates a Sui-bound verification contract before payment approval."
 
-## 1:50 - Worker, Evidence, And Sui Anchor
-
-Explain:
-
-"The worker is an Opportunity Scout. In mock and dry-run mode, it searches public Hacker News and GitHub APIs and returns real links. The full receipt and delivery evidence are meant for Walrus, while the Sui receipt registry stores the compact proof pointer: spec hash, evidence hash, trust score, checker pack, payment reference, and Walrus blob id."
+## 1:50 - Sui Work Order, Evidence, And Anchor
 
 Show:
 
-- timeline
-- order id
+- Sui work order id
 - payment approval panel
-- delivery
-- receipt
+- Sui dev payment digest or real digest
+- worker delivery
+- evidence hash
+- Walrus upload pending state or blob id
 - Sui anchor plan command
 
 Say:
 
-"Payment is not automatic. The operator approves the exact order, then the completed receipt can be anchored to Sui."
+"The completed receipt becomes a compact Sui proof pointer: spec hash, evidence hash, trust score, checker pack, payment reference, and Walrus blob id."
 
 ## 2:25 - Proof And Close
 
@@ -114,4 +112,4 @@ npm run sui:anchor-plan <run-id> <walrus-blob-id>
 
 Say:
 
-"The receipt contains the safe packet, trust decision, verification manifest, payment tx hash when live, delivery, event timeline, and final evidence hash. The Sui anchor turns that receipt into a durable proof pointer for reputation and dispute review. TenderBoard makes agent-to-agent hiring safer: no blind context sharing, no blind payment, and no self-attested reputation."
+"TenderBoard is the missing trust layer for agent commerce on Sui: no blind context sharing, no blind payment, evidence stored on Walrus, and reputation backed by Sui receipts."

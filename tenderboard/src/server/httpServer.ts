@@ -2,29 +2,22 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildWorkerDelivery } from '../live/crooRuntime.js';
 import { loadTenderBoardConfig } from '../live/config.js';
-import { LiveCrooRuntime } from '../live/crooRuntime.js';
 import { loadDotEnvFile } from '../live/dotenv.js';
 import { RunEventBus, formatSseEvent } from '../live/eventBus.js';
 import { makeEvent, makeRunId, RunStore } from '../live/runStore.js';
 import { sanitizeTaskForWorker } from '../live/sanitizeTask.js';
+import { buildWorkerDelivery, makeSuiDevDigest } from '../live/suiRuntime.js';
 import { buildTrustProof, finalizeVerificationManifest } from '../live/trustProof.js';
 import type { CreateRunRequest, LiveRunReceipt, TenderBoardConfig } from '../live/types.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(dirname, '../client');
 
-export interface LiveRuntime {
-  startRun(receipt: LiveRunReceipt): Promise<LiveRunReceipt>;
-  approvePayment(runId: string): Promise<LiveRunReceipt>;
-}
-
 export interface TenderBoardServerOptions {
   config?: TenderBoardConfig;
   store?: RunStore;
   bus?: RunEventBus;
-  liveRuntime?: LiveRuntime;
   scoutFetch?: typeof fetch;
 }
 
@@ -32,12 +25,11 @@ export function createTenderBoardServer(options: TenderBoardServerOptions = {}) 
   const config = options.config ?? loadTenderBoardConfig();
   const store = options.store ?? new RunStore(config.receiptsDir);
   const bus = options.bus ?? new RunEventBus();
-  const liveRuntime = options.liveRuntime ?? new LiveCrooRuntime({ config, store, bus });
   const scoutFetch = options.scoutFetch;
 
   return createServer(async (req, res) => {
     try {
-      await route(req, res, config, store, bus, liveRuntime, scoutFetch);
+      await route(req, res, config, store, bus, scoutFetch);
     } catch (error) {
       if (isHttpError(error)) {
         sendJson(res, error.status, { error: error.message });
@@ -55,7 +47,6 @@ async function route(
   config: TenderBoardConfig,
   store: RunStore,
   bus: RunEventBus,
-  liveRuntime: LiveRuntime,
   scoutFetch: typeof fetch | undefined,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
@@ -83,7 +74,7 @@ async function route(
 
   if (method === 'POST' && url.pathname === '/api/runs') {
     const body = await readJson<CreateRunRequest>(req);
-    const response = await createRun(body, config, store, bus, liveRuntime);
+    const response = await createRun(body, config, store, bus);
     sendJson(res, 201, response);
     return;
   }
@@ -118,7 +109,7 @@ async function route(
 
   const approveMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/approve-payment$/);
   if (method === 'POST' && approveMatch) {
-    const receipt = await approvePayment(approveMatch[1]!, config, store, bus, liveRuntime, scoutFetch);
+    const receipt = await approvePayment(approveMatch[1]!, config, store, bus, scoutFetch);
     sendJson(res, 200, receipt);
     return;
   }
@@ -138,12 +129,11 @@ async function createRun(
   config: TenderBoardConfig,
   store: RunStore,
   bus: RunEventBus,
-  liveRuntime: LiveRuntime,
 ): Promise<{ runId: string; status: string; sanitizedTask: string }> {
   validateCreateRun(body, config);
 
-  if (config.mode === 'live' && config.missingLiveSettings.length > 0) {
-    throw httpError(400, `Live mode is missing: ${config.missingLiveSettings.join(', ')}`);
+  if (config.mode === 'sui' && config.missingSuiSettings.length > 0) {
+    throw httpError(400, `Sui mode is missing: ${config.missingSuiSettings.join(', ')}`);
   }
 
   const now = new Date().toISOString();
@@ -161,10 +151,11 @@ async function createRun(
     throw httpError(400, `Trust gate blocked this task: ${trustProof.trustDecision.reasons.join(' ')}`);
   }
 
+  const workOrderId = `sui_work_order_${runId}`;
   const receipt: LiveRunReceipt = {
     runId,
     mode: config.mode,
-    status: config.mode === 'live' ? 'sanitized' : 'awaiting_payment_approval',
+    status: 'awaiting_payment_approval',
     createdAt: now,
     updatedAt: now,
     taskTitle: body.title,
@@ -172,26 +163,24 @@ async function createRun(
     maxPayment: body.maxPayment,
     trustDecision: trustProof.trustDecision,
     verificationManifest: trustProof.verificationManifest,
-    crooServiceId: config.workerServiceId ?? 'mock_worker_service',
-    negotiationId: config.mode === 'live' ? undefined : `${config.mode}_neg_${runId}`,
-    orderId: config.mode === 'live' ? undefined : `${config.mode}_order_${runId}`,
-    paymentTxHash: undefined,
+    workerAgentId: config.workerAgentId,
+    workOrderId,
+    suiNetwork: config.suiNetwork,
+    suiPackageId: config.suiPackageId,
+    suiReceiptRegistryId: config.suiReceiptRegistryId,
+    suiPaymentDigest: undefined,
+    suiAnchorDigest: undefined,
+    walrusBlobId: undefined,
     deliveryText: undefined,
     error: undefined,
     events: [
-      makeEvent({ at: now, source: 'app', type: 'run_created', message: 'Task created.' }),
+      makeEvent({ at: now, source: 'app', type: 'run_created', message: 'Sui-bound task created.' }),
       makeEvent({ at: now, source: 'app', type: 'task_sanitized', message: 'Private notes were not sent to the worker.' }),
       makeEvent({ at: now, source: 'app', type: 'trust_evaluated', message: `Trust gate returned ${trustProof.trustDecision.verdict} at ${trustProof.trustDecision.score}/100.`, data: { score: trustProof.trustDecision.score, tier: trustProof.trustDecision.tier, verdict: trustProof.trustDecision.verdict } }),
-      makeEvent({ at: now, source: 'app', type: 'verification_manifest_created', message: 'Verification manifest was anchored for this task.', data: { specHash: trustProof.verificationManifest.specHash } }),
+      makeEvent({ at: now, source: 'sui', type: 'sui_work_order_created', message: 'Sui work order receipt prepared. Payment approval is required.', data: { workOrderId, network: config.suiNetwork } }),
+      makeEvent({ at: now, source: 'sui', type: 'verification_manifest_created', message: 'Verification manifest is ready for Sui anchoring.', data: { specHash: trustProof.verificationManifest.specHash } }),
     ],
   };
-
-  if (config.mode !== 'live') {
-    receipt.events.push(
-      makeEvent({ at: now, source: 'task-giver', type: 'negotiation_created', message: 'Task-giver agent created a negotiation.', data: { negotiationId: `${config.mode}_neg_${runId}` } }),
-      makeEvent({ at: now, source: 'worker', type: 'order_created', message: 'Worker accepted the task. Payment approval is required.', data: { orderId: `${config.mode}_order_${runId}` } }),
-    );
-  }
 
   if (sanitized.removedLines.length > 0) {
     receipt.events.push(
@@ -207,11 +196,6 @@ async function createRun(
   await store.create(receipt);
   for (const event of receipt.events) bus.publish(runId, event);
 
-  if (config.mode === 'live') {
-    const liveReceipt = await liveRuntime.startRun(receipt);
-    return { runId, status: liveReceipt.status, sanitizedTask: liveReceipt.sanitizedTask };
-  }
-
   return { runId, status: receipt.status, sanitizedTask: receipt.sanitizedTask };
 }
 
@@ -220,41 +204,32 @@ async function approvePayment(
   config: TenderBoardConfig,
   store: RunStore,
   bus: RunEventBus,
-  liveRuntime: LiveRuntime,
   scoutFetch: typeof fetch | undefined,
 ): Promise<LiveRunReceipt> {
   const receipt = await store.require(runId);
-  if (config.mode === 'live') {
-    try {
-      return await liveRuntime.approvePayment(runId);
-    } catch (error) {
-      throw httpError(409, error instanceof Error ? error.message : String(error));
-    }
-  }
-
   if (receipt.status !== 'awaiting_payment_approval') {
     throw httpError(409, `Run is not waiting for payment approval. Current status: ${receipt.status}`);
   }
 
   const now = new Date().toISOString();
-  const txHash = config.mode === 'mock' ? `mock_tx_${runId}` : undefined;
+  const suiPaymentDigest = config.mode === 'sui-dev' ? makeSuiDevDigest('payment', runId) : undefined;
   const delivery = scoutFetch
     ? await buildWorkerDelivery(receipt, { fetchImpl: scoutFetch })
     : await buildWorkerDelivery(receipt);
-  const updated = await store.update(runId, {
+  await store.update(runId, {
     status: 'delivered',
     updatedAt: now,
-    paymentTxHash: txHash,
+    suiPaymentDigest,
     deliveryText: delivery,
   });
 
-  const paymentEvent = txHash
-    ? makeEvent({ at: now, source: 'task-giver', type: 'payment_paid', message: 'Payment completed in mock mode.', data: { txHash } })
-    : makeEvent({ at: now, source: 'task-giver', type: 'payment_skipped_dry_run', message: 'Dry-run mode skipped payment. No transaction hash was created.' });
   const events = [
-    makeEvent({ at: now, source: 'app', type: 'payment_approved', message: 'Payment was approved for this order.' }),
-    paymentEvent,
+    makeEvent({ at: now, source: 'app', type: 'payment_approved', message: 'Sui payment approval was recorded for this work order.' }),
+    suiPaymentDigest
+      ? makeEvent({ at: now, source: 'sui', type: 'sui_dev_payment_recorded', message: 'Sui dev payment digest recorded.', data: { digest: suiPaymentDigest } })
+      : makeEvent({ at: now, source: 'sui', type: 'sui_payment_pending', message: 'Run needs a real Sui payment transaction digest before final submission.' }),
     makeEvent({ at: now, source: 'worker', type: 'delivery_sent', message: 'Worker delivered the result.' }),
+    makeEvent({ at: now, source: 'walrus', type: 'walrus_upload_pending', message: 'Full receipt and evidence should be uploaded to Walrus before Sui anchoring.' }),
   ];
 
   for (const event of events) {
@@ -273,7 +248,7 @@ async function approvePayment(
 async function cancelRun(runId: string, store: RunStore, bus: RunEventBus): Promise<LiveRunReceipt> {
   const now = new Date().toISOString();
   await store.update(runId, { status: 'cancelled', updatedAt: now });
-  const event = makeEvent({ at: now, source: 'app', type: 'run_cancelled', message: 'Run cancelled before payment.' });
+  const event = makeEvent({ at: now, source: 'app', type: 'run_cancelled', message: 'Run cancelled before Sui payment approval.' });
   await store.appendEvent(runId, event);
   bus.publish(runId, event);
   return store.require(runId);
@@ -307,7 +282,7 @@ function validateCreateRun(body: CreateRunRequest, config: TenderBoardConfig): v
   if (!body || typeof body !== 'object') throw httpError(400, 'Invalid JSON body.');
   if (!body.title || !body.title.trim()) throw httpError(400, 'Task title is required.');
   if (!body.instructions || !body.instructions.trim()) throw httpError(400, 'Task instructions are required.');
-  if (!body.maxPayment || body.maxPayment.currency !== 'USDC') throw httpError(400, 'Max payment must be in USDC.');
+  if (!body.maxPayment || body.maxPayment.currency !== 'SUI') throw httpError(400, 'Max payment must be in SUI.');
   if (body.checkerPack && !['research', 'code', 'commerce'].includes(body.checkerPack)) {
     throw httpError(400, 'Checker pack must be research, code, or commerce.');
   }
@@ -319,9 +294,9 @@ function validateCreateRun(body: CreateRunRequest, config: TenderBoardConfig): v
   }
 
   const amount = Number(body.maxPayment.amount);
-  const cap = Number(config.maxPaymentUsdc);
+  const cap = Number(config.maxPaymentSui);
   if (!Number.isFinite(amount) || amount <= 0) throw httpError(400, 'Max payment amount is invalid.');
-  if (amount > cap) throw httpError(400, `Max payment exceeds configured cap of ${config.maxPaymentUsdc} USDC.`);
+  if (amount > cap) throw httpError(400, `Max payment exceeds configured cap of ${config.maxPaymentSui} SUI.`);
 }
 
 async function readJson<T>(req: IncomingMessage): Promise<T> {
@@ -377,7 +352,7 @@ export function startTenderBoardServer(): void {
   const config = loadTenderBoardConfig();
   const server = createTenderBoardServer({ config });
   server.listen(config.port, () => {
-    console.log(`TenderBoard product server running at http://127.0.0.1:${config.port}`);
+    console.log(`TenderBoard Sui server running at http://127.0.0.1:${config.port}`);
     console.log(`Mode: ${config.mode}`);
   });
 }

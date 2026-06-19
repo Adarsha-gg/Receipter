@@ -24,7 +24,7 @@ export function buildSuiAnchorPlan(
   config: TenderBoardConfig,
   walrusBlobId?: string,
 ): SuiAnchorPlan {
-  const paymentReference = receipt.paymentTxHash ?? receipt.orderId ?? 'not-paid';
+  const paymentReference = receipt.suiPaymentDigest ?? receipt.workOrderId ?? 'not-paid';
   const argumentsForMove = [
     config.suiReceiptRegistryId ?? '<SUI_RECEIPT_REGISTRY_ID>',
     receipt.runId,
@@ -34,19 +34,19 @@ export function buildSuiAnchorPlan(
     receipt.trustDecision.verdict,
     receipt.verificationManifest.checkerPack,
     paymentReference,
-    walrusBlobId ?? '<WALRUS_BLOB_ID>',
+    walrusBlobId ?? receipt.walrusBlobId ?? '<WALRUS_BLOB_ID>',
   ];
 
   return {
-    ready: config.missingSuiSettings.length === 0 && Boolean(walrusBlobId),
+    ready: config.missingSuiSettings.length === 0 && Boolean(walrusBlobId ?? receipt.walrusBlobId),
     network: config.suiNetwork,
-    missing: walrusBlobId ? config.missingSuiSettings : [...config.missingSuiSettings, 'WALRUS_BLOB_ID'],
+    missing: walrusBlobId ?? receipt.walrusBlobId ? config.missingSuiSettings : [...config.missingSuiSettings, 'WALRUS_BLOB_ID'],
     packageId: config.suiPackageId,
     receiptRegistryId: config.suiReceiptRegistryId,
     walrus: {
       publisherUrl: config.walrusPublisherUrl,
       aggregatorUrl: config.walrusAggregatorUrl,
-      blobId: walrusBlobId,
+      blobId: walrusBlobId ?? receipt.walrusBlobId,
     },
     moveCall: {
       packageId: config.suiPackageId,

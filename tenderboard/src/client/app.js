@@ -14,19 +14,19 @@ function renderConfig(config) {
   const badge = el('modeBadge');
   badge.textContent = config.mode;
   badge.className = `badge ${config.mode}`;
-  el('paymentCap').textContent = `${config.maxPaymentUsdc} USDC`;
+  el('paymentCap').textContent = `${config.maxPaymentSui} SUI`;
   renderSuiConfig(config.sui);
 
-  if (config.mode === 'live') {
-    el('liveReadiness').textContent = config.readyForLive ? 'ready' : 'blocked';
-    el('configText').textContent = config.readyForLive
-      ? 'CROO live setup is configured. Payment still requires manual approval.'
-      : `Missing: ${config.missingLiveSettings.join(', ')}`;
+  if (config.mode === 'sui') {
+    el('liveReadiness').textContent = config.sui.readyForSui ? 'ready' : 'blocked';
+    el('configText').textContent = config.sui.readyForSui
+      ? 'Sui package, registry, operator, and Walrus endpoints are configured.'
+      : `Missing: ${config.sui.missingSuiSettings.join(', ')}`;
     return;
   }
 
-  el('liveReadiness').textContent = 'simulated';
-  el('configText').textContent = `${config.mode} mode. The product flow runs without sending real funds.`;
+  el('liveReadiness').textContent = 'sui-dev';
+  el('configText').textContent = 'Sui-dev mode keeps the Sui work-order and receipt shape without sending real transactions.';
 }
 
 function renderSuiConfig(sui) {
@@ -36,9 +36,9 @@ function renderSuiConfig(sui) {
     return;
   }
 
-  el('suiReadiness').textContent = sui.readyForSuiAnchor ? 'ready' : 'blocked';
-  el('suiConfigText').textContent = sui.readyForSuiAnchor
-    ? `${sui.network} package and Walrus endpoints are configured.`
+  el('suiReadiness').textContent = sui.readyForSui ? 'ready' : 'blocked';
+  el('suiConfigText').textContent = sui.readyForSui
+    ? `${sui.network} package, registry, operator, and Walrus endpoints are configured.`
     : `Missing: ${sui.missingSuiSettings.join(', ')}`;
 }
 
@@ -54,7 +54,7 @@ el('taskForm').addEventListener('submit', async (event) => {
     privateNotes: el('privateNotes').value,
     acceptanceCriteria: splitLines(el('acceptanceCriteria').value),
     checkerPack: el('checkerPack').value,
-    maxPayment: { amount: el('amount').value, currency: 'USDC' },
+    maxPayment: { amount: el('amount').value, currency: 'SUI' },
   };
 
   try {
@@ -167,14 +167,18 @@ function renderReceipt(receipt) {
     ['Run id', receipt.runId],
     ['Status', receipt.status],
     ['Mode', receipt.mode],
-    ['Service id', receipt.crooServiceId || 'not configured'],
+    ['Worker agent', receipt.workerAgentId || 'not configured'],
+    ['Sui network', receipt.suiNetwork || 'not configured'],
+    ['Sui package', receipt.suiPackageId || 'not configured'],
+    ['Receipt registry', receipt.suiReceiptRegistryId || 'not configured'],
     ['Trust tier', receipt.trustDecision ? `${receipt.trustDecision.tier} / ${receipt.trustDecision.score}` : 'not evaluated'],
     ['Spec hash', receipt.verificationManifest?.specHash || 'not anchored'],
     ['Evidence hash', receipt.verificationManifest?.evidenceHash || 'not finalized'],
     ['Sui anchor plan', receipt.verificationManifest?.evidenceHash ? `npm run sui:anchor-plan ${receipt.runId} <walrus_blob_id>` : 'finalize delivery first'],
-    ['Negotiation id', receipt.negotiationId || 'not created yet'],
-    ['Order id', receipt.orderId || 'not created yet'],
-    ['Payment tx', receipt.paymentTxHash || 'not paid yet'],
+    ['Sui work order', receipt.workOrderId || 'not created yet'],
+    ['Sui payment digest', receipt.suiPaymentDigest || 'not paid yet'],
+    ['Walrus blob', receipt.walrusBlobId || 'not uploaded yet'],
+    ['Sui anchor digest', receipt.suiAnchorDigest || 'not anchored yet'],
     ['Delivery', receipt.deliveryText || 'not delivered yet'],
   ];
 

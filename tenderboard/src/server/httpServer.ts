@@ -19,6 +19,7 @@ import { verifyMemoryRecord, verifyPassport } from '../live/memoryVerifier.js';
 import { storeEvidenceOnWalrus } from '../live/walrusRuntime.js';
 import { buildX402SuiPaymentChallenge, buildX402SuiPaymentResponse } from '../live/x402.js';
 import { parseX402PaymentHeader, parseX402PaymentPayload, verifySuiX402Payment } from '../sui/facilitator.js';
+import { executeSuiAnchorReceipt } from '../sui/anchorExecutor.js';
 import {
   bindAnchorDigest,
   bindPaymentDigest,
@@ -790,9 +791,14 @@ async function anchorReceipt(
     throw httpError(409, `Run is not verification-admissible for Sui anchoring. Current clearing verdict: ${receipt.clearingDecision?.verdict ?? 'missing'}`);
   }
 
-  const suiAnchorDigest = config.mode === 'sui-dev' ? makeSuiDevDigest('anchor', runId) : body.suiAnchorDigest?.trim();
+  let automaticAnchorResult: Awaited<ReturnType<typeof executeSuiAnchorReceipt>> | undefined;
+  const providedAnchorDigest = nonBlank(body.suiAnchorDigest);
+  const suiAnchorDigest =
+    config.mode === 'sui-dev'
+      ? makeSuiDevDigest('anchor', runId)
+      : providedAnchorDigest ?? (config.suiCliPath ? ((automaticAnchorResult = await executeAutomaticSuiAnchor(receipt, config)).digest) : undefined);
   if (!suiAnchorDigest) {
-    throw httpError(400, 'Sui mode requires suiAnchorDigest from the receipt registry transaction.');
+    throw httpError(400, 'Sui mode requires suiAnchorDigest from the receipt registry transaction or SUI_CLI_PATH for automatic anchoring.');
   }
 
   const receiptPlan = requireReceiptPlan(receipt);
@@ -819,6 +825,8 @@ async function anchorReceipt(
       intentId: paymentIntentPlan.intentId,
       paymentNonce: paymentIntentPlan.paymentNonce,
       settlementNonce: paymentIntentPlan.settlementNonce,
+      automatic: Boolean(automaticAnchorResult),
+      commandArgs: automaticAnchorResult?.args,
     },
   });
   await store.appendEvent(runId, event);
@@ -1061,6 +1069,19 @@ function httpError(status: number, message: string): Error & { status: number } 
 
 function isHttpError(value: unknown): value is Error & { status: number } {
   return value instanceof Error && typeof (value as Error & { status?: unknown }).status === 'number';
+}
+
+function nonBlank(value: string | undefined): string | undefined {
+  if (!value || value.trim() === '') return undefined;
+  return value.trim();
+}
+
+async function executeAutomaticSuiAnchor(receipt: LiveRunReceipt, config: TenderBoardConfig): Promise<Awaited<ReturnType<typeof executeSuiAnchorReceipt>>> {
+  try {
+    return await executeSuiAnchorReceipt(receipt, config);
+  } catch (error) {
+    throw httpError(502, `Automatic Sui anchoring failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 export function startTenderBoardServer(): void {

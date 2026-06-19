@@ -19,6 +19,8 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
   const suiOperatorAddress = blankToUndefined(env.SUI_OPERATOR_ADDRESS);
   const walrusPublisherUrl = blankToUndefined(env.WALRUS_PUBLISHER_URL);
   const walrusAggregatorUrl = blankToUndefined(env.WALRUS_AGGREGATOR_URL);
+  const suiCliPath = blankToUndefined(env.SUI_CLI_PATH);
+  const suiClientConfig = blankToUndefined(env.SUI_CLIENT_CONFIG);
 
   const missingSuiSettings = suiRequiredSettings({
     suiPackageId,
@@ -42,6 +44,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
       operatorAddressConfigured: Boolean(suiOperatorAddress),
       walrusPublisherConfigured: Boolean(walrusPublisherUrl),
       walrusAggregatorConfigured: Boolean(walrusAggregatorUrl),
+      suiCliConfigured: Boolean(suiCliPath),
       readyForSui: missingSuiSettings.length === 0,
       missingSuiSettings,
     },
@@ -60,6 +63,8 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     suiOperatorAddress,
     walrusPublisherUrl,
     walrusAggregatorUrl,
+    suiCliPath,
+    suiClientConfig,
     missingSuiSettings,
     safe,
   };

@@ -70,6 +70,8 @@ SUI_RPC_URL=https://fullnode.testnet.sui.io:443
 SUI_OPERATOR_ADDRESS=...
 SUI_PACKAGE_ID=0x87a14a921a1ced0d2fd410ed0d6285d1722efabaf304d6a169971b902f6152c9
 SUI_RECEIPT_REGISTRY_ID=0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb
+SUI_CLI_PATH=C:\Users\adars\.sui-bin\testnet-v1.73.1\sui.exe
+SUI_CLIENT_CONFIG=C:\Users\adars\.sui\sui_config\client.yaml
 WALRUS_PUBLISHER_URL=https://publisher.walrus-testnet.walrus.space
 WALRUS_AGGREGATOR_URL=https://aggregator.walrus-testnet.walrus.space
 ```
@@ -81,6 +83,8 @@ Export a call plan:
 ```bash
 npm run sui:anchor-plan <run-id>
 ```
+
+If `SUI_CLI_PATH` is configured, `POST /api/runs/:id/anchor-receipt` executes the Move receipt-registry call directly from the backend. Without it, Sui mode still accepts a manually supplied `suiAnchorDigest`.
 
 Do not claim deployed Sui anchoring until the package is published and at least one receipt is anchored on testnet or mainnet.
 

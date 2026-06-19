@@ -622,6 +622,7 @@ export interface SafeConfig {
     operatorAddressConfigured: boolean;
     walrusPublisherConfigured: boolean;
     walrusAggregatorConfigured: boolean;
+    suiCliConfigured: boolean;
     readyForSui: boolean;
     missingSuiSettings: string[];
   };
@@ -640,6 +641,8 @@ export interface TenderBoardConfig {
   suiOperatorAddress: string | undefined;
   walrusPublisherUrl: string | undefined;
   walrusAggregatorUrl: string | undefined;
+  suiCliPath: string | undefined;
+  suiClientConfig: string | undefined;
   missingSuiSettings: string[];
   safe: SafeConfig;
 }

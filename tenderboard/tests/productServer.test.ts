@@ -387,6 +387,7 @@ describe('WalrusProof Market product server', () => {
     const { baseUrl, close } = await startTestServer({
       TENDERBOARD_MODE: 'sui-dev',
       TENDERBOARD_RECEIPTS_DIR: tempDir,
+      TENDERBOARD_WORKER_AGENT_ADDRESS: '0xworker_owner',
     });
 
     try {
@@ -616,6 +617,12 @@ describe('WalrusProof Market product server', () => {
       expect(memoryPassport).toMatchObject({
         objectType: 'suiproof.agent_memory_passport.v1',
         workerAgentId: 'sui_opportunity_scout',
+        ownerAddress: '0xworker_owner',
+        ownership: {
+          chain: 'sui',
+          address: '0xworker_owner',
+          proof: 'agent_profile',
+        },
         memoryCount: 1,
         walrusMemoryCount: 1,
         anchoredMemoryCount: 1,
@@ -624,6 +631,7 @@ describe('WalrusProof Market product server', () => {
       });
       expect(memoryPassport.records[0]).toMatchObject({
         runId: created.runId,
+        ownerAddress: '0xworker_owner',
         walrusBlobId: anchored.walrusBlobId,
         suiAnchorDigest: anchored.suiAnchorDigest,
       });
@@ -683,8 +691,20 @@ describe('WalrusProof Market product server', () => {
         failedRecordCount: 0,
         verified: true,
         passport: {
+          ownerAddress: '0xworker_owner',
           memoryCount: 1,
           latestMemoryId: anchored.memoryRecord.memoryId,
+        },
+      });
+
+      const ownerPassportVerification = await (await fetch(`${baseUrl}/api/oracle/owners/0xworker_OWNER/passport/verify`)).json();
+      expect(ownerPassportVerification).toMatchObject({
+        objectType: 'walrusproof.verified_passport.v1',
+        workerAgentId: 'sui_opportunity_scout',
+        verified: true,
+        passport: {
+          ownerAddress: '0xworker_owner',
+          memoryCount: 1,
         },
       });
 

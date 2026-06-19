@@ -142,6 +142,19 @@ async function route(
     return;
   }
 
+  const oracleOwnerPassportMatch = url.pathname.match(/^\/api\/oracle\/owners\/([^/]+)\/passport\/verify$/);
+  if (method === 'GET' && oracleOwnerPassportMatch) {
+    const ownerAddress = decodeURIComponent(oracleOwnerPassportMatch[1]!);
+    const receipts = await loadAllReceipts(store);
+    const passport = buildWalrusMemoryIndex(receipts).passports.find((candidate) => sameAddress(candidate.ownerAddress, ownerAddress));
+    if (!passport) {
+      sendJson(res, 404, { error: 'No worker passport is bound to that Sui owner address.' });
+      return;
+    }
+    sendJson(res, 200, await verifyPassport(passport.workerAgentId, receipts));
+    return;
+  }
+
   const oracleRecordMatch = url.pathname.match(/^\/api\/oracle\/records\/([^/]+)\/verify$/);
   if (method === 'GET' && oracleRecordMatch) {
     const receipt = await store.get(oracleRecordMatch[1]!);
@@ -357,6 +370,8 @@ async function createRun(
     selectedBid: selectedBidReference,
     specHash: trustProof.verificationManifest.specHash,
     paymentIntentId: paymentIntentPlan.intentId,
+    hirerOwnerAddress: config.suiOperatorAddress,
+    workerOwnerAddress: config.workerAgentAddress,
   });
   const reputationSnapshot = buildWorkerReputationCard(
     workerAgentId,
@@ -1078,6 +1093,10 @@ function isHttpError(value: unknown): value is Error & { status: number } {
 function nonBlank(value: string | undefined): string | undefined {
   if (!value || value.trim() === '') return undefined;
   return value.trim();
+}
+
+function sameAddress(left: string | undefined, right: string): boolean {
+  return typeof left === 'string' && left.toLowerCase() === right.toLowerCase();
 }
 
 async function executeAutomaticSuiAnchor(receipt: LiveRunReceipt, config: TenderBoardConfig): Promise<Awaited<ReturnType<typeof executeSuiAnchorReceipt>>> {

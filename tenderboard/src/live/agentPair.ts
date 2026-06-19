@@ -7,6 +7,8 @@ export interface BuildAgentPairInput {
   selectedBid: SelectedBidReference | undefined;
   specHash: string;
   paymentIntentId: string | undefined;
+  hirerOwnerAddress?: string | undefined;
+  workerOwnerAddress?: string | undefined;
 }
 
 export function buildAgentPair(input: BuildAgentPairInput): {
@@ -19,6 +21,7 @@ export function buildAgentPair(input: BuildAgentPairInput): {
     objectType: 'suiproof.market_agent.v1',
     agentId: 'sui_hirer.governed.buyer',
     role: 'hirer',
+    ownerAddress: input.hirerOwnerAddress,
     displayName: 'Sui Hirer Agent',
     responsibilities: [
       'Define the job, acceptance criteria, private notes, and SUI payment cap.',
@@ -39,6 +42,7 @@ export function buildAgentPair(input: BuildAgentPairInput): {
     objectType: 'suiproof.market_agent.v1',
     agentId: input.selectedBid?.workerAgentId ?? 'unassigned_worker',
     role: 'worker',
+    ownerAddress: input.workerOwnerAddress,
     displayName: 'Opportunity Scout Worker',
     responsibilities: [
       'Bid on the sanitized task packet.',

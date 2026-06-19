@@ -86,6 +86,7 @@ export interface MarketAgentProfile {
   objectType: 'suiproof.market_agent.v1';
   agentId: string;
   role: MarketAgentRole;
+  ownerAddress?: string | undefined;
   displayName: string;
   responsibilities: string[];
   controls: string[];
@@ -246,6 +247,7 @@ export interface AgentMemoryRecord {
   objectType: 'suiproof.agent_memory_record.v1';
   memoryId: string;
   workerAgentId: string;
+  ownerAddress?: string | undefined;
   runId: string;
   taskTitle: string;
   workOrderId: string | undefined;
@@ -284,6 +286,12 @@ export interface AgentMemoryRecord {
 export interface AgentMemoryPassport {
   objectType: 'suiproof.agent_memory_passport.v1';
   workerAgentId: string;
+  ownerAddress: string | undefined;
+  ownership: {
+    chain: 'sui';
+    address: string | undefined;
+    proof: 'agent_profile' | 'unbound';
+  };
   generatedAt: string;
   memoryCount: number;
   walrusMemoryCount: number;
@@ -639,6 +647,7 @@ export interface TenderBoardConfig {
   suiPackageId: string | undefined;
   suiReceiptRegistryId: string | undefined;
   suiOperatorAddress: string | undefined;
+  workerAgentAddress?: string | undefined;
   walrusPublisherUrl: string | undefined;
   walrusAggregatorUrl: string | undefined;
   suiCliPath: string | undefined;

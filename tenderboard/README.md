@@ -29,6 +29,8 @@ Walrus is the durable memory substrate, not a side upload. Every delivered run p
 
 The backend writes memory through an injectable `MemoryStore` interface. The default `WalrusMemoryStore` wraps the raw Walrus HTTP publisher/aggregator path used in live testnet runs, while keeping the server ready for a future `MemWalMemoryStore` without changing the product API.
 
+Passports are now Sui-owner aware: new worker passports include `ownerAddress` and an `ownership` proof block, and the oracle API can verify by worker id or owner address.
+
 The memory layer gives the app its loop:
 
 - workers remember across jobs through portable Walrus records
@@ -205,6 +207,7 @@ GET  /api/walrus/memory                read the global Walrus memory index
 GET  /api/walrus/memory/:id            read the worker's Walrus memory passport
 GET  /api/runs/:id/memory              read a run's Walrus memory record
 GET  /api/agents/:id/memory            read the worker's Walrus/Sui memory passport
+GET  /api/oracle/owners/:address/passport/verify verify a passport by Sui owner address
 GET  /api/runs/:id/worker-task         worker agent gets 402 until Sui payment is recorded
 POST /api/runs/:id/worker-delivery     worker agent submits delivery evidence
 POST /api/runs/:id/store-evidence      operator stores the memory bundle on Walrus
@@ -223,6 +226,7 @@ src/live/suiRuntime.ts         Sui-shaped local execution helpers
 src/live/walrusRuntime.ts      Walrus evidence bundle storage
 src/live/memoryStore.ts        injectable memory backend interface
 src/live/agentMemory.ts        Walrus-backed worker memory records/passports
+src/oracle/                    lightweight oracle client for external integrations
 src/live/proof.ts              receipt-to-markdown proof renderer
 src/sui/anchorPlan.ts          receipt-to-Sui call plan renderer
 sui/                           Sui Move receipt registry package

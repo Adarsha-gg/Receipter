@@ -11,6 +11,7 @@ export function buildAgentMemoryRecord(receipt: LiveRunReceipt): AgentMemoryReco
       : undefined;
   const sourceObservationCount = receipt.workerEvidence?.sourceReceipt.observations.length ?? 0;
   const selectedBidId = receipt.agentHandoff?.selectedBidId ?? receipt.workerBidBoard?.selectedBidId;
+  const ownerAddress = receipt.workerAgent?.ownerAddress;
   const marketplaceProof = {
     paymentBound: Boolean(receipt.suiPaymentDigest ?? receipt.receiptPlan?.paymentDigest),
     workerSelected: Boolean(selectedBidId && receipt.workerAgentId),
@@ -20,6 +21,7 @@ export function buildAgentMemoryRecord(receipt: LiveRunReceipt): AgentMemoryReco
   };
   const body = {
     workerAgentId: receipt.workerAgentId,
+    ownerAddress,
     runId: receipt.runId,
     taskTitle: receipt.taskTitle,
     workOrderId: receipt.workOrderId,
@@ -39,6 +41,7 @@ export function buildAgentMemoryRecord(receipt: LiveRunReceipt): AgentMemoryReco
     objectType: 'suiproof.agent_memory_record.v1',
     memoryId: `memory_${memoryHash.slice('sha256:'.length, 'sha256:'.length + 16)}`,
     workerAgentId: receipt.workerAgentId,
+    ownerAddress,
     runId: receipt.runId,
     taskTitle: receipt.taskTitle,
     workOrderId: receipt.workOrderId,
@@ -86,6 +89,12 @@ export function buildAgentMemoryPassport(
   return {
     objectType: 'suiproof.agent_memory_passport.v1',
     workerAgentId,
+    ownerAddress: records.find((record) => record.ownerAddress)?.ownerAddress,
+    ownership: {
+      chain: 'sui',
+      address: records.find((record) => record.ownerAddress)?.ownerAddress,
+      proof: records.some((record) => Boolean(record.ownerAddress)) ? 'agent_profile' : 'unbound',
+    },
     generatedAt,
     memoryCount: records.length,
     walrusMemoryCount: records.filter((record) => Boolean(record.walrusBlobId)).length,

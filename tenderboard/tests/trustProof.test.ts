@@ -312,6 +312,12 @@ function sampleMemoryPassport(): AgentMemoryPassport {
   return {
     objectType: 'suiproof.agent_memory_passport.v1',
     workerAgentId: 'sui_worker',
+    ownerAddress: '0xworker_owner',
+    ownership: {
+      chain: 'sui',
+      address: '0xworker_owner',
+      proof: 'agent_profile',
+    },
     generatedAt: '2026-06-19T18:00:00.000Z',
     memoryCount: 2,
     walrusMemoryCount: 2,

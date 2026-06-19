@@ -17,6 +17,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
   const suiPackageId = blankToUndefined(env.SUI_PACKAGE_ID);
   const suiReceiptRegistryId = blankToUndefined(env.SUI_RECEIPT_REGISTRY_ID);
   const suiOperatorAddress = blankToUndefined(env.SUI_OPERATOR_ADDRESS);
+  const workerAgentAddress = blankToUndefined(env.TENDERBOARD_WORKER_AGENT_ADDRESS) ?? suiOperatorAddress;
   const walrusPublisherUrl = blankToUndefined(env.WALRUS_PUBLISHER_URL);
   const walrusAggregatorUrl = blankToUndefined(env.WALRUS_AGGREGATOR_URL);
   const suiCliPath = blankToUndefined(env.SUI_CLI_PATH);
@@ -61,6 +62,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     suiPackageId,
     suiReceiptRegistryId,
     suiOperatorAddress,
+    workerAgentAddress,
     walrusPublisherUrl,
     walrusAggregatorUrl,
     suiCliPath,

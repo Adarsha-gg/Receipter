@@ -110,9 +110,9 @@ pattern in `TenderBoardServerOptions`).
   and server URL for a real write.
 - **No inspector UI** (passport directory / blob viewer / hash-match).
 - **Identity is inconsistent** across files (see Section 12).
-- **Stake/slash needs production registry hardening.** The backend executor is oracle-gated and
-  Move can now consume an oracle-issued `ChallengeDecision`; production should canonicalize the
-  oracle registry in config/governance.
+- **Stake/slash registry governance remains a future governance task.** The backend executor is
+  oracle-gated, Move consumes an oracle-issued `ChallengeDecision`, and live mode now has
+  `SUI_STAKE_ORACLE_REGISTRY_ID`; production governance should rotate/administer that registry.
 
 ---
 
@@ -184,9 +184,9 @@ WalrusProof
    - **Done:** oracle endpoint `/api/oracle/records/:runId/challenges/assess`;
      stake object `0x48273520a89927db522dd76c45ab333780998ec9ba336dc5d5666db8b44fc859`;
      oracle registry `0x78aeac24fbcde9b26b8d8ed5e9f51defde5258f6045bb91d8f2c4d3982e9dc35`;
-     challenge decision `0xf3433158331908788eb465063f519be866f2e6393b4bc90629655af65a8c2f84`;
-     decision tx `FCsWy75sSrheYpk2ah1B9MFLzbHodx6SHhu2396Lf4Li`; slash tx
-     `GJz9y9nac2sgwMi9xp9PkuYryWU99wcgvbhAMyiYwCzA`; admitted on `memory_hash`,
+     latest challenge decision `0x604a37abc4f48bed2ddd82e547ced2dad5a36ddd2cc9d62bbcbd635d79c6d977`;
+     latest decision tx `GF8r7iieheTknpPKtXPbQqyD8PkeohopE9z56GijoSoy`; slash tx
+     `3nGY1HoTgL1o55RWhJJhDxzQ2uQwBH25GteoH87uddXk`; admitted on `memory_hash`,
      `walrus_readback`, and contradicted-claim failures, then consumed by `slash_with_decision`.
 
 ### Milestone B — Credible, deterministic demo data
@@ -334,4 +334,6 @@ Actions:
   agents/marketplaces to consume verifier-gated slashing.
 - Added `OracleRegistry` + one-time `ChallengeDecision` objects to Move; live slash now consumes
   the oracle decision object.
+- Added `SUI_STAKE_ORACLE_REGISTRY_ID` so live smokes reuse the canonical oracle registry; verified
+  with `registryDigest: configured`.
 - Current checks: 65 tests green; typecheck clean.

@@ -38,7 +38,12 @@ async function main(): Promise<void> {
     async () => new Response(JSON.stringify({ error: 'forged blob missing' }), { status: 404 }),
   );
   const slashInput = buildSlashStakeInputFromAssessment(assessment);
-  const registry = await executeCreateOracleRegistry(config);
+  const registry = config.suiStakeOracleRegistryId
+    ? {
+        digest: 'configured',
+        oracleRegistryId: config.suiStakeOracleRegistryId,
+      }
+    : await executeCreateOracleRegistry(config);
   const decision = await executeIssueChallengeDecision(
     {
       ...slashInput,

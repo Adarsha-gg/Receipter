@@ -22,6 +22,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
   const suiRpcUrl = blankToUndefined(env.SUI_RPC_URL) ?? defaultSuiRpcUrl(suiNetwork);
   const suiPackageId = blankToUndefined(env.SUI_PACKAGE_ID);
   const suiReceiptRegistryId = blankToUndefined(env.SUI_RECEIPT_REGISTRY_ID);
+  const suiStakeOracleRegistryId = blankToUndefined(env.SUI_STAKE_ORACLE_REGISTRY_ID);
   const suiOperatorAddress = blankToUndefined(env.SUI_OPERATOR_ADDRESS);
   const workerAgentAddress = blankToUndefined(env.TENDERBOARD_WORKER_AGENT_ADDRESS) ?? suiOperatorAddress;
   const walrusPublisherUrl = blankToUndefined(env.WALRUS_PUBLISHER_URL);
@@ -55,6 +56,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
       rpcUrlConfigured: Boolean(suiRpcUrl),
       packageIdConfigured: Boolean(suiPackageId),
       receiptRegistryIdConfigured: Boolean(suiReceiptRegistryId),
+      stakeOracleRegistryIdConfigured: Boolean(suiStakeOracleRegistryId),
       operatorAddressConfigured: Boolean(suiOperatorAddress),
       walrusPublisherConfigured: Boolean(walrusPublisherUrl),
       walrusAggregatorConfigured: Boolean(walrusAggregatorUrl),
@@ -79,6 +81,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     suiRpcUrl,
     suiPackageId,
     suiReceiptRegistryId,
+    suiStakeOracleRegistryId,
     suiOperatorAddress,
     workerAgentAddress,
     walrusPublisherUrl,

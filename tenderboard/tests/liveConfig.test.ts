@@ -12,6 +12,7 @@ describe('loadTenderBoardConfig', () => {
       SUI_OPERATOR_ADDRESS: '0xoperator',
       SUI_PACKAGE_ID: '0xpackage',
       SUI_RECEIPT_REGISTRY_ID: '0xregistry',
+      SUI_STAKE_ORACLE_REGISTRY_ID: '0xoracle',
       SUI_CLI_PATH: 'C:\\sui\\sui.exe',
       SUI_CLIENT_CONFIG: 'C:\\secret\\client.yaml',
       WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
@@ -29,6 +30,8 @@ describe('loadTenderBoardConfig', () => {
     expect(config.safe.maxPaymentSui).toBe('0.050');
     expect(config.safe.sui.readyForSui).toBe(true);
     expect(config.safe.sui.suiCliConfigured).toBe(true);
+    expect(config.safe.sui.stakeOracleRegistryIdConfigured).toBe(true);
+    expect(config.suiStakeOracleRegistryId).toBe('0xoracle');
     expect(config.suiCliPath).toBe('C:\\sui\\sui.exe');
     expect(config.suiClientConfig).toBe('C:\\secret\\client.yaml');
     expect(config.workerAgentId).toBe('sui_worker');

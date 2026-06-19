@@ -634,6 +634,7 @@ export interface SafeConfig {
     rpcUrlConfigured: boolean;
     packageIdConfigured: boolean;
     receiptRegistryIdConfigured: boolean;
+    stakeOracleRegistryIdConfigured: boolean;
     operatorAddressConfigured: boolean;
     walrusPublisherConfigured: boolean;
     walrusAggregatorConfigured: boolean;
@@ -658,6 +659,7 @@ export interface TenderBoardConfig {
   suiRpcUrl: string | undefined;
   suiPackageId: string | undefined;
   suiReceiptRegistryId: string | undefined;
+  suiStakeOracleRegistryId: string | undefined;
   suiOperatorAddress: string | undefined;
   workerAgentAddress?: string | undefined;
   walrusPublisherUrl: string | undefined;

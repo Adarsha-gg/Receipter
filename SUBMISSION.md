@@ -1,154 +1,119 @@
-# Submission Draft - SuiProof Market
+# Submission Draft - WalrusProof
 
 ## Project Name
 
-SuiProof Market
+WalrusProof
 
 ## One-Liner
 
-A Sui-native trust and settlement desk for paid agent work, with Sui work orders, Walrus evidence, and on-chain receipt-backed reputation.
+Portable, verifiable reputation for AI agent work: every paid job becomes a Walrus memory blob, anchored on Sui, and reusable in the next trust decision.
 
 ## Short Description
 
-SuiProof Market lets buyers hire worker agents without leaking private context or paying blindly. A buyer creates a paid task in SUI, adds private notes and acceptance criteria, and chooses a checker pack. SuiProof Market strips private data, produces a worker-safe packet, scores the worker route, creates a verification manifest, stores the full evidence payload as a Walrus bundle, and anchors the compact proof pointer to a Sui receipt registry.
+WalrusProof turns agent work into durable, inspectable memory. A buyer creates a paid task, WalrusProof strips private context, compares worker-agent bids, records the verification rules, checks the delivered evidence, stores the full proof bundle on Walrus, and anchors the compact receipt on Sui.
 
-The worker is not canned text. The current worker is an Opportunity Scout that uses public Hacker News and GitHub APIs and returns real links/results through the delivery flow.
+The product is not a generic marketplace. The wedge is verifiable agent work memory: a worker's track record is made from prior completed jobs, not self-reported claims. Other agents, apps, and buyers can open the Walrus blob, verify the hash, and route future work using that portable history.
 
 ## Problem
 
-Agent commerce needs a trust layer. Buyers need to know:
+AI agents are starting to do paid work, but their reputation is still brittle:
 
-- what was sent to the worker
-- what stayed private
-- why a worker was allowed
-- what "done" meant before payment
-- where the evidence lives
-- whether payment and delivery can become reputation
+- buyers cannot tell what was actually sent to a worker
+- private context can leak into worker prompts
+- evidence is often just text in an app database
+- reputation is self-reported and trapped inside one platform
+- future buyers cannot independently verify prior work
 
-Without this, agent marketplaces become blind prompt forwarding plus blind payment.
+For agent commerce to matter, completed work needs to become portable memory that anyone can inspect and verify.
 
-The stronger product wedge is buyer-side sourcing. Human procurement already depends on intake, RFx, supplier comparison, risk gating, award decisions, and audit trails. Agent commerce needs the same thing for autonomous workers: a buyer should publish only the safe scope, compare worker routes by budget and risk, approve one work order, and turn the completed delivery into durable reputation.
+## Walrus-Native Solution
 
-## Sui-Native Solution
+WalrusProof uses Walrus as the source of truth for agent work memory:
 
-SuiProof Market turns agent work into a Sui work contract:
+1. Buyer defines a paid task, private notes, acceptance criteria, and checker pack.
+2. WalrusProof creates a sanitized worker packet.
+3. Worker agents submit bids with price, SLA, requested data, confidence, and risk flags.
+4. The buyer or policy awards one bid.
+5. The worker delivers evidence with source-backed claims.
+6. WalrusProof verifies claim support and settlement readiness.
+7. The full receipt/evidence bundle is stored as a Walrus blob.
+8. The blob is read back and hash-checked.
+9. A compact receipt is anchored on Sui.
+10. The worker's Agent Passport updates and can be reused by the next trust gate.
 
-1. Buyer writes task, private notes, acceptance criteria, checker pack, and max SUI payment.
-2. SuiProof Market creates a sanitized worker packet.
-3. SuiProof Market records a trust decision: score, tier, verdict, reasons, controls, and risk multiplier.
-4. SuiProof Market records a verification manifest: spec hash, checker pack, required checks, settlement rule, and reputation write-back note.
-5. SuiProof Market creates a Sui work order id.
-6. Operator approves payment only for that exact work order.
-7. Worker delivers real evidence.
-8. Full receipt/evidence is stored on Walrus.
-9. Compact proof fields are anchored to Sui through `tenderboard::receipts::anchor_receipt`.
+This is why Walrus matters: the memory is persistent, portable, content-addressed, and independently readable through a public aggregator.
+
+## Sui Integration
+
+Sui is used for finality and economic security:
+
+- Sui-denominated work/payment intent
+- Sui package v4: `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`
+- receipt registry: `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`
+- `tenderboard::receipts::anchor_receipt` emits `ReceiptAnchored`
+- `reputation_stake` lets worker reputation be economically backed and slashed through an oracle-issued challenge decision
+- configured stake oracle registry: `0x78aeac24fbcde9b26b8d8ed5e9f51defde5258f6045bb91d8f2c4d3982e9dc35`
+
+Move package and schema names retain some internal `tenderboard` and `suiproof` prefixes as stable protocol identifiers. The public product name is WalrusProof.
 
 ## What Is Real
 
-- Product server
-- Browser operator console
-- SUI-denominated work contracts
-- Safe task preview
-- Private-note exclusion
-- Secret-pattern policy including env-style assignments like `API_KEY=...`
-- Buyer-defined acceptance criteria
-- Checker packs: `research`, `code`, `commerce`
-- Trust decision stored in every receipt
-- Verification manifest stored in every receipt
-- Sui Move receipt registry package
-- Sui/Walrus readiness checks in the browser console
-- Walrus evidence storage action in the browser console
-- Sui receipt anchoring action in the browser console
-- Sui anchor-plan export: `npm run sui:anchor-plan`
-- Receipt JSON download
-- Proof markdown export
-- Run history
-- Opportunity Scout worker using public APIs
-- Tests for privacy, receipts, Sui config, proof logic, server behavior, and Sui anchor plans
+- API-backed product server
+- browser operator console
+- safe worker packet preview
+- private-note exclusion and secret-pattern filtering
+- worker bid board and award flow
+- SUI-denominated payment cap and x402-style payment gate
+- source-claim verification and settlement gate
+- Walrus evidence storage with readback verification
+- owner-bound Agent Passports
+- global memory index and per-agent memory endpoints
+- MemWal-compatible `MemoryStore` adapter shape with fake-client tests
+- Sui receipt anchoring on testnet
+- oracle-gated stake/slash smoke on testnet
+- deterministic seed data for three worker agents
+- tests for privacy, receipts, trust/proof logic, Sui config, payment plans, memory, oracle challenge assessment, and worker scouting
 
-## Sui and Walrus Integration
+## Live Proofs
 
-SuiProof Market includes a Sui Move package:
-
-- package: `SuiProofMarketReceipts`
-- module: `tenderboard::receipts`
-- shared object: `Registry`
-- entry function: `anchor_receipt`
-- event: `ReceiptAnchored`
-
-The Sui event records:
-
-- receipt sequence
-- sender
-- run id
-- spec hash
-- evidence hash
-- trust score
-- trust verdict
-- checker pack
-- Sui payment/work-order reference
-- Walrus blob id
-
-Walrus is the evidence layer for full receipt JSON and worker delivery. Sui is the durable proof and reputation rail.
-
-## Product Roadmap From Sourcing To Reputation
-
-The current demo proves one buyer-controlled work order end to end. The next product step is competitive agent sourcing:
-
-1. Buyer creates a task with privacy labels: `PUBLIC`, `PRIVATE_AFTER_AWARD`, `LOCAL_ONLY`, and `NEVER_SHARE`.
-2. Multiple worker agents return bids with price, SLA, requested data, confidence, and risk flags.
-3. SuiProof Market filters bids over budget or requesting unsafe data.
-4. The buyer awards one bid, creating a Sui work order.
-5. Payment approval, Walrus evidence, and Sui receipt anchoring make the result reusable as reputation.
-
-This keeps SuiProof Market out of the crowded generic marketplace lane. It is the governed sourcing and settlement layer for paid agent work on Sui.
+- real run: `run_20260619170152_fh8zk6`
+- real Walrus blob: `lDssvU3Jw6eRyE2N0X0fvCE3b_oCV5peftFj4UkAklw`
+- Sui receipt anchor tx: `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP`
+- live payment tx: `Es2rZN4rvyhJ4GHTS4Cmcvi9JDsqj77UEZr5RNqNFMSU`
+- configured-registry stake open tx: `Fj4pwsmP5QkTqqREGYAQzxxG66GXFhM4DjALs77i96sX`
+- challenge decision tx: `GF8r7iieheTknpPKtXPbQqyD8PkeohopE9z56GijoSoy`
+- slash tx: `3nGY1HoTgL1o55RWhJJhDxzQ2uQwBH25GteoH87uddXk`
 
 ## Best Track
 
-Primary track: **Agentic Web**.
+Primary track: **Walrus**.
 
-Why: SuiProof Market is an AI-native workflow that deeply uses Sui primitives for trust, work-order state, evidence anchoring, and reputation. It is not a generic app with a token attached.
+Why: WalrusProof is fundamentally a verifiable data and memory product for AI agents. Walrus is not file storage bolted on after the fact; it is the durable agent-memory layer that makes the product useful. Sui anchors the compact proof and enforces economic security around the reputation record.
 
-Secondary target: **Walrus**, if the final demo uses a real Walrus publisher and anchors the resulting blob id.
+Secondary fit: **Agentic Web**, because the worker selection, verification, payment gate, and challenge assessment are AI-agent workflows using Sui primitives.
 
 ## Why It Can Win
 
-SuiProof Market matches the judging criteria directly:
-
-- Product & UX: clear operator console, safe packet preview, trust gate, manifest, timeline, receipt.
-- Real-world application: companies will not let agents hire other agents without privacy controls, budget/risk filtering, approval gates, and proof.
-- Technical implementation: Sui Move registry, Sui-shaped work orders, SUI caps, Walrus evidence pointer, typed receipts, tests.
-- Presentation & vision: the product becomes the sourcing, trust, and reputation layer for agent work on Sui.
-
-## What Still Needs Mainnet/Testnet Setup
-
-- Publish `tenderboard/sui` to Sui testnet or mainnet.
-- Capture package id.
-- Capture shared `Registry` object id.
-- Upload a receipt/evidence JSON to Walrus.
-- Run the generated Sui anchor call.
-- Add package id and blob id to the final submission.
+- Product & UX: a concrete Agent Passport and inspector surface, not just protocol plumbing.
+- Real-world application: buyers need proof before autonomous agents can spend money or earn reputation.
+- Technical implementation: Walrus blobs, public readback, Sui anchors, Move stake/slash, typed receipts, and tests.
+- Presentation & vision: WalrusProof turns agent reputation from a platform score into portable work memory.
 
 ## Demo Flow
 
-1. Open SuiProof Market.
-2. Show Sui readiness and SUI payment cap.
-3. Enter a task like `Find AI agent hackathons and useful builder opportunities`.
-4. Enter acceptance criteria.
-5. Pick the `research` checker pack.
-6. Enter private notes.
-7. Submit task.
-8. Show safe version excludes private notes but includes acceptance criteria.
-9. Show trust score, tier, verdict, and controls.
-10. Show verification manifest with spec hash and required checks.
-11. Show Sui work order id.
-12. Approve payment.
-13. Show Sui dev payment digest or real digest.
-14. Show worker delivery with real links.
-15. Store evidence and show the Walrus blob/object fields.
-16. Anchor the receipt and show the Sui anchor digest.
-17. Download receipt JSON or export proof markdown.
-18. Run `npm run sui:anchor-plan <run-id>` and show the Sui `anchor_receipt` call.
+1. Open the Agent Passport directory.
+2. Show three worker agents with prior jobs, support scores, Walrus counts, and anchored counts.
+3. Open a passport and select a job.
+4. Open the raw Walrus blob through the aggregator.
+5. Verify the memory hash matches the anchored receipt.
+6. Create a new paid task.
+7. Compare worker bids and award one route.
+8. Approve the SUI payment intent.
+9. Show worker delivery, claim support, and settlement readiness.
+10. Store the full proof bundle on Walrus.
+11. Anchor the compact proof on Sui.
+12. Show the passport update.
+13. Show a weak evidence record that requires review and cannot be anchored automatically.
 
 ## Repository
 

@@ -1,16 +1,16 @@
-# SuiProof Market Demo Video Script
+# WalrusProof Demo Video Script
 
-Target length: 2-3 minutes.
+Target length: 4-5 minutes.
 
 ## 0:00 - Problem
 
-"Agent commerce cannot scale if buyers leak private context to unknown worker agents or pay just because a response looks valid. Before agents can hire other agents, we need work orders, privacy boundaries, acceptance criteria, evidence, and reputation."
+"AI agents are starting to do paid work, but their memory and reputation are still fragile. A future buyer cannot usually verify what an agent did, what evidence it used, whether private context was protected, or whether the reputation score came from real completed work."
 
-## 0:20 - Product
+## 0:25 - Product
 
-"SuiProof Market is a Sui-native trust desk for paid agent work. A buyer creates a SUI-denominated task, SuiProof Market creates a safe worker packet, scores the worker route, creates a verification manifest, stores evidence on Walrus, and anchors the final proof to a Sui receipt registry."
+"WalrusProof is portable, verifiable reputation for AI agent work. Every paid job becomes a Walrus memory blob you can open, hash-check, and anchor on Sui. The next buyer can route work using that prior record instead of trusting a platform score."
 
-## 0:40 - Open App
+## 0:50 - Passport Directory
 
 Show:
 
@@ -20,23 +20,37 @@ http://127.0.0.1:4174
 
 Point out:
 
-- mode badge
-- SUI payment cap
-- Sui readiness
-- Walrus readiness
-- Sui dependency map
-- task form
-- acceptance criteria
-- checker pack selector
-- private notes field
-- safe worker packet preview
-- trust gate panel
-- verification manifest panel
-- execution timeline
-- receipt panel
-- run ledger
+- Agent Passport directory
+- worker agents
+- completed job counts
+- average claim support
+- Walrus-backed record count
+- Sui-anchored record count
+- SUI earned or payment-bound history
 
-## 1:00 - Create A Sui Work Contract
+Say:
+
+"This is the product surface: a portable work history for agents. The records are not just app rows. Each one points to a Walrus blob and a Sui receipt."
+
+## 1:35 - Memory Inspector
+
+Open one passport and one job.
+
+Show:
+
+- task title
+- source-claim support score
+- Walrus blob id
+- public aggregator read URL
+- Sui anchor digest
+- memory hash
+- verify result
+
+Say:
+
+"The judge can open the raw Walrus artifact, read it back, recompute the memory hash, and confirm it matches the anchored proof."
+
+## 2:20 - Create A New Paid Agent Job
 
 Task example:
 
@@ -52,65 +66,46 @@ Flag deadline, sponsor, prize/funding, and fit when visible.
 End with a ranked recommendation and why.
 ```
 
-Checker pack:
-
-```text
-research
-```
-
 Private notes example:
 
 ```text
 Prioritize Sui primitives, Walrus evidence, object ownership, verifiable settlement, and ecosystem growth. Do not expose this field.
 ```
 
-Click **Send safe task**.
-
 Say:
 
-"The worker packet keeps acceptance criteria but removes private notes and secret-looking content. This is the privacy boundary."
+"WalrusProof keeps the acceptance criteria but strips private notes and secret-looking content before the worker sees the task."
 
-## 1:25 - Trust Gate And Verification Manifest
+## 3:00 - Bid, Payment, Verification
 
 Show:
 
-- trust verdict
-- score and tier
-- worker route
-- controls
-- spec hash
-- checker pack
-- required checks
-
-Say:
-
-"SuiProof Market does not just send a task. It creates a Sui-bound verification contract before payment approval."
-
-## 1:50 - Sui Work Order, Evidence, And Anchor
-
-Show:
-
-- Sui work order id
-- payment approval panel
-- Sui dev payment digest or real digest
+- worker bids
+- selected worker
+- SUI payment cap
+- x402-style payment requirement
 - worker delivery
-- evidence hash
-- Walrus evidence action and blob id
-- Sui receipt anchor action and digest
+- claim verification
+- settlement action
 
 Say:
 
-"The completed receipt becomes a compact Sui proof pointer: spec hash, evidence hash, trust score, checker pack, payment reference, and Walrus blob id."
+"This is not blind payment. The worker is selected under budget and risk rules, then the delivered evidence has to pass the checker before the record can become reputation."
 
-## 2:25 - Proof And Close
+## 3:45 - Walrus And Sui Finality
 
-Download the receipt JSON or run:
+Show:
 
-```bash
-npm run proof:latest
-npm run sui:anchor-plan <run-id>
-```
+- real Walrus blob id: `lDssvU3Jw6eRyE2N0X0fvCE3b_oCV5peftFj4UkAklw`
+- Sui package v4: `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`
+- receipt registry: `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`
+- receipt anchor tx: `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP`
+- stake/slash proof txs: `Fj4pwsmP5QkTqqREGYAQzxxG66GXFhM4DjALs77i96sX`, `GF8r7iieheTknpPKtXPbQqyD8PkeohopE9z56GijoSoy`, `3nGY1HoTgL1o55RWhJJhDxzQ2uQwBH25GteoH87uddXk`
 
 Say:
 
-"SuiProof Market is the missing trust layer for agent commerce on Sui: no blind context sharing, no blind payment, evidence stored on Walrus, and reputation backed by Sui receipts."
+"Walrus stores the full evidence memory. Sui anchors the compact receipt and backs the reputation with challengeable stake."
+
+## 4:30 - Close
+
+"WalrusProof makes agent reputation portable, inspectable, and costly to fake. Every record is a Walrus blob anyone can verify, anchored on Sui, and reusable by the next agent workflow."

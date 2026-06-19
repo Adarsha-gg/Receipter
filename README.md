@@ -10,7 +10,7 @@ It turns every paid agent job into a verifiable proof-of-work memory: sanitized 
 2. WalrusProof removes private/secret-looking content before anything reaches the worker.
 3. WalrusProof creates a trust decision: score, tier, verdict, reasons, controls, and risk multiplier.
 4. WalrusProof creates a verification manifest with spec hash, checker pack, acceptance criteria, required checks, settlement rule, and reputation write-back note.
-5. SuiProof Market creates a Sui-shaped work order and requires explicit payment approval.
+5. WalrusProof creates a Sui-shaped work order and requires explicit payment approval.
 6. The worker delivers evidence.
 7. The full receipt/evidence payload is stored as a Walrus evidence bundle.
 8. The compact proof pointer is anchored to the Sui receipt registry.
@@ -54,7 +54,7 @@ The longer-term product is portable agent reputation: safe task intake, privacy 
 
 ## Product Direction
 
-SuiProof Market should not become a generic marketplace or payment wrapper. The defensible lane is governed sourcing for agent work:
+WalrusProof should not become a generic marketplace or payment wrapper. The defensible lane is governed sourcing for agent work:
 
 - publish only the safe worker-facing scope
 - compare worker routes or bids by price, SLA, requested data, and risk

@@ -109,7 +109,8 @@ pattern in `TenderBoardServerOptions`).
   overlay, but the environment still needs `@mysten-incubation/memwal`, delegate key, account id,
   and server URL for a real write.
 - **No inspector UI** (passport directory / blob viewer / hash-match).
-- **Identity is inconsistent** across files (see Section 12).
+- **Identity is now aligned in public submission docs.** Some internal package/module/schema names
+  keep legacy `tenderboard` / `suiproof` prefixes as stable protocol identifiers.
 - **Stake/slash registry governance remains a future governance task.** The backend executor is
   oracle-gated, Move consumes an oracle-issued `ChallengeDecision`, and live mode now has
   `SUI_STAKE_ORACLE_REGISTRY_ID`; production governance should rotate/administer that registry.
@@ -287,23 +288,24 @@ Then: publish package → set ids → run one job in `sui` mode → confirm real
 - [x] MemWal adapter merged (fake-client tested); live MemWal smoke remains.
 - [ ] Passport directory + Verify-on-Walrus UI.
 - [ ] Demo video following Section 10.
-- [ ] README + SUBMISSION aligned to one product name.
-- [ ] Tests green; typecheck clean.
+- [x] README + SUBMISSION aligned to one product name.
+- [x] Tests green; typecheck clean.
 
 ---
 
 ## 12. Identity cleanup (do before submitting)
 
-Current names are inconsistent and will confuse judges:
-- repo `tenderboard`; package `walrusproof-market`; README "WalrusProof Market";
-  SUBMISSION "SuiProof Market"; `hackathon.md` is a different "RetainerHub / CROO" project;
-  schema prefixes mix `suiproof.*` / `walrusproof.*` / `tenderboard.*`.
+Public identity is now **WalrusProof** across README, SUBMISSION, and demo script.
 
-Actions:
-- Pick **one** name (recommend **WalrusProof**, matches the track).
-- Make README / SUBMISSION / package.json / UI title agree.
-- Standardize schema prefix (e.g. `walrusproof.*`) — or leave schema strings but document why.
-- Move `hackathon.md` (RetainerHub/CROO) to `archive/` so it's not mistaken for this submission.
+Internal compatibility note:
+- repo path remains `tenderboard`
+- npm package remains `walrusproof-market`
+- Move package remains `SuiProofMarketReceipts`
+- Move modules remain `tenderboard::*`
+- schema prefixes still include `suiproof.*`, `walrusproof.*`, and `tenderboard.*`
+
+Those internal names are treated as stable protocol identifiers for the current testnet package
+and data fixtures, not public branding. The old CROO/RetainerHub plan was moved to `archive/`.
 
 ---
 

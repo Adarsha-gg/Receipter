@@ -570,6 +570,53 @@ describe('SuiProof Market product server', () => {
     }
   });
 
+  it('blocks Sui anchoring when delivery evidence is not verification-admissible', async () => {
+    const { baseUrl, close } = await startTestServer({
+      TENDERBOARD_MODE: 'sui-dev',
+      TENDERBOARD_RECEIPTS_DIR: tempDir,
+    });
+
+    try {
+      const created = await postJson(`${baseUrl}/api/runs`, {
+        title: 'Find Sui ecosystem opportunities without sources',
+        instructions: 'Make it useful.',
+        maxPayment: { amount: '0.050', currency: 'SUI' },
+      });
+
+      await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
+      const delivered = await postJson(`${baseUrl}/api/runs/${created.runId}/worker-delivery`, {
+        deliveryText: 'I completed the work but did not include source receipts.',
+      });
+      expect(delivered.verificationManifest.summary).toMatchObject({
+        admissibility: 'insufficient',
+        evidenceStrength: 'delivery_only',
+        settlementEligible: false,
+      });
+
+      const withEvidence = await postJson(`${baseUrl}/api/runs/${created.runId}/store-evidence`, {});
+      expect(withEvidence.status).toBe('delivered');
+      expect(withEvidence.agentHandoff.status).toBe('requires_review');
+      expect(withEvidence.clearingDecision).toMatchObject({
+        verdict: 'requires_review',
+        verificationAdmissibility: 'insufficient',
+        evidenceStrength: 'walrus_backed',
+      });
+      expect(withEvidence.clearingDecision.blockerIds).toEqual(expect.arrayContaining(['criteria_coverage', 'public_sources']));
+      expect(withEvidence.settlementInstruction.action).toBe('manual_review');
+
+      const anchorResponse = await fetch(`${baseUrl}/api/runs/${created.runId}/anchor-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const anchorBody = await anchorResponse.json();
+      expect(anchorResponse.status).toBe(409);
+      expect(anchorBody.error).toContain('Run cannot be anchored from status: delivered');
+    } finally {
+      await close();
+    }
+  });
+
   it('requires a payment digest before approval in Sui mode', async () => {
     const { baseUrl, close } = await startTestServer({
       TENDERBOARD_MODE: 'sui',

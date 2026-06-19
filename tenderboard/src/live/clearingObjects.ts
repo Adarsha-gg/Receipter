@@ -8,6 +8,7 @@ import type {
   SettlementAction,
   SettlementInstruction,
   TaskDataLabel,
+  VerificationSummary,
 } from './types.js';
 
 export interface ClearingObjects {
@@ -23,7 +24,9 @@ export function buildClearingObjects(receipt: LiveRunReceipt): ClearingObjects {
   const requestedDataLabel = receipt.privacy?.requestedDataLabel ?? receipt.workerBidBoard?.requestedDataLabel ?? 'public';
   const evidenceHash = receipt.verificationManifest.evidenceHash;
   const walrusReady = Boolean(receipt.walrusBlobId);
-  const verdict = clearingVerdict(receipt, walrusReady);
+  const summary = verificationSummary(receipt);
+  const verificationBlockers = clearingBlockers(receipt);
+  const verdict = clearingVerdict(receipt, walrusReady, verificationBlockers);
   const reasons = clearingReasons(receipt, walrusReady);
   const action = settlementAction(verdict);
 
@@ -80,6 +83,9 @@ export function buildClearingObjects(receipt: LiveRunReceipt): ClearingObjects {
     evidenceHash,
     walrusReady,
     verificationStatus,
+    verificationAdmissibility: summary.admissibility,
+    evidenceStrength: summary.evidenceStrength,
+    blockerIds: summary.blockerIds,
     decidedAt: receipt.updatedAt,
   };
 
@@ -119,11 +125,13 @@ function selectedBidReference(receipt: LiveRunReceipt): SelectedBidReference | u
   };
 }
 
-function clearingVerdict(receipt: LiveRunReceipt, walrusReady: boolean): ClearingDecision['verdict'] {
+function clearingVerdict(receipt: LiveRunReceipt, walrusReady: boolean, verificationBlockers: string[]): ClearingDecision['verdict'] {
   if (receipt.trustDecision.verdict === 'block' || !receipt.workOrderId) return 'requires_review';
   if (receipt.suiAnchorDigest) return 'anchored';
+  if (verificationBlockers.length > 0) return 'requires_review';
   if (!receipt.deliveryText || !receipt.verificationManifest.evidenceHash) return 'pending_delivery';
   if (!walrusReady) return 'pending_walrus';
+  if (!verificationSummary(receipt).settlementEligible) return 'requires_review';
   return 'ready_to_anchor';
 }
 
@@ -136,6 +144,12 @@ function clearingReasons(receipt: LiveRunReceipt, walrusReady: boolean): string[
 
   if (receipt.trustDecision.verdict === 'block') {
     reasons.push('Trust gate blocked this receipt from clearing.');
+  }
+  const summary = verificationSummary(receipt);
+  reasons.push(`Verification admissibility: ${summary.admissibility}.`);
+  reasons.push(`Evidence strength: ${summary.evidenceStrength}.`);
+  if (summary.blockerIds.length > 0) {
+    reasons.push(`Verification blocker(s): ${summary.blockerIds.join(', ')}.`);
   }
   if (!receipt.deliveryText) {
     reasons.push('Worker delivery is still required before evidence clearing.');
@@ -152,6 +166,40 @@ function clearingReasons(receipt: LiveRunReceipt, walrusReady: boolean): string[
   }
 
   return reasons;
+}
+
+function clearingBlockers(receipt: LiveRunReceipt): string[] {
+  if (!receipt.deliveryText || !receipt.verificationManifest.evidenceHash) return [];
+  return verificationSummary(receipt).blockerIds.filter((id) => id !== 'walrus_evidence' && id !== 'reputation_signal');
+}
+
+function verificationSummary(receipt: LiveRunReceipt): VerificationSummary {
+  if (receipt.verificationManifest.summary) return receipt.verificationManifest.summary;
+  const passed = receipt.verificationManifest.requiredChecks.filter((check) => check.status === 'passed').length;
+  const pending = receipt.verificationManifest.requiredChecks.filter((check) => check.status === 'pending').length;
+  const requiresReview = receipt.verificationManifest.requiredChecks.filter((check) => check.status === 'requires_review').length;
+  const blockerIds = receipt.verificationManifest.requiredChecks.filter((check) => check.status !== 'passed').map((check) => check.id);
+  const evidenceStrength = receipt.suiAnchorDigest
+    ? 'sui_anchored'
+    : receipt.walrusBlobId
+      ? 'walrus_backed'
+      : receipt.workerEvidence
+        ? 'source_receipt'
+        : receipt.deliveryText
+          ? 'delivery_only'
+          : 'none';
+
+  return {
+    objectType: 'suiproof.verification_summary.v1',
+    admissibility: requiresReview > 0 ? 'insufficient' : blockerIds.length === 0 ? 'admissible' : 'pending',
+    evidenceStrength,
+    passed,
+    pending,
+    requiresReview,
+    blockerIds,
+    settlementEligible: blockerIds.filter((id) => id !== 'reputation_signal').length === 0 && evidenceStrength !== 'none' && evidenceStrength !== 'delivery_only',
+    reputationEligible: Boolean(receipt.suiAnchorDigest) && blockerIds.length === 0,
+  };
 }
 
 function settlementAction(verdict: ClearingDecision['verdict']): SettlementAction {

@@ -101,10 +101,12 @@ export interface AgentHandoff {
   safePacketHash: string;
   specHash: string;
   paymentIntentId: string | undefined;
-  status: 'awaiting_payment' | 'working' | 'ready_to_anchor' | 'anchored';
+  status: 'awaiting_payment' | 'working' | 'requires_review' | 'ready_to_anchor' | 'anchored';
 }
 
 export type VerificationCheckStatus = 'passed' | 'pending' | 'requires_review';
+export type VerificationEvidenceStrength = 'none' | 'delivery_only' | 'source_receipt' | 'walrus_backed' | 'sui_anchored';
+export type VerificationAdmissibility = 'pending' | 'insufficient' | 'admissible';
 
 export interface VerificationCheck {
   id: string;
@@ -113,12 +115,25 @@ export interface VerificationCheck {
   detail: string;
 }
 
+export interface VerificationSummary {
+  objectType: 'suiproof.verification_summary.v1';
+  admissibility: VerificationAdmissibility;
+  evidenceStrength: VerificationEvidenceStrength;
+  passed: number;
+  pending: number;
+  requiresReview: number;
+  blockerIds: string[];
+  settlementEligible: boolean;
+  reputationEligible: boolean;
+}
+
 export interface VerificationManifest {
   specHash: string;
   evidenceHash: string | undefined;
   checkerPack: CheckerPackId;
   acceptanceCriteria: string[];
   requiredChecks: VerificationCheck[];
+  summary?: VerificationSummary;
   settlementRule: string;
   reputationWriteback: string;
 }
@@ -377,6 +392,9 @@ export interface ClearingDecision {
     pending: number;
     requiresReview: number;
   };
+  verificationAdmissibility: VerificationAdmissibility;
+  evidenceStrength: VerificationEvidenceStrength;
+  blockerIds: string[];
   decidedAt: string;
 }
 

@@ -643,9 +643,11 @@ async function storeEvidence(
     ...updatedForManifest,
     verificationManifest,
   };
+  const clearingObjects = buildClearingObjects(updatedForClearing);
+  const nextStatus = clearingObjects.clearingDecision.verdict === 'ready_to_anchor' ? 'anchoring' : 'delivered';
 
   await store.update(runId, {
-    status: 'anchoring',
+    status: nextStatus,
     updatedAt: now,
     walrusBlobId: result.blobId,
     walrusBlobObjectId: result.blobObjectId,
@@ -654,8 +656,10 @@ async function storeEvidence(
     walrusReadUrl: result.readUrl,
     receiptPlan,
     verificationManifest,
-    ...agentHandoffUpdate(receipt, 'anchoring'),
-    ...buildClearingObjects(updatedForClearing),
+    ...(clearingObjects.clearingDecision.verdict === 'requires_review'
+      ? agentHandoffReviewUpdate(receipt)
+      : agentHandoffUpdate(receipt, nextStatus)),
+    ...clearingObjects,
   });
 
   const events = [
@@ -704,6 +708,9 @@ async function anchorReceipt(
   }
   if (receipt.status !== 'anchoring' && receipt.status !== 'anchored') {
     throw httpError(409, `Run cannot be anchored from status: ${receipt.status}`);
+  }
+  if (receipt.status !== 'anchored' && receipt.clearingDecision?.verdict !== 'ready_to_anchor') {
+    throw httpError(409, `Run is not verification-admissible for Sui anchoring. Current clearing verdict: ${receipt.clearingDecision?.verdict ?? 'missing'}`);
   }
 
   const suiAnchorDigest = config.mode === 'sui-dev' ? makeSuiDevDigest('anchor', runId) : body.suiAnchorDigest?.trim();
@@ -824,6 +831,10 @@ function requireReceiptPlan(receipt: LiveRunReceipt) {
 
 function agentHandoffUpdate(receipt: LiveRunReceipt, status: LiveRunReceipt['status']): { agentHandoff: NonNullable<LiveRunReceipt['agentHandoff']> } | {} {
   return receipt.agentHandoff ? { agentHandoff: { ...receipt.agentHandoff, status: handoffStatusForRun(status) } } : {};
+}
+
+function agentHandoffReviewUpdate(receipt: LiveRunReceipt): { agentHandoff: NonNullable<LiveRunReceipt['agentHandoff']> } | {} {
+  return receipt.agentHandoff ? { agentHandoff: { ...receipt.agentHandoff, status: 'requires_review' } } : {};
 }
 
 async function cancelRun(runId: string, store: RunStore, bus: RunEventBus): Promise<LiveRunReceipt> {

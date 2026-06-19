@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildClearingObjects } from '../src/live/clearingObjects.js';
 import { loadTenderBoardConfig } from '../src/live/config.js';
 import { buildTrustProof, finalizeVerificationManifest } from '../src/live/trustProof.js';
-import type { LiveRunReceipt } from '../src/live/types.js';
+import type { LiveRunReceipt, ScoutEvidence, VerificationManifest } from '../src/live/types.js';
 
 describe('trust proof model', () => {
   it('anchors a safe task with a Sui trust decision and verification manifest', () => {
@@ -29,6 +29,13 @@ describe('trust proof model', () => {
     expect(proof.verificationManifest.acceptanceCriteria).toContain('Payment requires a Sui work order id and explicit operator approval.');
     expect(proof.verificationManifest.specHash).toMatch(/^sha256:/);
     expect(proof.verificationManifest.requiredChecks.map((check) => check.id)).toContain('public_sources');
+    expect(proof.verificationManifest.requiredChecks.map((check) => check.id)).toContain('walrus_evidence');
+    expect(proof.verificationManifest.summary).toMatchObject({
+      admissibility: 'pending',
+      evidenceStrength: 'none',
+      settlementEligible: false,
+      reputationEligible: false,
+    });
   });
 
   it('finalizes Sui evidence checks after delivery', () => {
@@ -97,7 +104,161 @@ describe('trust proof model', () => {
     expect(withEvidence.evidenceHash).toMatch(/^sha256:/);
     expect(withEvidence.evidenceHash).not.toBe(withoutEvidence.evidenceHash);
   });
+
+  it('blocks settlement when delivery lacks source-backed verification', () => {
+    const receipt = {
+      ...sampleReceipt(),
+      verificationManifest: researchManifest(),
+      walrusBlobId: 'walrus_dev_blob_run_trust',
+      walrusBlobObjectId: '0xwalrus',
+      walrusReadUrl: 'https://aggregator.example/blob',
+      deliveryText: 'Opportunity Scout Report without source receipts',
+    };
+    const finalized = finalizeVerificationManifest(receipt, receipt.deliveryText);
+    const clearing = buildClearingObjects({ ...receipt, verificationManifest: finalized });
+
+    expect(finalized.summary).toMatchObject({
+      admissibility: 'insufficient',
+      evidenceStrength: 'walrus_backed',
+      settlementEligible: false,
+    });
+    expect(finalized.summary?.blockerIds).toEqual(expect.arrayContaining(['criteria_coverage', 'public_sources']));
+    expect(clearing.clearingDecision).toMatchObject({
+      verdict: 'requires_review',
+      verificationAdmissibility: 'insufficient',
+      evidenceStrength: 'walrus_backed',
+    });
+    expect(clearing.settlementInstruction.action).toBe('manual_review');
+  });
+
+  it('marks source-backed Walrus evidence admissible for anchoring', () => {
+    const receipt = {
+      ...sampleReceipt(),
+      verificationManifest: researchManifest(),
+      walrusBlobId: 'walrus_dev_blob_run_trust',
+      walrusBlobObjectId: '0xwalrus',
+      walrusReadUrl: 'https://aggregator.example/blob',
+      deliveryText: 'Opportunity Scout Report with source-backed claims',
+      workerEvidence: validWorkerEvidence(),
+    };
+    const finalized = finalizeVerificationManifest(receipt, receipt.deliveryText);
+    const clearing = buildClearingObjects({ ...receipt, verificationManifest: finalized });
+
+    expect(finalized.requiredChecks.find((check) => check.id === 'criteria_coverage')).toMatchObject({
+      status: 'passed',
+    });
+    expect(finalized.requiredChecks.find((check) => check.id === 'public_sources')).toMatchObject({
+      status: 'passed',
+    });
+    expect(finalized.requiredChecks.find((check) => check.id === 'walrus_evidence')).toMatchObject({
+      status: 'passed',
+    });
+    expect(finalized.summary).toMatchObject({
+      admissibility: 'admissible',
+      evidenceStrength: 'walrus_backed',
+      settlementEligible: true,
+      reputationEligible: false,
+    });
+    expect(clearing.clearingDecision).toMatchObject({
+      verdict: 'ready_to_anchor',
+      verificationAdmissibility: 'admissible',
+      evidenceStrength: 'walrus_backed',
+      blockerIds: ['reputation_signal'],
+    });
+    expect(clearing.settlementInstruction.action).toBe('anchor_sui_receipt');
+  });
+
+  it('requires every source claim to bind to an observation', () => {
+    const receipt = {
+      ...sampleReceipt(),
+      verificationManifest: researchManifest(),
+      walrusBlobId: 'walrus_dev_blob_run_trust',
+      deliveryText: 'Opportunity Scout Report with broken source claims',
+      workerEvidence: {
+        ...validWorkerEvidence(),
+        claims: [
+          {
+            claimId: 'claim_broken',
+            resultIndex: 0,
+            title: 'Broken claim',
+            url: 'https://example.com/broken',
+            sourceObservationId: 'missing_observation',
+            statement: 'This claim is not bound.',
+          },
+        ],
+      },
+    };
+    const finalized = finalizeVerificationManifest(receipt, receipt.deliveryText);
+    const clearing = buildClearingObjects({ ...receipt, verificationManifest: finalized });
+
+    expect(finalized.requiredChecks.find((check) => check.id === 'public_sources')).toMatchObject({
+      status: 'requires_review',
+      detail: '1 claim(s) are not bound to a source observation.',
+    });
+    expect(finalized.summary?.settlementEligible).toBe(false);
+    expect(clearing.clearingDecision.verdict).toBe('requires_review');
+  });
 });
+
+function researchManifest(): VerificationManifest {
+  const config = loadTenderBoardConfig({ TENDERBOARD_MODE: 'sui-dev', TENDERBOARD_MAX_PAYMENT_SUI: '0.250' });
+  return buildTrustProof({
+    request: {
+      title: 'Find Sui agent grants',
+      instructions: 'Return public links.',
+      acceptanceCriteria: ['Return at least three links.'],
+      checkerPack: 'research',
+      maxPayment: { amount: '0.050', currency: 'SUI' },
+    },
+    sanitizedTask: 'Task: Find Sui agent grants\nInstructions:\nReturn public links.',
+    removedLines: [],
+    privateNotesProvided: false,
+    config,
+  }).verificationManifest;
+}
+
+function validWorkerEvidence(): ScoutEvidence {
+  return {
+    schema: 'tenderboard.scout_evidence.v1',
+    generatedAt: '2026-06-19T18:00:00.000Z',
+    query: 'Sui agent grants',
+    sourceReceipt: {
+      schema: 'tenderboard.source_receipt.v1',
+      receiptId: 'source_receipt_1',
+      generatedAt: '2026-06-19T18:00:00.000Z',
+      query: 'Sui agent grants',
+      observations: [
+        {
+          observationId: 'obs_1',
+          source: 'github',
+          sourceLabel: 'GitHub',
+          endpoint: 'https://api.github.com/search/repositories',
+          query: 'Sui agent grants',
+          observedAt: '2026-06-19T18:00:00.000Z',
+          title: 'Sui grant opportunity',
+          url: 'https://example.com/sui-grant',
+          score: 100,
+          publishedAt: '2026-06-18T18:00:00.000Z',
+          recordHash: 'sha256:record',
+          record: { title: 'Sui grant opportunity' },
+        },
+      ],
+      warnings: [],
+      receiptHash: 'sha256:source',
+    },
+    claims: [
+      {
+        claimId: 'claim_1',
+        resultIndex: 0,
+        title: 'Sui grant opportunity',
+        url: 'https://example.com/sui-grant',
+        sourceObservationId: 'obs_1',
+        statement: 'Sui grant opportunity is supported by source observation obs_1.',
+      },
+    ],
+    evidenceHash: 'sha256:worker',
+  };
+}
 
 function sampleReceipt(): LiveRunReceipt {
   return {

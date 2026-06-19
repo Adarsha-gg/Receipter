@@ -8,7 +8,9 @@ import type {
   TrustDecision,
   TrustTier,
   VerificationCheck,
+  VerificationEvidenceStrength,
   VerificationManifest,
+  VerificationSummary,
   WorkerBidBoard,
 } from './types.js';
 
@@ -131,6 +133,12 @@ export function buildVerificationManifest(input: BuildTrustProofInput): Verifica
       detail: 'Waiting for worker delivery.',
     },
     {
+      id: 'walrus_evidence',
+      label: 'Walrus evidence storage',
+      status: 'pending',
+      detail: 'Waiting for the full receipt and source evidence bundle to be stored on Walrus.',
+    },
+    {
       id: 'criteria_coverage',
       label: 'Acceptance criteria coverage',
       status: 'pending',
@@ -159,12 +167,15 @@ export function buildVerificationManifest(input: BuildTrustProofInput): Verifica
     checkerPack,
     acceptanceCriteria,
     requiredChecks: checks,
+    summary: summarizeVerification(checks, 'none', false),
     settlementRule: 'Release payment only after safe packet creation, Sui work order creation, explicit operator approval, delivery receipt, Walrus evidence upload, and Sui anchor readiness.',
     reputationWriteback: 'Use only Sui-anchored receipts as worker reputation signals.',
   };
 }
 
 export function finalizeVerificationManifest(receipt: LiveRunReceipt, deliveryText: string | undefined): VerificationManifest {
+  const sourceEvidence = sourceEvidenceStatus(receipt);
+  const evidenceStrength = evidenceStrengthForReceipt(receipt, deliveryText, sourceEvidence.valid);
   const evidenceHash = stableHash({
     runId: receipt.runId,
     workOrderId: receipt.workOrderId,
@@ -185,33 +196,61 @@ export function finalizeVerificationManifest(receipt: LiveRunReceipt, deliveryTe
       } satisfies VerificationCheck;
     }
     if (check.id === 'delivery_evidence') {
+      const deliveryPresent = Boolean(deliveryText?.trim());
       return {
         ...check,
-        status: deliveryText ? 'passed' : 'requires_review',
-        detail: deliveryText ? `Delivery evidence hash ${evidenceHash}.` : 'No delivery text was recorded.',
+        status: deliveryPresent ? 'passed' : 'requires_review',
+        detail: deliveryPresent ? `Delivery evidence hash ${evidenceHash}.` : 'No delivery text was recorded.',
+      } satisfies VerificationCheck;
+    }
+    if (check.id === 'walrus_evidence') {
+      return {
+        ...check,
+        status: receipt.walrusBlobId ? 'passed' : deliveryText ? 'pending' : 'pending',
+        detail: receipt.walrusBlobId
+          ? `Walrus evidence bundle ${receipt.walrusBlobId} is bound to the receipt.`
+          : 'Waiting for Walrus storage before Sui anchoring.',
       } satisfies VerificationCheck;
     }
     if (check.id === 'reputation_signal') {
       return {
         ...check,
-        status: 'pending',
-        detail: deliveryText
-          ? 'Receipt is a reputation candidate; waiting for Sui anchor before WorkerReputationUpdated.'
-          : 'Waiting for delivery and Sui anchor before reputation write-back.',
+        status: receipt.suiAnchorDigest ? 'passed' : 'pending',
+        detail: receipt.suiAnchorDigest
+          ? `Sui anchor ${receipt.suiAnchorDigest} makes this receipt eligible for reputation write-back.`
+          : deliveryText
+            ? 'Receipt is a reputation candidate; waiting for Sui anchor before WorkerReputationUpdated.'
+            : 'Waiting for delivery and Sui anchor before reputation write-back.',
       } satisfies VerificationCheck;
     }
     if (check.id === 'criteria_coverage') {
+      const criteriaCovered = Boolean(deliveryText?.trim()) && sourceEvidence.valid;
       return {
         ...check,
-        status: deliveryText ? 'requires_review' : 'pending',
-        detail: deliveryText ? 'Delivery is present; buyer or checker should confirm each acceptance criterion before reputation write-back.' : check.detail,
+        status: criteriaCovered ? 'passed' : deliveryText ? 'requires_review' : 'pending',
+        detail: criteriaCovered
+          ? 'Built-in checker accepted the delivery because source-backed claims are present and bound to observations.'
+          : deliveryText
+            ? 'Delivery is present but lacks enough source-backed evidence to cover acceptance criteria automatically.'
+            : check.detail,
       } satisfies VerificationCheck;
     }
-    if (['public_sources', 'test_result', 'schema_match', 'price_bound', 'merchant_source'].includes(check.id)) {
+    if (check.id === 'public_sources') {
+      return {
+        ...check,
+        status: sourceEvidence.valid ? 'passed' : deliveryText ? 'requires_review' : 'pending',
+        detail: sourceEvidence.valid
+          ? `Source receipt contains ${sourceEvidence.observationCount} observation(s) and ${sourceEvidence.claimCount} claim(s), with every claim bound to an observation.`
+          : deliveryText
+            ? sourceEvidence.detail
+            : check.detail,
+      } satisfies VerificationCheck;
+    }
+    if (['test_result', 'schema_match', 'price_bound', 'merchant_source'].includes(check.id)) {
       return {
         ...check,
         status: deliveryText ? 'requires_review' : 'pending',
-        detail: deliveryText ? `${check.label} is ready for checker review against the delivery.` : check.detail,
+        detail: deliveryText ? `${check.label} needs a specialized checker before settlement can proceed.` : check.detail,
       } satisfies VerificationCheck;
     }
     return check;
@@ -221,6 +260,7 @@ export function finalizeVerificationManifest(receipt: LiveRunReceipt, deliveryTe
     ...receipt.verificationManifest,
     evidenceHash,
     requiredChecks,
+    summary: summarizeVerification(requiredChecks, evidenceStrength, Boolean(receipt.suiAnchorDigest)),
   };
 }
 
@@ -299,6 +339,90 @@ function checksForPack(checkerPack: CheckerPackId): VerificationCheck[] {
       detail: 'Worker delivery should include public links that support the recommendation.',
     },
   ];
+}
+
+function summarizeVerification(checks: VerificationCheck[], evidenceStrength: VerificationEvidenceStrength, anchored: boolean): VerificationSummary {
+  const blockerIds = checks.filter((check) => check.status !== 'passed').map((check) => check.id);
+  const passed = checks.filter((check) => check.status === 'passed').length;
+  const pending = checks.filter((check) => check.status === 'pending').length;
+  const requiresReview = checks.filter((check) => check.status === 'requires_review').length;
+  const settlementBlockers = blockerIds.filter((id) => id !== 'reputation_signal');
+  const settlementEligible = settlementBlockers.length === 0 && evidenceStrength !== 'none' && evidenceStrength !== 'delivery_only';
+  const reputationEligible = anchored && blockerIds.length === 0 && evidenceStrength === 'sui_anchored';
+  const admissibility =
+    checks.some((check) => check.status === 'requires_review') || evidenceStrength === 'delivery_only'
+      ? 'insufficient'
+      : settlementEligible
+        ? 'admissible'
+        : 'pending';
+
+  return {
+    objectType: 'suiproof.verification_summary.v1',
+    admissibility,
+    evidenceStrength,
+    passed,
+    pending,
+    requiresReview,
+    blockerIds,
+    settlementEligible,
+    reputationEligible,
+  };
+}
+
+function evidenceStrengthForReceipt(
+  receipt: LiveRunReceipt,
+  deliveryText: string | undefined,
+  sourceEvidenceValid: boolean,
+): VerificationEvidenceStrength {
+  if (receipt.suiAnchorDigest) return 'sui_anchored';
+  if (receipt.walrusBlobId) return 'walrus_backed';
+  if (sourceEvidenceValid) return 'source_receipt';
+  if (deliveryText?.trim()) return 'delivery_only';
+  return 'none';
+}
+
+function sourceEvidenceStatus(receipt: LiveRunReceipt): {
+  valid: boolean;
+  observationCount: number;
+  claimCount: number;
+  detail: string;
+} {
+  const sourceReceipt = receipt.workerEvidence?.sourceReceipt;
+  const claims = receipt.workerEvidence?.claims ?? [];
+  const observations = sourceReceipt?.observations ?? [];
+  if (!receipt.workerEvidence) {
+    return { valid: false, observationCount: 0, claimCount: 0, detail: 'Worker delivery has no structured source evidence receipt.' };
+  }
+  if (receipt.workerEvidence.evidenceHash && !receipt.workerEvidence.evidenceHash.startsWith('sha256:')) {
+    return { valid: false, observationCount: observations.length, claimCount: claims.length, detail: 'Worker evidence hash is malformed.' };
+  }
+  if (!sourceReceipt?.receiptHash?.startsWith('sha256:')) {
+    return { valid: false, observationCount: observations.length, claimCount: claims.length, detail: 'Source receipt hash is missing or malformed.' };
+  }
+  if (observations.length === 0) {
+    return { valid: false, observationCount: 0, claimCount: claims.length, detail: 'Source receipt contains no observations.' };
+  }
+  if (claims.length === 0) {
+    return { valid: false, observationCount: observations.length, claimCount: 0, detail: 'Worker evidence contains no source-backed claims.' };
+  }
+
+  const observationIds = new Set(observations.map((observation) => observation.observationId));
+  const unboundClaims = claims.filter((claim) => !observationIds.has(claim.sourceObservationId));
+  if (unboundClaims.length > 0) {
+    return {
+      valid: false,
+      observationCount: observations.length,
+      claimCount: claims.length,
+      detail: `${unboundClaims.length} claim(s) are not bound to a source observation.`,
+    };
+  }
+
+  return {
+    valid: true,
+    observationCount: observations.length,
+    claimCount: claims.length,
+    detail: 'Source receipt is valid.',
+  };
 }
 
 function clamp(value: number, min: number, max: number): number {

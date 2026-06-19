@@ -13,10 +13,11 @@ SuiProof Market is a Sui-native operator console for hiring worker agents safely
 7. The challenge carries a Sui Payment Kit-compatible URI plus Payment Intent metadata for that exact work order.
 8. Hirer agent retries with a Sui payment payload.
 9. The Sui-native x402 facilitator verifies run, resource, nonce, amount, receiver, worker, and Sui settlement.
-10. Worker agent receives the paid task packet and delivers public-source evidence.
-11. Full receipt/evidence is stored as a Walrus bundle.
-12. Compact proof fields are committed to the Sui receipt registry.
-13. The worker reputation passport updates only after the Sui receipt anchor is recorded.
+10. Worker agent receives the paid task packet and delivers source-backed evidence.
+11. The verification layer checks claim-to-source binding, evidence strength, Walrus readiness, and settlement blockers.
+12. Full receipt/evidence is stored as a Walrus bundle only after delivery.
+13. Compact proof fields are committed to the Sui receipt registry only when verification is admissible.
+14. The worker reputation passport updates only after the Sui receipt anchor is recorded.
 
 ## Sui Proof Layer
 
@@ -53,6 +54,18 @@ In `sui-dev` mode the app records deterministic Sui dev digests and Walrus dev b
 SuiProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning. Worker task access is exposed as an x402 paid API: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest.
 
 The app includes its own Sui-native x402 facilitator. In `sui-dev` it verifies deterministic local Sui dev digests for demoability. In `sui` mode it calls `SUI_RPC_URL` with `sui_getTransactionBlock` and verifies successful execution, receiver balance change, Payment Kit nonce binding, request/resource binding, amount, receiver, coin type, worker id, and replay protection before unlocking the worker task. This is not the Coinbase-hosted facilitator; it is the missing Sui-specific facilitator path for SuiProof Market. In this environment the Move package is source-level because the Sui CLI is not installed.
+
+## Verification Layer
+
+SuiProof Market treats payment, delivery, clearing, and reputation as separate gates. Delivery text alone is not settlement-grade evidence. Each receipt gets a verification summary with:
+
+- `admissibility`: `pending`, `insufficient`, or `admissible`
+- `evidenceStrength`: `none`, `delivery_only`, `source_receipt`, `walrus_backed`, or `sui_anchored`
+- `blockerIds`: unresolved checks that prevent clearing
+- `settlementEligible`: true only when non-reputation blockers are cleared
+- `reputationEligible`: true only after Sui anchoring
+
+For research work, source-backed claims must be bound to observations in the worker source receipt. If claims are missing, malformed, or not bound to observations, clearing moves to `requires_review`, settlement action becomes `manual_review`, and Sui anchoring is blocked even if a Walrus blob exists.
 
 ## Run
 

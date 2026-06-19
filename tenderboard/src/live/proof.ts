@@ -2,7 +2,7 @@ import type { LiveRunReceipt } from './types.js';
 
 export function renderReceiptProof(receipt: LiveRunReceipt): string {
   const lines = [
-    `# SuiProof Market Run Proof: ${receipt.runId}`,
+    `# WalrusProof Market Memory Proof: ${receipt.runId}`,
     '',
     `- Mode: ${receipt.mode}`,
     `- Status: ${receipt.status}`,
@@ -19,6 +19,10 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     `- Verification admissibility: ${receipt.verificationManifest.summary?.admissibility ?? receipt.clearingDecision?.verificationAdmissibility ?? 'not summarized'}`,
     `- Evidence strength: ${receipt.verificationManifest.summary?.evidenceStrength ?? receipt.clearingDecision?.evidenceStrength ?? 'not summarized'}`,
     `- Verification blockers: ${(receipt.verificationManifest.summary?.blockerIds ?? receipt.clearingDecision?.blockerIds ?? []).join(', ') || 'none'}`,
+    `- Memory id: ${receipt.memoryRecord?.memoryId ?? 'not recorded'}`,
+    `- Memory hash: ${receipt.memoryRecord?.memoryHash ?? 'not recorded'}`,
+    `- Memory evidence strength: ${receipt.memoryRecord?.evidenceStrength ?? 'not recorded'}`,
+    `- Memory settlement action: ${receipt.memoryRecord?.settlementAction ?? 'not recorded'}`,
     `- Payment intent id: ${receipt.paymentIntentPlan?.intentId ?? 'not planned'}`,
     `- Payment nonce: ${receipt.paymentIntentPlan?.paymentNonce ?? receipt.receiptPlan?.paymentNonce ?? 'not planned'}`,
     `- Settlement nonce: ${receipt.paymentIntentPlan?.settlementNonce ?? receipt.receiptPlan?.settlementNonce ?? 'not planned'}`,
@@ -74,6 +78,10 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     '',
     ...renderWorkerReputation(receipt),
     '',
+    '## Walrus Memory Record',
+    '',
+    ...renderWalrusMemoryRecord(receipt),
+    '',
     '## Trust gate',
     '',
     ...receipt.trustDecision.reasons.map((reason) => `- ${reason}`),
@@ -111,6 +119,24 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+function renderWalrusMemoryRecord(receipt: LiveRunReceipt): string[] {
+  const memory = receipt.memoryRecord;
+  if (!memory) return ['No Walrus memory record stored yet.'];
+
+  return [
+    `- Memory id: ${memory.memoryId}`,
+    `- Memory hash: ${memory.memoryHash}`,
+    `- Summary: ${memory.summary}`,
+    `- Tags: ${memory.tags.join(', ') || 'none'}`,
+    `- Claim support: ${memory.averageClaimSupport ?? 'none'}`,
+    `- Supported claims: ${memory.supportedClaimCount}/${memory.claimCount}`,
+    `- Source observations: ${memory.sourceObservationCount}`,
+    `- Walrus blob: ${memory.walrusBlobId ?? 'not stored'}`,
+    `- Walrus read URL: ${memory.walrusReadUrl ?? 'not stored'}`,
+    `- Sui anchor digest: ${memory.suiAnchorDigest ?? 'not anchored'}`,
+  ];
 }
 
 function renderClaimVerification(receipt: LiveRunReceipt): string[] {

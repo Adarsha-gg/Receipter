@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildAgentPair, handoffStatusForRun } from '../live/agentPair.js';
-import { buildAgentMemoryPassport, buildAgentMemoryRecord } from '../live/agentMemory.js';
+import { buildAgentMemoryPassport, buildAgentMemoryRecord, buildWalrusMemoryIndex } from '../live/agentMemory.js';
 import { buildPrivacyLabeledTask, buildWorkerBidBoard, availableWorkerBids } from '../live/bidBoard.js';
 import { buildClearingObjects } from '../live/clearingObjects.js';
 import { loadTenderBoardConfig } from '../live/config.js';
@@ -98,6 +98,18 @@ async function route(
     return;
   }
 
+  if (method === 'GET' && url.pathname === '/api/walrus/memory') {
+    sendJson(res, 200, buildWalrusMemoryIndex(await loadAllReceipts(store)));
+    return;
+  }
+
+  const walrusMemoryPassportMatch = url.pathname.match(/^\/api\/walrus\/memory\/([^/]+)$/);
+  if (method === 'GET' && walrusMemoryPassportMatch) {
+    const workerAgentId = decodeURIComponent(walrusMemoryPassportMatch[1]!);
+    sendJson(res, 200, buildAgentMemoryPassport(workerAgentId, await loadAllReceipts(store)));
+    return;
+  }
+
   const agentMemoryMatch = url.pathname.match(/^\/api\/agents\/([^/]+)\/memory$/);
   if (method === 'GET' && agentMemoryMatch) {
     const workerAgentId = decodeURIComponent(agentMemoryMatch[1]!);
@@ -120,6 +132,17 @@ async function route(
       return;
     }
     sendReceiptJson(res, receipt);
+    return;
+  }
+
+  const runMemoryMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/memory$/);
+  if (method === 'GET' && runMemoryMatch) {
+    const receipt = await store.get(runMemoryMatch[1]!);
+    if (!receipt) {
+      sendJson(res, 404, { error: 'Run not found' });
+      return;
+    }
+    sendJson(res, 200, receipt.memoryRecord ?? buildAgentMemoryRecord(receipt));
     return;
   }
 
@@ -1013,7 +1036,7 @@ export function startTenderBoardServer(): void {
   const config = loadTenderBoardConfig();
   const server = createTenderBoardServer({ config });
   server.listen(config.port, () => {
-    console.log(`SuiProof Market server running at http://127.0.0.1:${config.port}`);
+    console.log(`WalrusProof Market server running at http://127.0.0.1:${config.port}`);
     console.log(`Mode: ${config.mode}`);
   });
 }

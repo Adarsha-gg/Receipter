@@ -1,27 +1,49 @@
-# SuiProof Market - Sui Trust-Gated Agent Work Market
+# WalrusProof Market - Walrus-Native Agent Memory Market
 
-SuiProof Market is a Sui-native operator console for hiring worker agents safely. It exists to make paid agent work verifiable: every task becomes a Sui-shaped work order, every delivery gets evidence, every run produces a Walrus-backed agent memory record, and every completed run can be anchored to a Sui receipt registry.
+WalrusProof Market is a Walrus-native operator console for hiring worker agents safely. It exists to make agent work durable and reusable: every task becomes a paid work order, every delivery must produce source-backed evidence, every completed run becomes a portable Walrus memory record, and Sui provides the payment/finality rail for compact receipts.
+
+The core product is the Walrus memory layer. Sui is still meaningful, but it supports the memory product: SUI payments gate worker access, Sui transaction digests bind work orders, and the Sui receipt registry anchors compact hashes after Walrus stores the full evidence bundle.
 
 ## Core Product Loop
 
 1. Buyer writes task, private notes, acceptance criteria, checker pack, and max SUI payment.
-2. SuiProof Market strips private notes and secret-looking lines.
-3. SuiProof Market creates a worker-facing safe packet.
-4. SuiProof Market scores the worker route before execution.
-5. SuiProof Market creates a verification manifest and Sui work order id.
+2. WalrusProof Market strips private notes and secret-looking lines.
+3. WalrusProof Market creates a worker-facing safe packet.
+4. WalrusProof Market scores the worker route against prior Walrus memory before execution.
+5. WalrusProof Market creates a verification manifest, memory scope, and Sui work order id.
 6. Worker task access is guarded by an x402-style HTTP 402 challenge.
 7. The challenge carries a Sui Payment Kit-compatible URI plus Payment Intent metadata for that exact work order.
 8. Hirer agent retries with a Sui payment payload.
 9. The Sui-native x402 facilitator verifies run, resource, nonce, amount, receiver, worker, and Sui settlement.
 10. Worker agent receives the paid task packet and delivers source-backed evidence.
 11. The verification layer checks claim-to-source binding, evidence strength, Walrus readiness, and settlement blockers.
-12. Full receipt/evidence is stored as a Walrus bundle only after delivery.
+12. Full receipt/evidence is stored as a Walrus memory bundle only after delivery.
 13. The Walrus bundle becomes the worker's portable agent memory record.
 14. Compact proof fields are committed to the Sui receipt registry only when verification is admissible.
 15. The worker reputation passport updates only after the Sui receipt anchor is recorded.
-16. Future work orders use the worker's Walrus/Sui memory passport in the pre-run trust gate.
+16. Future work orders use the worker's Walrus memory passport in the pre-run trust gate.
 
-## Sui Proof Layer
+## Walrus Memory Layer
+
+Walrus is the durable memory substrate, not a side upload. Every delivered run produces a `suiproof.agent_memory_record.v1` with task summary, claim counts, average claim support, evidence strength, settlement action, Walrus blob id, Sui anchor digest, and a stable memory hash. Records roll up into a `suiproof.agent_memory_passport.v1` per worker and into a global `walrusproof.memory_index.v1`.
+
+The memory layer gives the app its loop:
+
+- workers remember across jobs through portable Walrus records
+- buyers can inspect the exact memory that influenced routing
+- future trust decisions include prior Walrus-backed performance
+- weak prior claim support lowers the trust score before dispatch
+- Sui anchors are compact finality signals for the larger Walrus memory bundle
+
+Memory API:
+
+```text
+GET /api/walrus/memory                 global Walrus memory index
+GET /api/walrus/memory/:workerAgentId  worker Walrus memory passport
+GET /api/runs/:id/memory               run-level Walrus memory record
+```
+
+## Sui Payment And Finality Layer
 
 Move package:
 
@@ -53,13 +75,13 @@ Do not claim deployed Sui anchoring until the package is published and at least 
 
 In `sui-dev` mode the app records deterministic Sui dev digests and Walrus dev blob/object ids so the full product loop can be demoed locally. In `sui` mode payment approval requires a real Sui payment transaction digest, the Walrus evidence step uses the configured HTTP publisher, and the Sui anchor step records the real receipt-registry transaction digest.
 
-SuiProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning. Worker task access is exposed as an x402 paid API: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest.
+WalrusProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning. Worker task access is exposed as an x402 paid API: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest.
 
-The app includes its own Sui-native x402 facilitator. In `sui-dev` it verifies deterministic local Sui dev digests for demoability. In `sui` mode it calls `SUI_RPC_URL` with `sui_getTransactionBlock` and verifies successful execution, receiver balance change, Payment Kit nonce binding, request/resource binding, amount, receiver, coin type, worker id, and replay protection before unlocking the worker task. This is not the Coinbase-hosted facilitator; it is the missing Sui-specific facilitator path for SuiProof Market. In this environment the Move package is source-level because the Sui CLI is not installed.
+The app includes its own Sui-native x402 facilitator. In `sui-dev` it verifies deterministic local Sui dev digests for demoability. In `sui` mode it calls `SUI_RPC_URL` with `sui_getTransactionBlock` and verifies successful execution, receiver balance change, Payment Kit nonce binding, request/resource binding, amount, receiver, coin type, worker id, and replay protection before unlocking the worker task. This is not the Coinbase-hosted facilitator; it is the missing Sui-specific facilitator path for WalrusProof Market. In this environment the Move package is source-level because the Sui CLI is not installed.
 
 ## Verification Layer
 
-SuiProof Market treats payment, delivery, clearing, and reputation as separate gates. Delivery text alone is not settlement-grade evidence. Each receipt gets a verification summary with:
+WalrusProof Market treats payment, delivery, memory admission, clearing, and reputation as separate gates. Delivery text alone is not settlement-grade memory. Each receipt gets a verification summary with:
 
 - `admissibility`: `pending`, `insufficient`, or `admissible`
 - `evidenceStrength`: `none`, `delivery_only`, `source_receipt`, `walrus_backed`, or `sui_anchored`
@@ -69,11 +91,28 @@ SuiProof Market treats payment, delivery, clearing, and reputation as separate g
 
 For research work, source-backed claims must be bound to observations in the worker source receipt. Each claim receives a support verdict: `supported`, `weak`, `stale`, `unbound`, or `contradicted`. The checker compares claim URL, title, statement, source record, record hash, and freshness. If claims are missing, stale, weak, malformed, or not bound to observations, clearing moves to `requires_review`, settlement action becomes `manual_review`, and Sui anchoring is blocked even if a Walrus blob exists.
 
-## Walrus Agent Memory
+## Competitive Positioning
 
-Walrus is the durable memory layer, not a side upload. Every delivered run produces a `suiproof.agent_memory_record.v1` with task summary, claim counts, average claim support, evidence strength, settlement action, Walrus blob id, Sui anchor digest, and a stable memory hash. The records roll up into a `suiproof.agent_memory_passport.v1` per worker.
+Agent memory is an active category. The leading products prove the need, but most focus on app-local context retrieval rather than verifiable, portable work memory.
 
-New runs read that memory passport before dispatch. A worker with prior Walrus-backed and Sui-anchored records gets those signals included in the trust decision and verification manifest; weak prior claim support reduces the trust score. This gives the product a real Walrus loop: agents remember what they did, buyers can inspect that memory, and the market can route future work using portable proof history.
+| Product | What they have | What they do not have that WalrusProof adds |
+| --- | --- | --- |
+| Mem0 | Drop-in persistent memory for agents and apps, SDK integrations, memory compression, governance, audit logs, and enterprise controls. | No Walrus-backed portable memory bundle, no Sui payment-gated work order, no source-claim admission gate, no on-chain finality for compact memory proofs. |
+| Zep / Graphiti | Enterprise agent memory with temporal context graphs, business/user/work memory, and benchmarked graph retrieval. | No decentralized blob memory layer, no paid agent-work marketplace, no Sui receipt registry anchor, no settlement blocker model before memory admission. |
+| Letta | Stateful agents with memory blocks, shared memory, archival memory, long-running executions, and multi-agent patterns. | No Walrus-native storage target by default, no worker reputation passport derived from stored evidence, no x402-style Sui payment unlock, no proof object tying memory to payment and source evidence. |
+| LangGraph memory | Short-term thread checkpoints and long-term memory stores for semantic/profile/episodic/procedural memory. | Framework primitives rather than a product loop; no durable Walrus memory ledger, no payment-bound agent marketplace, no automatic source-claim clearing, no Sui finality rail. |
+| Plain RAG/vector DBs | Fast retrieval, embeddings, and app-specific context search. | Retrieval is not memory governance: no source-backed admission, no worker performance passport, no portable blob proof, no payment/finality coupling. |
+
+WalrusProof does not try to beat these products at generic personalization memory. It focuses on a narrower wedge: **verifiable agent work memory**. A worker does a paid job, the system checks the evidence, Walrus stores the full memory artifact, Sui anchors the compact proof, and the next buyer can route work using that prior memory.
+
+Sources used for this positioning:
+
+- Mem0: https://mem0.ai/
+- Zep: https://www.getzep.com/
+- Letta docs: https://docs.letta.com/guides/core-concepts/stateful-agents
+- LangGraph memory docs: https://docs.langchain.com/oss/javascript/concepts/memory
+- Walrus docs: https://docs.wal.app/
+- Walrus paper: https://arxiv.org/abs/2505.05370
 
 ## Run
 
@@ -106,10 +145,13 @@ POST /api/runs                         hirer agent creates a safe Sui work order
 POST /api/x402/verify                  Sui x402 facilitator verifies payment and unlocks work
 POST /api/runs/:id/approve-payment     hirer agent records Sui payment approval
 GET  /api/runs/:id/agent-handoff       worker agent reads the awarded handoff
+GET  /api/walrus/memory                read the global Walrus memory index
+GET  /api/walrus/memory/:id            read the worker's Walrus memory passport
+GET  /api/runs/:id/memory              read a run's Walrus memory record
 GET  /api/agents/:id/memory            read the worker's Walrus/Sui memory passport
 GET  /api/runs/:id/worker-task         worker agent gets 402 until Sui payment is recorded
 POST /api/runs/:id/worker-delivery     worker agent submits delivery evidence
-POST /api/runs/:id/store-evidence      operator stores the receipt bundle on Walrus
+POST /api/runs/:id/store-evidence      operator stores the memory bundle on Walrus
 POST /api/runs/:id/anchor-receipt      operator records the Sui receipt anchor
 ```
 

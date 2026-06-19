@@ -20,7 +20,7 @@ afterEach(async () => {
   await rm(tempDir, { recursive: true, force: true });
 });
 
-describe('SuiProof Market product server', () => {
+describe('WalrusProof Market product server', () => {
   it('serves Sui readiness without exposing private env values', async () => {
     const { baseUrl, close } = await startTestServer({
       TENDERBOARD_MODE: 'sui',
@@ -86,8 +86,8 @@ describe('SuiProof Market product server', () => {
       expect(receipt.paymentIntentPlan.paymentUri).toContain('amountMist=35000000');
       expect(receipt.paymentIntentPlan.paymentUri).toContain('coinType=0x2%3A%3Asui%3A%3ASUI');
       expect(receipt.paymentIntentPlan.paymentUri).toContain(`nonce=${receipt.paymentIntentPlan.paymentNonce}`);
-      expect(receipt.paymentIntentPlan.paymentUri).toContain('label=SuiProof+Market');
-      expect(receipt.paymentIntentPlan.paymentUri).toContain('message=SuiProof+Market+agent+work+payment');
+      expect(receipt.paymentIntentPlan.paymentUri).toContain('label=WalrusProof+Market');
+      expect(receipt.paymentIntentPlan.paymentUri).toContain('message=WalrusProof+Market+agent+memory+payment');
       expect(receipt.paymentIntentPlan.paymentUri).toContain(`runId=${created.runId}`);
       expect(receipt.paymentIntentPlan.paymentUri).toContain('selectedBidId=public_scout_standard');
       expect(receipt.paymentIntentPlan.paymentUri).not.toContain('Make%20it%20useful');
@@ -587,6 +587,34 @@ describe('SuiProof Market product server', () => {
         runId: created.runId,
         walrusBlobId: anchored.walrusBlobId,
         suiAnchorDigest: anchored.suiAnchorDigest,
+      });
+
+      const walrusPassport = await (await fetch(`${baseUrl}/api/walrus/memory/sui_opportunity_scout`)).json();
+      expect(walrusPassport).toMatchObject({
+        objectType: 'suiproof.agent_memory_passport.v1',
+        workerAgentId: 'sui_opportunity_scout',
+        memoryCount: 1,
+        latestMemoryId: anchored.memoryRecord.memoryId,
+      });
+
+      const runMemory = await (await fetch(`${baseUrl}/api/runs/${created.runId}/memory`)).json();
+      expect(runMemory).toMatchObject({
+        objectType: 'suiproof.agent_memory_record.v1',
+        memoryId: anchored.memoryRecord.memoryId,
+        runId: created.runId,
+        walrusBlobId: anchored.walrusBlobId,
+        suiAnchorDigest: anchored.suiAnchorDigest,
+      });
+
+      const memoryIndex = await (await fetch(`${baseUrl}/api/walrus/memory`)).json();
+      expect(memoryIndex).toMatchObject({
+        objectType: 'walrusproof.memory_index.v1',
+        workerCount: 1,
+        totalMemoryRecords: 1,
+        walrusBackedRecords: 1,
+        suiAnchoredRecords: 1,
+        latestMemoryId: anchored.memoryRecord.memoryId,
+        latestWalrusBlobId: anchored.walrusBlobId,
       });
 
       const second = await postJson(`${baseUrl}/api/runs`, {

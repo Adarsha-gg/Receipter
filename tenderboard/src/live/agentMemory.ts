@@ -1,5 +1,5 @@
 import { stableHash } from './hash.js';
-import type { AgentMemoryPassport, AgentMemoryRecord, LiveRunReceipt } from './types.js';
+import type { AgentMemoryPassport, AgentMemoryRecord, LiveRunReceipt, WalrusMemoryIndex } from './types.js';
 
 export function buildAgentMemoryRecord(receipt: LiveRunReceipt): AgentMemoryRecord {
   const claimResults = receipt.verificationManifest.claimResults ?? [];
@@ -73,6 +73,33 @@ export function buildAgentMemoryPassport(
     latestMemoryId: records[0]?.memoryId,
     latestWalrusBlobId: records.find((record) => Boolean(record.walrusBlobId))?.walrusBlobId,
     records,
+  };
+}
+
+export function buildWalrusMemoryIndex(
+  receipts: LiveRunReceipt[],
+  generatedAt = new Date().toISOString(),
+): WalrusMemoryIndex {
+  const workerAgentIds = [...new Set(receipts.map((receipt) => receipt.workerAgentId).filter(Boolean))].sort();
+  const passports = workerAgentIds
+    .map((workerAgentId) => buildAgentMemoryPassport(workerAgentId, receipts, generatedAt))
+    .filter((passport) => passport.memoryCount > 0);
+  const records = passports.flatMap((passport) => passport.records).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const supportScores = records.flatMap((record) => (record.averageClaimSupport === undefined ? [] : [record.averageClaimSupport]));
+  const averageClaimSupport =
+    supportScores.length > 0 ? Math.round((supportScores.reduce((total, score) => total + score, 0) / supportScores.length) * 10) / 10 : undefined;
+
+  return {
+    objectType: 'walrusproof.memory_index.v1',
+    generatedAt,
+    workerCount: passports.length,
+    totalMemoryRecords: records.length,
+    walrusBackedRecords: records.filter((record) => Boolean(record.walrusBlobId)).length,
+    suiAnchoredRecords: records.filter((record) => Boolean(record.suiAnchorDigest)).length,
+    averageClaimSupport,
+    latestMemoryId: records[0]?.memoryId,
+    latestWalrusBlobId: records.find((record) => Boolean(record.walrusBlobId))?.walrusBlobId,
+    passports,
   };
 }
 

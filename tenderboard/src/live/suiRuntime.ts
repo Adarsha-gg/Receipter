@@ -16,12 +16,12 @@ export async function buildWorkerDelivery(
 ): Promise<{ deliveryText: string; workerEvidence: ScoutEvidence }> {
   const report = await scoutOpportunities(`${receipt.taskTitle}\n${receipt.sanitizedTask}`, options);
   const deliveryText = [
-    `SuiProof Market worker completed: ${receipt.taskTitle}`,
+    `WalrusProof Market worker completed: ${receipt.taskTitle}`,
     '',
     'What I did:',
     '- Received only the Sui-bound safe task text.',
     '- Did not receive private notes or secrets.',
-    '- Produced evidence for a Walrus blob and Sui receipt anchor.',
+    '- Produced evidence for a Walrus memory blob and Sui receipt anchor.',
     '- Searched public sources for real links related to the task.',
     '',
     renderScoutReport(report),

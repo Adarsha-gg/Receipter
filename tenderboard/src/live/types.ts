@@ -279,6 +279,19 @@ export interface AgentMemoryPassport {
   records: AgentMemoryRecord[];
 }
 
+export interface WalrusMemoryIndex {
+  objectType: 'walrusproof.memory_index.v1';
+  generatedAt: string;
+  workerCount: number;
+  totalMemoryRecords: number;
+  walrusBackedRecords: number;
+  suiAnchoredRecords: number;
+  averageClaimSupport: number | undefined;
+  latestMemoryId: string | undefined;
+  latestWalrusBlobId: string | undefined;
+  passports: AgentMemoryPassport[];
+}
+
 export interface PaymentIntentPlan {
   objectType: 'tenderboard.payment_intent_plan.v1';
   intentId: string;

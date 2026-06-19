@@ -23,13 +23,13 @@ function renderConfig(config) {
   if (config.mode === 'sui') {
     el('liveReadiness').textContent = config.sui.readyForSui ? 'ready' : 'blocked';
     el('configText').textContent = config.sui.readyForSui
-      ? 'Sui package, registry, operator, and Walrus endpoints are configured.'
+      ? 'Walrus publisher/aggregator and Sui finality settings are configured.'
       : `Missing: ${config.sui.missingSuiSettings.join(', ')}`;
     return;
   }
 
   el('liveReadiness').textContent = 'sui-dev';
-  el('configText').textContent = 'Sui-dev mode keeps the Sui work-order and receipt shape without sending real transactions.';
+  el('configText').textContent = 'Sui-dev mode creates deterministic Walrus memory ids and Sui finality digests for local demos.';
 }
 
 function renderSuiConfig(sui) {
@@ -41,7 +41,7 @@ function renderSuiConfig(sui) {
 
   el('suiReadiness').textContent = sui.readyForSui ? 'ready' : 'blocked';
   el('suiConfigText').textContent = sui.readyForSui
-    ? `${sui.network} package, registry, operator, and Walrus endpoints are configured.`
+    ? `${sui.network} Walrus memory storage and Sui receipt finality are configured.`
     : `Missing: ${sui.missingSuiSettings.join(', ')}`;
 }
 
@@ -262,7 +262,7 @@ function renderReceipt(receipt) {
     ['Delivery', receipt.deliveryText || 'not delivered yet'],
   ];
 
-  const receiptLink = `<div class="receiptRow receiptDownload"><a href="/api/runs/${encodeURIComponent(receipt.runId)}/receipt">Download receipt JSON</a></div>`;
+  const receiptLink = `<div class="receiptRow receiptDownload"><a href="/api/runs/${encodeURIComponent(receipt.runId)}/receipt">Download receipt JSON</a> <a href="/api/runs/${encodeURIComponent(receipt.runId)}/memory">Memory record JSON</a> <a href="/api/walrus/memory/${encodeURIComponent(receipt.workerAgentId)}">Worker memory passport</a></div>`;
   el('receipt').innerHTML =
     rows.map(([label, value]) => `<div class="receiptRow"><strong>${escapeHtml(label)}</strong><span>${formatReceiptValue(value)}</span></div>`).join('') +
     receiptLink;
@@ -276,12 +276,12 @@ function ensureReputationPanel() {
   panel.innerHTML = `
     <div class="panelHeader">
       <div>
-        <p class="eyebrow">Worker Reputation Passport</p>
-        <h2>Anchored worker record</h2>
+        <p class="eyebrow">Walrus Memory Passport</p>
+        <h2>Durable worker memory</h2>
       </div>
       <span id="reputationStatus" class="statusPill">waiting</span>
     </div>
-    <div id="reputationPassport" class="reputationPassport">Create a run to view the selected worker passport.</div>`;
+    <div id="reputationPassport" class="reputationPassport">Create a run to view the selected worker memory passport.</div>`;
   const bidPanel = document.querySelector('.bidBoardPanel');
   bidPanel?.parentNode?.insertBefore(panel, bidPanel);
 }
@@ -385,9 +385,9 @@ function renderSuiRail(receipt) {
       detail: receipt.suiPaymentDigest || 'waiting for operator approval',
     },
     {
-      label: 'Walrus evidence blob',
+      label: 'Walrus memory blob',
       done: Boolean(receipt.walrusBlobId),
-      detail: receipt.walrusBlobId || 'waiting for evidence storage',
+      detail: receipt.walrusBlobId || 'waiting for memory storage',
     },
     {
       label: 'Sui receipt registry',
@@ -397,7 +397,7 @@ function renderSuiRail(receipt) {
   ];
 
   const doneCount = steps.filter((step) => step.done).length;
-  el('chainStatus').textContent = `${doneCount}/4 bound`;
+  el('chainStatus').textContent = `${doneCount}/4 memory steps`;
   const paymentCard = paymentPlan
     ? `<div class="paymentIntentCard">
         <div>
@@ -442,7 +442,7 @@ function renderReputationPassport(receipt) {
     <div class="passportHero">
       <div>
         <strong>${escapeHtml(snapshot.workerAgentId)}</strong>
-        <small>${escapeHtml(snapshot.anchoredRunCount)} anchored run${snapshot.anchoredRunCount === 1 ? '' : 's'} / ${escapeHtml(snapshot.totalSuiEarned)} SUI earned</small>
+        <small>${escapeHtml(snapshot.memoryCount ?? 0)} memory record${snapshot.memoryCount === 1 ? '' : 's'} / ${escapeHtml(snapshot.anchoredRunCount)} Sui anchored</small>
       </div>
       <div>
         <strong>${escapeHtml(snapshot.averageTrustScore ?? 'none')}</strong>
@@ -450,8 +450,8 @@ function renderReputationPassport(receipt) {
       </div>
     </div>
     <div class="passportGrid">
-      <div><strong>Walrus proofs</strong><span>${escapeHtml(snapshot.walrusEvidenceCount)}</span></div>
       <div><strong>Memory records</strong><span>${escapeHtml(snapshot.memoryCount ?? 0)}</span></div>
+      <div><strong>Walrus proofs</strong><span>${escapeHtml(snapshot.walrusEvidenceCount)}</span></div>
       <div><strong>Claim support</strong><span>${escapeHtml(snapshot.averageClaimSupport ?? 'none')}</span></div>
       <div><strong>Source observations</strong><span>${escapeHtml(snapshot.sourceEvidenceCount)}</span></div>
       <div><strong>Tier counts</strong><span>AAA ${escapeHtml(snapshot.tierCounts.AAA)} / AA ${escapeHtml(snapshot.tierCounts.AA)} / A ${escapeHtml(snapshot.tierCounts.A)}</span></div>

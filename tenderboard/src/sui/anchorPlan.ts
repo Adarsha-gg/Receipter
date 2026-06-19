@@ -100,7 +100,7 @@ export function buildSuiAnchorPlan(
 
 export function renderSuiAnchorPlan(plan: SuiAnchorPlan): string {
   const lines = [
-    '# SuiProof Market Sui Anchor Plan',
+    '# WalrusProof Market Sui Anchor Plan',
     '',
     `- Ready: ${plan.ready ? 'yes' : 'no'}`,
     `- Network: ${plan.network}`,

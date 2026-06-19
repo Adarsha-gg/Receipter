@@ -3,27 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SuiProof Market</title>
+  <title>WalrusProof Market</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <main class="appShell">
     <header class="topbar">
       <div>
-        <p class="kicker">Sui-native agent work contracts</p>
-        <h1>SuiProof Market</h1>
+        <p class="kicker">Walrus-native agent memory market</p>
+        <h1>WalrusProof Market</h1>
       </div>
       <div class="topActions">
         <span id="modeBadge" class="badge">loading</span>
-        <a class="ghostLink" href="#runHistory">Receipts</a>
+        <a class="ghostLink" href="#runHistory">Memory ledger</a>
       </div>
     </header>
 
     <section class="commandBand" aria-label="Product overview">
       <div class="commandCopy">
-        <p class="eyebrow">Agent work desk</p>
-        <h2>Hire worker agents through Sui work orders, Walrus evidence, and on-chain receipt proofs.</h2>
-        <p class="lead">SuiProof Market makes every agent job a Sui-native work contract. The buyer sees what leaves the boundary, approves a SUI-denominated work order, stores evidence on Walrus, and anchors the final receipt to a Sui registry.</p>
+        <p class="eyebrow">Walrus memory desk</p>
+        <h2>Hire worker agents whose deliveries become portable Walrus memory.</h2>
+        <p class="lead">WalrusProof Market makes agent work durable across sessions. The buyer controls what leaves the boundary, the worker produces source-backed evidence, Walrus stores the full memory bundle, and Sui handles payment plus compact finality.</p>
       </div>
       <div class="networkMap" aria-hidden="true">
         <div class="node buyer">Buyer</div>
@@ -31,7 +31,7 @@
         <div class="node gate">Trust Gate</div>
         <div class="edge edgeTwo"></div>
         <div class="node worker">Worker</div>
-        <div class="receiptNode">Receipt</div>
+        <div class="receiptNode">Memory</div>
       </div>
     </section>
 
@@ -42,24 +42,24 @@
         <small>Hard SUI limit before any work order can move forward.</small>
       </article>
       <article class="metricPanel">
-        <span>Sui mode</span>
+        <span>Walrus mode</span>
         <strong id="liveReadiness">checking</strong>
-        <small id="configText">Checking setup...</small>
+        <small id="configText">Checking memory setup...</small>
       </article>
       <article class="metricPanel">
-        <span>Sui anchor</span>
+        <span>Sui finality</span>
         <strong id="suiReadiness">checking</strong>
         <small id="suiConfigText">Checking Sui package and Walrus setup...</small>
       </article>
       <article class="metricPanel">
         <span>Evidence model</span>
-        <strong>Walrus + Sui</strong>
-        <small>Private notes stay local; public evidence gets a Sui receipt anchor.</small>
+        <strong>Walrus memory</strong>
+        <small>Private notes stay local; public evidence becomes portable agent memory.</small>
       </article>
       <article class="metricPanel">
         <span>Worker path</span>
         <strong>Opportunity Scout</strong>
-        <small>Returns public-source research for a Sui-bound delivery receipt.</small>
+        <small>Returns public-source research for a Walrus-backed memory record.</small>
       </article>
     </section>
 
@@ -148,29 +148,29 @@ End with a ranked recommendation and why.</textarea>
         <div id="finalizationBox" class="approvalBox hidden">
           <div>
             <p class="eyebrow">Step 4</p>
-            <h3>Walrus evidence and Sui anchor</h3>
-            <p id="finalizationCopy">Store the evidence bundle on Walrus, then commit its blob id and evidence hash to the Sui receipt registry.</p>
+            <h3>Walrus memory and Sui anchor</h3>
+            <p id="finalizationCopy">Store the full agent memory bundle on Walrus, then commit its blob id and evidence hash to the Sui receipt registry.</p>
           </div>
           <div class="buttonRow">
-            <button id="storeEvidenceBtn" type="button">Store evidence</button>
+            <button id="storeEvidenceBtn" type="button">Store memory</button>
             <button id="anchorReceiptBtn" class="secondary" type="button">Anchor receipt</button>
           </div>
         </div>
       </section>
     </section>
 
-    <section class="panel chainPanel" aria-label="Sui dependency map">
+    <section class="panel chainPanel" aria-label="Walrus dependency map">
       <div class="panelHeader">
         <div>
-          <p class="eyebrow">Sui dependency map</p>
-          <h2>Every run becomes Sui-owned state</h2>
+          <p class="eyebrow">Walrus dependency map</p>
+          <h2>Every run becomes durable agent memory</h2>
         </div>
         <span id="chainStatus" class="statusPill">waiting</span>
       </div>
       <div id="suiRail" class="suiRail">
-        <div class="railStep pending"><strong>Work order object</strong><span>Create a run to mint the work order shape.</span></div>
+        <div class="railStep pending"><strong>Work order object</strong><span>Create a run to bind payment and memory scope.</span></div>
         <div class="railStep pending"><strong>SUI approval</strong><span>Payment approval must bind to that work order.</span></div>
-        <div class="railStep pending"><strong>Walrus evidence blob</strong><span>Delivery evidence gets content-addressed storage.</span></div>
+        <div class="railStep pending"><strong>Walrus memory blob</strong><span>Delivery evidence becomes portable agent memory.</span></div>
         <div class="railStep pending"><strong>Sui receipt registry</strong><span>Final digest anchors evidence and reputation.</span></div>
       </div>
     </section>
@@ -179,7 +179,7 @@ End with a ranked recommendation and why.</textarea>
       <div class="panelHeader">
         <div>
           <p class="eyebrow">Two-agent market</p>
-          <h2>Hirer agent awards work to worker agent</h2>
+          <h2>Hirer agent writes into worker memory</h2>
         </div>
         <span id="agentPairStatus" class="statusPill">waiting</span>
       </div>
@@ -212,8 +212,8 @@ End with a ranked recommendation and why.</textarea>
       <section class="panel manifestPanel">
         <div class="panelHeader">
           <div>
-            <p class="eyebrow">Verification layer</p>
-            <h2>Verification manifest</h2>
+            <p class="eyebrow">Memory verification layer</p>
+            <h2>Walrus memory manifest</h2>
           </div>
           <span id="manifestHash" class="statusPill">unanchored</span>
         </div>
@@ -225,7 +225,7 @@ End with a ranked recommendation and why.</textarea>
       <section class="panel timelinePanel">
         <div class="panelHeader">
           <div>
-            <p class="eyebrow">Live proof</p>
+            <p class="eyebrow">Live memory proof</p>
             <h2>Execution timeline</h2>
           </div>
           <span id="timelineCount" class="statusPill">0 events</span>
@@ -236,7 +236,7 @@ End with a ranked recommendation and why.</textarea>
       <section class="panel receiptPanel">
         <div class="panelHeader">
           <div>
-            <p class="eyebrow">Receipt</p>
+            <p class="eyebrow">Memory record</p>
             <h2>Settlement and delivery</h2>
           </div>
           <span id="receiptStatus" class="statusPill">waiting</span>
@@ -248,25 +248,25 @@ End with a ranked recommendation and why.</textarea>
     <section class="productGrid" aria-label="Product thesis">
       <article class="insightPanel">
         <span class="panelIcon">01</span>
-        <h3>Trust before execution</h3>
-        <p>Each Sui work order is scored before worker execution, so private data and payment authority never move blindly.</p>
+        <h3>Memory before execution</h3>
+        <p>Each worker route is scored against prior Walrus memory before a new task can reach the agent.</p>
       </article>
       <article class="insightPanel">
         <span class="panelIcon">02</span>
-        <h3>Proof before settlement</h3>
-        <p>Payment approval, evidence hash, Walrus blob id, and receipt anchor become one Sui-native verification trail.</p>
+        <h3>Evidence before memory</h3>
+        <p>Claim checks, source receipts, and evidence hashes decide whether a delivery becomes reusable memory.</p>
       </article>
       <article class="insightPanel">
         <span class="panelIcon">03</span>
-        <h3>Sui-native proof rail</h3>
-        <p>Every run produces a portable proof trail: hashes go to a Sui receipt registry, while larger evidence can live on Walrus.</p>
+        <h3>Walrus-native memory rail</h3>
+        <p>Every run produces a portable memory record: full evidence lives on Walrus, while Sui anchors compact finality.</p>
       </article>
     </section>
 
     <section class="panel historyPanel" id="runHistoryPanel">
       <div class="panelHeader">
         <div>
-          <p class="eyebrow">Run ledger</p>
+          <p class="eyebrow">Memory ledger</p>
           <h2>Previous runs</h2>
         </div>
         <button id="refreshRunsBtn" class="secondary compact" type="button">Refresh</button>

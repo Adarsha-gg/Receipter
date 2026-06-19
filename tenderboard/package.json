@@ -1,9 +1,9 @@
 {
-  "name": "suiproof-market",
+  "name": "walrusproof-market",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Sui-native agent work market with Walrus evidence, Payment Kit-compatible plans, and receipt-backed reputation.",
+  "description": "Walrus-native agent memory market with Sui payments, verification, and receipt finality.",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

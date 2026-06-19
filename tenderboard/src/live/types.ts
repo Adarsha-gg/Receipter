@@ -106,6 +106,15 @@ export interface SafeConfig {
   maxPaymentUsdc: string;
   receiptsDir: string;
   embeddedWorker: boolean;
+  sui: {
+    network: string;
+    packageIdConfigured: boolean;
+    receiptRegistryIdConfigured: boolean;
+    walrusPublisherConfigured: boolean;
+    walrusAggregatorConfigured: boolean;
+    readyForSuiAnchor: boolean;
+    missingSuiSettings: string[];
+  };
   croo: {
     apiUrlConfigured: boolean;
     wsUrlConfigured: boolean;
@@ -131,5 +140,11 @@ export interface TenderBoardConfig {
   workerServiceId: string | undefined;
   embeddedWorker: boolean;
   missingLiveSettings: string[];
+  suiNetwork: string;
+  suiPackageId: string | undefined;
+  suiReceiptRegistryId: string | undefined;
+  walrusPublisherUrl: string | undefined;
+  walrusAggregatorUrl: string | undefined;
+  missingSuiSettings: string[];
   safe: SafeConfig;
 }

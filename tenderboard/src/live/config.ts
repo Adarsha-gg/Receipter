@@ -18,6 +18,11 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
   const requesterSdkKey = blankToUndefined(env.CROO_REQUESTER_SDK_KEY ?? env.CROO_SDK_KEY);
   const workerSdkKey = blankToUndefined(env.CROO_WORKER_SDK_KEY);
   const workerServiceId = blankToUndefined(env.CROO_WORKER_SERVICE_ID ?? env.CROO_TARGET_SERVICE_ID);
+  const suiNetwork = blankToUndefined(env.SUI_NETWORK) ?? 'testnet';
+  const suiPackageId = blankToUndefined(env.SUI_PACKAGE_ID);
+  const suiReceiptRegistryId = blankToUndefined(env.SUI_RECEIPT_REGISTRY_ID);
+  const walrusPublisherUrl = blankToUndefined(env.WALRUS_PUBLISHER_URL);
+  const walrusAggregatorUrl = blankToUndefined(env.WALRUS_AGGREGATOR_URL);
 
   const missingLiveSettings = liveRequiredSettings({
     crooApiUrl,
@@ -27,6 +32,12 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     workerServiceId,
     maxPaymentUsdc,
   });
+  const missingSuiSettings = suiRequiredSettings({
+    suiPackageId,
+    suiReceiptRegistryId,
+    walrusPublisherUrl,
+    walrusAggregatorUrl,
+  });
 
   const safe: SafeConfig = {
     mode,
@@ -34,6 +45,15 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     maxPaymentUsdc,
     receiptsDir,
     embeddedWorker,
+    sui: {
+      network: suiNetwork,
+      packageIdConfigured: Boolean(suiPackageId),
+      receiptRegistryIdConfigured: Boolean(suiReceiptRegistryId),
+      walrusPublisherConfigured: Boolean(walrusPublisherUrl),
+      walrusAggregatorConfigured: Boolean(walrusAggregatorUrl),
+      readyForSuiAnchor: missingSuiSettings.length === 0,
+      missingSuiSettings,
+    },
     croo: {
       apiUrlConfigured: Boolean(crooApiUrl),
       wsUrlConfigured: Boolean(crooWsUrl),
@@ -59,6 +79,12 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     workerServiceId,
     embeddedWorker,
     missingLiveSettings,
+    suiNetwork,
+    suiPackageId,
+    suiReceiptRegistryId,
+    walrusPublisherUrl,
+    walrusAggregatorUrl,
+    missingSuiSettings,
     safe,
   };
 }
@@ -115,5 +141,19 @@ function liveRequiredSettings(values: {
   if (!values.workerSdkKey) missing.push('CROO_WORKER_SDK_KEY');
   if (!values.workerServiceId) missing.push('CROO_WORKER_SERVICE_ID');
   if (!values.maxPaymentUsdc) missing.push('TENDERBOARD_MAX_PAYMENT_USDC');
+  return missing;
+}
+
+function suiRequiredSettings(values: {
+  suiPackageId: string | undefined;
+  suiReceiptRegistryId: string | undefined;
+  walrusPublisherUrl: string | undefined;
+  walrusAggregatorUrl: string | undefined;
+}): string[] {
+  const missing: string[] = [];
+  if (!values.suiPackageId) missing.push('SUI_PACKAGE_ID');
+  if (!values.suiReceiptRegistryId) missing.push('SUI_RECEIPT_REGISTRY_ID');
+  if (!values.walrusPublisherUrl) missing.push('WALRUS_PUBLISHER_URL');
+  if (!values.walrusAggregatorUrl) missing.push('WALRUS_AGGREGATOR_URL');
   return missing;
 }

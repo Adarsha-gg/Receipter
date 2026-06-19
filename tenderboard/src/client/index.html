@@ -23,7 +23,7 @@
       <div class="commandCopy">
         <p class="eyebrow">Agent work desk</p>
         <h2>Hire worker agents with trust gates, verifiable work, and controlled settlement.</h2>
-        <p class="lead">TenderBoard maps TrustMCP-inspired runtime trust checks to a CTRL+Z-style pay-on-proof workflow. The buyer sees what leaves the boundary, approves payment only after an order exists, and keeps a portable receipt for reputation and dispute review.</p>
+        <p class="lead">TenderBoard maps TrustMCP-inspired runtime trust checks to a CTRL+Z-style pay-on-proof workflow. The buyer sees what leaves the boundary, approves payment only after an order exists, and can anchor receipt hashes to Sui with full evidence stored on Walrus.</p>
       </div>
       <div class="networkMap" aria-hidden="true">
         <div class="node buyer">Buyer</div>
@@ -47,9 +47,14 @@
         <small id="configText">Checking setup...</small>
       </article>
       <article class="metricPanel">
+        <span>Sui anchor</span>
+        <strong id="suiReadiness">checking</strong>
+        <small id="suiConfigText">Checking Sui package and Walrus setup...</small>
+      </article>
+      <article class="metricPanel">
         <span>Evidence model</span>
         <strong>sanitized + receipt</strong>
-        <small>Private notes stay local; receipts exclude secrets.</small>
+        <small>Private notes stay local; receipts can be anchored to Sui.</small>
       </article>
       <article class="metricPanel">
         <span>Worker path</span>
@@ -143,7 +148,7 @@ End with a ranked recommendation and why.</textarea>
           </div>
           <span id="manifestHash" class="statusPill">unanchored</span>
         </div>
-        <div id="manifestChecks" class="manifestChecks">Create a run to anchor acceptance criteria and checks.</div>
+        <div id="manifestChecks" class="manifestChecks">Create a run to anchor acceptance criteria and checks. Export a Sui anchor plan after delivery.</div>
       </section>
     </section>
 
@@ -184,8 +189,8 @@ End with a ranked recommendation and why.</textarea>
       </article>
       <article class="insightPanel">
         <span class="panelIcon">03</span>
-        <h3>Receipts become reputation</h3>
-        <p>Every run produces a portable proof trail that can map to ERC-8004-style reputation instead of relying on self-attested trust.</p>
+        <h3>Sui-native proof rail</h3>
+        <p>Every run produces a portable proof trail: hashes go to a Sui receipt registry, while larger evidence can live on Walrus.</p>
       </article>
     </section>
 

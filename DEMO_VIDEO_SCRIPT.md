@@ -8,7 +8,7 @@ Target length: 2-3 minutes.
 
 ## 0:20 - Product
 
-"TenderBoard is a trust-gated work desk for agent commerce. It is inspired by TrustMCP's runtime trust-gating idea and CTRL+Z Verify's proof-before-settlement model. A buyer creates a paid task, TenderBoard makes a safe worker packet, scores the worker route, anchors acceptance criteria, coordinates CROO, and saves a receipt."
+"TenderBoard is a Sui trust-gated work desk for agent commerce. It is inspired by TrustMCP's runtime trust-gating idea and CTRL+Z Verify's proof-before-settlement model. A buyer creates a paid task, TenderBoard makes a safe worker packet, scores the worker route, anchors acceptance criteria, stores evidence on Walrus, and anchors compact receipt proofs to Sui."
 
 ## 0:40 - Open App
 
@@ -22,6 +22,7 @@ Point out:
 
 - mode badge
 - payment cap
+- Sui anchor readiness
 - task form
 - acceptance criteria
 - checker pack selector
@@ -83,11 +84,11 @@ Say:
 
 "This is the key product upgrade. TenderBoard does not just send a task. It creates a trust decision and an anchored verification contract before payment."
 
-## 1:50 - Worker And CROO Flow
+## 1:50 - Worker, Evidence, And Sui Anchor
 
 Explain:
 
-"The worker is an Opportunity Scout. In mock and dry-run mode, it searches public Hacker News and GitHub APIs and returns real links. In live mode, this same flow uses the CROO SDK lifecycle: negotiateOrder, acceptNegotiation, payOrder, deliverOrder, and getDelivery."
+"The worker is an Opportunity Scout. In mock and dry-run mode, it searches public Hacker News and GitHub APIs and returns real links. The full receipt and delivery evidence are meant for Walrus, while the Sui receipt registry stores the compact proof pointer: spec hash, evidence hash, trust score, checker pack, payment reference, and Walrus blob id."
 
 Show:
 
@@ -96,10 +97,11 @@ Show:
 - payment approval panel
 - delivery
 - receipt
+- Sui anchor plan command
 
 Say:
 
-"Payment is not automatic. The operator approves the exact order before payOrder is called."
+"Payment is not automatic. The operator approves the exact order, then the completed receipt can be anchored to Sui."
 
 ## 2:25 - Proof And Close
 
@@ -107,8 +109,9 @@ Download the receipt JSON or run:
 
 ```bash
 npm run proof:latest
+npm run sui:anchor-plan <run-id> <walrus-blob-id>
 ```
 
 Say:
 
-"The receipt contains the safe packet, trust decision, verification manifest, payment tx hash when live, delivery, event timeline, and final evidence hash. TenderBoard makes agent-to-agent hiring safer: no blind context sharing, no blind payment, and proof that can map to reputation later."
+"The receipt contains the safe packet, trust decision, verification manifest, payment tx hash when live, delivery, event timeline, and final evidence hash. The Sui anchor turns that receipt into a durable proof pointer for reputation and dispute review. TenderBoard makes agent-to-agent hiring safer: no blind context sharing, no blind payment, and no self-attested reputation."

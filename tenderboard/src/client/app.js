@@ -15,6 +15,7 @@ function renderConfig(config) {
   badge.textContent = config.mode;
   badge.className = `badge ${config.mode}`;
   el('paymentCap').textContent = `${config.maxPaymentUsdc} USDC`;
+  renderSuiConfig(config.sui);
 
   if (config.mode === 'live') {
     el('liveReadiness').textContent = config.readyForLive ? 'ready' : 'blocked';
@@ -26,6 +27,19 @@ function renderConfig(config) {
 
   el('liveReadiness').textContent = 'simulated';
   el('configText').textContent = `${config.mode} mode. The product flow runs without sending real funds.`;
+}
+
+function renderSuiConfig(sui) {
+  if (!sui) {
+    el('suiReadiness').textContent = 'not configured';
+    el('suiConfigText').textContent = 'No Sui settings were returned by the server.';
+    return;
+  }
+
+  el('suiReadiness').textContent = sui.readyForSuiAnchor ? 'ready' : 'blocked';
+  el('suiConfigText').textContent = sui.readyForSuiAnchor
+    ? `${sui.network} package and Walrus endpoints are configured.`
+    : `Missing: ${sui.missingSuiSettings.join(', ')}`;
 }
 
 el('taskForm').addEventListener('submit', async (event) => {
@@ -157,6 +171,7 @@ function renderReceipt(receipt) {
     ['Trust tier', receipt.trustDecision ? `${receipt.trustDecision.tier} / ${receipt.trustDecision.score}` : 'not evaluated'],
     ['Spec hash', receipt.verificationManifest?.specHash || 'not anchored'],
     ['Evidence hash', receipt.verificationManifest?.evidenceHash || 'not finalized'],
+    ['Sui anchor plan', receipt.verificationManifest?.evidenceHash ? `npm run sui:anchor-plan ${receipt.runId} <walrus_blob_id>` : 'finalize delivery first'],
     ['Negotiation id', receipt.negotiationId || 'not created yet'],
     ['Order id', receipt.orderId || 'not created yet'],
     ['Payment tx', receipt.paymentTxHash || 'not paid yet'],

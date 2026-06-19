@@ -1,8 +1,10 @@
-# TenderBoard - Trust-gated work desk for agent commerce
+# TenderBoard - Sui trust-gated work desk for agent commerce
 
 TenderBoard is inspired by the strongest ideas from TrustMCP and CTRL+Z Verify: a buyer-side work desk where agents can hire worker agents only after a trust gate, a sanitized task packet, explicit payment approval, and a downloadable proof receipt.
 
 TrustMCP stood for runtime enforcement before an agent touches a tool. CTRL+Z stood for proof-before-settlement for paid agent work. TenderBoard maps those ideas into a practical agent procurement layer: do not leak private context, do not auto-pay blindly, and do not let agent reputation be self-attested. This code does not directly integrate TrustMCP or ERC-8004 registries yet; its receipts are designed to be compatible with those patterns.
+
+For Sui Overflow, TenderBoard adds a Sui-native proof layer. The Move package in `sui/` creates a shared receipt registry and emits `ReceiptAnchored` events. The TypeScript app exports Sui anchor plans that connect receipt hashes, trust decisions, checker packs, payment references, and Walrus blob ids.
 
 ## What it does
 
@@ -51,7 +53,35 @@ npm run typecheck
 npm audit --audit-level=low
 npm run live:preflight
 npm run proof:latest
+npm run sui:anchor-plan
 ```
+
+## Sui proof layer
+
+Move package:
+
+```bash
+cd sui
+sui client publish
+```
+
+After publishing, configure:
+
+```env
+SUI_NETWORK=testnet
+SUI_PACKAGE_ID=...
+SUI_RECEIPT_REGISTRY_ID=...
+WALRUS_PUBLISHER_URL=...
+WALRUS_AGGREGATOR_URL=...
+```
+
+Then export the call plan:
+
+```bash
+npm run sui:anchor-plan <run-id> <walrus-blob-id>
+```
+
+Do not claim deployed Sui anchoring until the package is published and at least one receipt is anchored on testnet or mainnet.
 
 ## Live CROO mode
 
@@ -100,6 +130,9 @@ npm run live:start
 - run history
 - receipt JSON download
 - proof markdown export
+- Sui Move receipt registry package
+- Sui/Walrus readiness panel
+- Sui anchor-plan export
 - live config health
 - CROO SDK runtime path
 - requester/task-giver client
@@ -128,6 +161,8 @@ src/live/crooRuntime.ts        real CROO runtime path
 src/agents/workerAgent.ts      standalone worker process
 src/agents/opportunityScout.ts real public-source worker task
 src/live/proof.ts              receipt-to-markdown proof renderer
+src/sui/anchorPlan.ts          receipt-to-Sui call plan renderer
+sui/                           Sui Move receipt registry package
 ```
 
 ## Safety rules

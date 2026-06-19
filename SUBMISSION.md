@@ -6,11 +6,11 @@ TenderBoard
 
 ## One-Liner
 
-A trust-gated work desk where agents can hire worker agents through CROO with safe context sharing, proof-before-settlement, and receipt-backed reputation signals.
+A Sui trust-gated work desk where agents can hire worker agents with safe context sharing, proof-before-settlement, Walrus evidence, and receipt-backed reputation signals.
 
 ## Short Description
 
-TenderBoard is a buyer-side layer for agent commerce. A user or task-giver agent creates a paid job with private notes, acceptance criteria, and a checker pack. TenderBoard removes private or secret-looking content before dispatch, scores the worker route with a TrustMCP-style trust gate, anchors a CTRL+Z-style verification manifest, coordinates the CROO lifecycle, requires explicit payment approval, and stores a downloadable receipt with delivery evidence.
+TenderBoard is a buyer-side layer for Sui agent commerce. A user or task-giver agent creates a paid job with private notes, acceptance criteria, and a checker pack. TenderBoard removes private or secret-looking content before dispatch, scores the worker route with a TrustMCP-style trust gate, anchors a CTRL+Z-style verification manifest, stores full receipt/evidence payloads on Walrus, and prepares a Sui receipt-registry call with the spec hash, evidence hash, trust score, checker pack, payment reference, and Walrus blob id.
 
 The worker agent is not canned text. The current worker is an Opportunity Scout that searches public Hacker News and GitHub APIs, returns useful links/results, and sends the result through the delivery path.
 
@@ -57,6 +57,9 @@ TenderBoard turns agent work into a verifiable work contract:
 - CTRL+Z-style verification manifest stored in receipts
 - Receipt JSON download
 - Proof markdown export
+- Sui Move receipt registry package under `tenderboard/sui`
+- Sui/Walrus readiness checks in the browser console
+- Sui anchor-plan export: `npm run sui:anchor-plan`
 - Run history
 - CROO live runtime path
 - Task-giver agent
@@ -66,7 +69,21 @@ TenderBoard turns agent work into a verifiable work contract:
 - Live preflight command
 - Tests for privacy, receipts, trust/proof logic, live runtime shape, and worker scouting
 
-## CROO Integration
+## Sui and Walrus Integration
+
+TenderBoard includes a Sui Move package:
+
+- package: `TenderBoardReceipts`
+- module: `tenderboard::receipts`
+- shared object: `Registry`
+- entry function: `anchor_receipt`
+- event: `ReceiptAnchored`
+
+Walrus is the intended storage layer for full receipt JSON and worker evidence. Sui stores the durable, queryable proof pointer.
+
+Current deployment status: package source and anchor-plan tooling are implemented. A real Sui Overflow submission still needs the package published to Sui testnet/mainnet and the resulting `SUI_PACKAGE_ID` and `SUI_RECEIPT_REGISTRY_ID` set in `.env`.
+
+## Optional CROO Commerce Path
 
 TenderBoard uses `@croo-network/sdk` and the documented runtime lifecycle:
 
@@ -90,15 +107,21 @@ TenderBoard is inspired by TrustMCP and CTRL+Z Verify, and its receipts are desi
 
 ## Tracks
 
-Best fit:
+Best fit for Sui Overflow:
 
-- Open - Any A2A Agents
-- Developer Tooling Agents
-- Research & Intelligence Agents
+- Agentic Web
+- Walrus specialized track
 
-## What Still Needs Live Credentials
+## What Still Needs Live Setup
 
-A live blockchain run needs CROO Dashboard setup:
+A deployable Sui Overflow submission needs:
+
+- Sui testnet or mainnet package publish
+- shared receipt registry object id
+- Walrus publisher and aggregator configuration
+- receipt/evidence upload to Walrus before anchoring
+
+The optional CROO commerce path needs:
 
 - requester SDK key
 - worker SDK key
@@ -121,6 +144,7 @@ A live blockchain run needs CROO Dashboard setup:
 12. Show tx hash when live credentials are connected.
 13. Show worker delivery with real links.
 14. Download receipt JSON or export proof markdown.
+15. Run `npm run sui:anchor-plan <run-id> <walrus-blob-id>` and show the Sui `anchor_receipt` call.
 
 ## Repository
 

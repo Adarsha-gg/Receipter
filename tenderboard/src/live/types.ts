@@ -97,6 +97,84 @@ export interface VerificationManifest {
   reputationWriteback: string;
 }
 
+export interface SelectedBidReference {
+  bidId: string;
+  workerAgentId: string;
+  priceSui: string;
+  sla: string;
+  requestedDataLabel: TaskDataLabel;
+}
+
+export interface ObligationObject {
+  objectType: 'tenderboard.obligation.v1';
+  obligationId: string;
+  taskTitle: string;
+  sanitizedTaskHash: string;
+  specHash: string;
+  selectedBid: SelectedBidReference | undefined;
+  acceptanceCriteria: string[];
+  requestedDataLabel: TaskDataLabel;
+  maxPayment: MoneyInput;
+  workerDataBoundary: string | undefined;
+  workOrderId: string | undefined;
+  suiWorkOrderObjectId: string | undefined;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EvidenceEnvelope {
+  objectType: 'tenderboard.evidence_envelope.v1';
+  envelopeId: string;
+  obligationId: string;
+  evidenceHash: string | undefined;
+  deliveryPresent: boolean;
+  requestedDataLabel: TaskDataLabel;
+  walrusReady: boolean;
+  walrusBlobId: string | undefined;
+  walrusBlobObjectId: string | undefined;
+  walrusCertifiedEpoch: number | undefined;
+  walrusEndEpoch: number | undefined;
+  walrusReadUrl: string | undefined;
+  updatedAt: string;
+}
+
+export type ClearingVerdict = 'pending_delivery' | 'pending_walrus' | 'ready_to_anchor' | 'anchored' | 'requires_review';
+
+export interface ClearingDecision {
+  objectType: 'tenderboard.clearing_decision.v1';
+  decisionId: string;
+  obligationId: string;
+  verdict: ClearingVerdict;
+  reasons: string[];
+  trustVerdict: TrustVerdict;
+  evidenceHash: string | undefined;
+  walrusReady: boolean;
+  verificationStatus: {
+    passed: number;
+    pending: number;
+    requiresReview: number;
+  };
+  decidedAt: string;
+}
+
+export type SettlementAction = 'hold_payment' | 'store_walrus_evidence' | 'anchor_sui_receipt' | 'record_settlement' | 'manual_review';
+
+export interface SettlementInstruction {
+  objectType: 'tenderboard.settlement_instruction.v1';
+  instructionId: string;
+  obligationId: string;
+  action: SettlementAction;
+  workerAgentId: string;
+  selectedBidId: string | undefined;
+  amount: MoneyInput;
+  preconditions: string[];
+  suiEscrowObjectId: string | undefined;
+  suiPaymentDigest: string | undefined;
+  suiAnchorDigest: string | undefined;
+  walrusBlobId: string | undefined;
+  updatedAt: string;
+}
+
 export interface LiveRunSummary {
   runId: string;
   mode: TenderBoardMode;
@@ -123,6 +201,10 @@ export interface LiveRunReceipt {
   workerBidBoard?: WorkerBidBoard;
   trustDecision: TrustDecision;
   verificationManifest: VerificationManifest;
+  obligationObject?: ObligationObject;
+  evidenceEnvelope?: EvidenceEnvelope;
+  clearingDecision?: ClearingDecision;
+  settlementInstruction?: SettlementInstruction;
   workerAgentId: string;
   workOrderId: string | undefined;
   suiNetwork: string;

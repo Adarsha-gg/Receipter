@@ -32,6 +32,12 @@ export interface EvidenceBundle {
   workerBidBoard: LiveRunReceipt['workerBidBoard'];
   trust: LiveRunReceipt['trustDecision'];
   verification: LiveRunReceipt['verificationManifest'];
+  clearingObjects: {
+    obligationObject: LiveRunReceipt['obligationObject'];
+    evidenceEnvelope: LiveRunReceipt['evidenceEnvelope'];
+    clearingDecision: LiveRunReceipt['clearingDecision'];
+    settlementInstruction: LiveRunReceipt['settlementInstruction'];
+  };
   deliveryText: string | undefined;
   events: LiveRunReceipt['events'];
 }
@@ -60,6 +66,12 @@ export function buildEvidenceBundle(receipt: LiveRunReceipt): EvidenceBundle {
     workerBidBoard: receipt.workerBidBoard,
     trust: receipt.trustDecision,
     verification: receipt.verificationManifest,
+    clearingObjects: {
+      obligationObject: receipt.obligationObject,
+      evidenceEnvelope: receipt.evidenceEnvelope,
+      clearingDecision: receipt.clearingDecision,
+      settlementInstruction: receipt.settlementInstruction,
+    },
     deliveryText: receipt.deliveryText,
     events: receipt.events,
   };

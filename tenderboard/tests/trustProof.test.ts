@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildClearingObjects } from '../src/live/clearingObjects.js';
 import { loadTenderBoardConfig } from '../src/live/config.js';
 import { buildTrustProof, finalizeVerificationManifest } from '../src/live/trustProof.js';
 import type { LiveRunReceipt } from '../src/live/types.js';
@@ -33,6 +34,7 @@ describe('trust proof model', () => {
   it('finalizes Sui evidence checks after delivery', () => {
     const receipt = sampleReceipt();
     const finalized = finalizeVerificationManifest(receipt, 'Opportunity Scout Report');
+    const clearing = buildClearingObjects({ ...receipt, verificationManifest: finalized });
 
     expect(finalized.evidenceHash).toMatch(/^sha256:/);
     expect(finalized.requiredChecks.find((check) => check.id === 'delivery_evidence')).toMatchObject({
@@ -43,6 +45,25 @@ describe('trust proof model', () => {
     });
     expect(finalized.requiredChecks.find((check) => check.id === 'order_bound_approval')).toMatchObject({
       status: 'passed',
+    });
+    expect(clearing.obligationObject).toMatchObject({
+      taskTitle: 'Find Sui agent grants',
+      specHash: 'sha256:spec',
+      requestedDataLabel: 'public',
+    });
+    expect(clearing.evidenceEnvelope).toMatchObject({
+      evidenceHash: finalized.evidenceHash,
+      deliveryPresent: true,
+      walrusReady: false,
+    });
+    expect(clearing.clearingDecision).toMatchObject({
+      verdict: 'pending_walrus',
+      evidenceHash: finalized.evidenceHash,
+      walrusReady: false,
+    });
+    expect(clearing.settlementInstruction).toMatchObject({
+      action: 'store_walrus_evidence',
+      selectedBidId: undefined,
     });
   });
 });
@@ -56,6 +77,11 @@ function sampleReceipt(): LiveRunReceipt {
     updatedAt: '2026-06-19T18:00:00.000Z',
     taskTitle: 'Find Sui agent grants',
     sanitizedTask: 'Task: Find Sui agent grants',
+    privacy: {
+      requestedDataLabel: 'public',
+      privateNotesProvided: false,
+      workerDataBoundary: 'Only public task instructions and acceptance criteria may be sent to worker bidders.',
+    },
     maxPayment: { amount: '0.050', currency: 'SUI' },
     trustDecision: {
       workerAgentId: 'sui_worker',

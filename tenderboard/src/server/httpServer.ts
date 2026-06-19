@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildPrivacyLabeledTask, buildWorkerBidBoard, availableWorkerBids } from '../live/bidBoard.js';
+import { buildClearingObjects } from '../live/clearingObjects.js';
 import { loadTenderBoardConfig } from '../live/config.js';
 import { loadDotEnvFile } from '../live/dotenv.js';
 import { RunEventBus, formatSseEvent } from '../live/eventBus.js';
@@ -237,6 +238,8 @@ async function createRun(
     );
   }
 
+  Object.assign(receipt, buildClearingObjects(receipt));
+
   await store.create(receipt);
   for (const event of receipt.events) bus.publish(runId, event);
 
@@ -286,8 +289,15 @@ async function approvePayment(
   }
 
   const latest = await store.require(runId);
+  const verificationManifest = finalizeVerificationManifest(latest, delivery);
+  const finalizedReceipt = {
+    ...latest,
+    verificationManifest,
+    deliveryText: delivery,
+  };
   await store.update(runId, {
-    verificationManifest: finalizeVerificationManifest(latest, delivery),
+    verificationManifest,
+    ...buildClearingObjects(finalizedReceipt),
   });
 
   return store.require(runId);
@@ -311,11 +321,18 @@ async function storeEvidence(
   const result = await storeEvidenceOnWalrus(receipt, config);
   const updatedForManifest: LiveRunReceipt = {
     ...receipt,
+    status: 'anchoring',
+    updatedAt: now,
     walrusBlobId: result.blobId,
     walrusBlobObjectId: result.blobObjectId,
     walrusCertifiedEpoch: result.certifiedEpoch,
     walrusEndEpoch: result.endEpoch,
     walrusReadUrl: result.readUrl,
+  };
+  const verificationManifest = finalizeVerificationManifest(updatedForManifest, receipt.deliveryText);
+  const updatedForClearing = {
+    ...updatedForManifest,
+    verificationManifest,
   };
 
   await store.update(runId, {
@@ -326,7 +343,8 @@ async function storeEvidence(
     walrusCertifiedEpoch: result.certifiedEpoch,
     walrusEndEpoch: result.endEpoch,
     walrusReadUrl: result.readUrl,
-    verificationManifest: finalizeVerificationManifest(updatedForManifest, receipt.deliveryText),
+    verificationManifest,
+    ...buildClearingObjects(updatedForClearing),
   });
 
   const events = [
@@ -400,6 +418,9 @@ async function anchorReceipt(
   });
   await store.appendEvent(runId, event);
   bus.publish(runId, event);
+
+  const latest = await store.require(runId);
+  await store.update(runId, buildClearingObjects(latest));
 
   return store.require(runId);
 }

@@ -16,6 +16,8 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     `- Checker pack: ${receipt.verificationManifest.checkerPack}`,
     `- Spec hash: ${receipt.verificationManifest.specHash}`,
     `- Evidence hash: ${receipt.verificationManifest.evidenceHash ?? 'not finalized'}`,
+    `- Clearing verdict: ${receipt.clearingDecision?.verdict ?? 'not recorded'}`,
+    `- Settlement action: ${receipt.settlementInstruction?.action ?? 'not recorded'}`,
     `- Sui network: ${receipt.suiNetwork}`,
     `- Sui package id: ${receipt.suiPackageId ?? 'not configured'}`,
     `- Sui receipt registry id: ${receipt.suiReceiptRegistryId ?? 'not configured'}`,
@@ -37,6 +39,10 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
     '## Worker bid board',
     '',
     ...renderWorkerBidBoard(receipt),
+    '',
+    '## Clearing objects',
+    '',
+    ...renderClearingObjects(receipt),
     '',
     '## Trust gate',
     '',
@@ -67,6 +73,28 @@ export function renderReceiptProof(receipt: LiveRunReceipt): string {
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+function renderClearingObjects(receipt: LiveRunReceipt): string[] {
+  if (!receipt.obligationObject || !receipt.evidenceEnvelope || !receipt.clearingDecision || !receipt.settlementInstruction) {
+    return ['No formal clearing objects recorded.'];
+  }
+
+  return [
+    `- Obligation: ${receipt.obligationObject.obligationId}`,
+    `- Sanitized task hash: ${receipt.obligationObject.sanitizedTaskHash}`,
+    `- Bound spec hash: ${receipt.obligationObject.specHash}`,
+    `- Bound selected bid: ${receipt.obligationObject.selectedBid?.bidId ?? 'none'}`,
+    `- Bound data label: ${receipt.obligationObject.requestedDataLabel}`,
+    `- Bound acceptance criteria: ${receipt.obligationObject.acceptanceCriteria.length}`,
+    `- Evidence envelope: ${receipt.evidenceEnvelope.envelopeId}`,
+    `- Evidence hash: ${receipt.evidenceEnvelope.evidenceHash ?? 'not finalized'}`,
+    `- Walrus ready: ${receipt.evidenceEnvelope.walrusReady ? 'yes' : 'no'}`,
+    `- Clearing decision: ${receipt.clearingDecision.verdict}`,
+    ...receipt.clearingDecision.reasons.map((reason) => `  - ${reason}`),
+    `- Settlement instruction: ${receipt.settlementInstruction.action}`,
+    `- Settlement amount: ${receipt.settlementInstruction.amount.amount} ${receipt.settlementInstruction.amount.currency}`,
+  ];
 }
 
 function renderWorkerBidBoard(receipt: LiveRunReceipt): string[] {

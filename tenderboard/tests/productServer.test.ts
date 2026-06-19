@@ -72,6 +72,10 @@ describe('TenderBoard Sui product server', () => {
       expect(receiptText).toContain('trustDecision');
       expect(receiptText).toContain('verificationManifest');
       expect(receiptText).toContain('workerBidBoard');
+      expect(receiptText).toContain('obligationObject');
+      expect(receiptText).toContain('evidenceEnvelope');
+      expect(receiptText).toContain('clearingDecision');
+      expect(receiptText).toContain('settlementInstruction');
       expect(receiptText).toContain('public_sources');
     } finally {
       await close();
@@ -100,6 +104,24 @@ describe('TenderBoard Sui product server', () => {
         privateNotesProvided: false,
       });
       expect(receipt.workerBidBoard.selectedBidId).toBe('public_scout_standard');
+      expect(receipt.obligationObject.selectedBid).toMatchObject({
+        bidId: 'public_scout_standard',
+        requestedDataLabel: 'public',
+      });
+      expect(receipt.obligationObject.acceptanceCriteria).toContain('Worker must only receive the sanitized task packet.');
+      expect(receipt.evidenceEnvelope).toMatchObject({
+        deliveryPresent: false,
+        walrusReady: false,
+        requestedDataLabel: 'public',
+      });
+      expect(receipt.clearingDecision).toMatchObject({
+        verdict: 'pending_delivery',
+        walrusReady: false,
+      });
+      expect(receipt.settlementInstruction).toMatchObject({
+        action: 'hold_payment',
+        selectedBidId: 'public_scout_standard',
+      });
       expect(bids.find((bid: any) => bid.bidId === 'public_scout_standard')).toMatchObject({
         priceSui: '0.035',
         requestedDataLabel: 'public',
@@ -168,6 +190,16 @@ describe('TenderBoard Sui product server', () => {
       expect(after.status).toBe('delivered');
       expect(after.suiPaymentDigest).toContain('sui_dev_payment_');
       expect(after.deliveryText).toContain('Opportunity Scout Report');
+      expect(after.evidenceEnvelope).toMatchObject({
+        deliveryPresent: true,
+        walrusReady: false,
+      });
+      expect(after.evidenceEnvelope.evidenceHash).toMatch(/^sha256:/);
+      expect(after.clearingDecision).toMatchObject({
+        verdict: 'pending_walrus',
+        walrusReady: false,
+      });
+      expect(after.settlementInstruction.action).toBe('store_walrus_evidence');
       expect(JSON.stringify(after.events)).toContain('walrus_upload_pending');
 
       const withEvidence = await postJson(`${baseUrl}/api/runs/${created.runId}/store-evidence`, {});
@@ -175,10 +207,25 @@ describe('TenderBoard Sui product server', () => {
       expect(withEvidence.walrusBlobId).toContain('walrus_dev_blob_');
       expect(withEvidence.walrusBlobObjectId).toMatch(/^0x/);
       expect(withEvidence.verificationManifest.evidenceHash).toMatch(/^sha256:/);
+      expect(withEvidence.evidenceEnvelope).toMatchObject({
+        evidenceHash: withEvidence.verificationManifest.evidenceHash,
+        walrusReady: true,
+        walrusBlobId: withEvidence.walrusBlobId,
+      });
+      expect(withEvidence.clearingDecision).toMatchObject({
+        verdict: 'ready_to_anchor',
+        walrusReady: true,
+      });
+      expect(withEvidence.settlementInstruction.action).toBe('anchor_sui_receipt');
 
       const anchored = await postJson(`${baseUrl}/api/runs/${created.runId}/anchor-receipt`, {});
       expect(anchored.status).toBe('anchored');
       expect(anchored.suiAnchorDigest).toContain('sui_dev_anchor_');
+      expect(anchored.clearingDecision.verdict).toBe('anchored');
+      expect(anchored.settlementInstruction).toMatchObject({
+        action: 'record_settlement',
+        suiAnchorDigest: anchored.suiAnchorDigest,
+      });
       expect(JSON.stringify(anchored.events)).toContain('sui_dev_receipt_anchored');
     } finally {
       await close();

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { buildClearingObjects } from '../src/live/clearingObjects.js';
 import { renderReceiptProof } from '../src/live/proof.js';
 import { makeEvent } from '../src/live/runStore.js';
+import { buildEvidenceBundle } from '../src/live/walrusRuntime.js';
 import type { LiveRunReceipt } from '../src/live/types.js';
 
 describe('renderReceiptProof', () => {
@@ -13,16 +15,40 @@ describe('renderReceiptProof', () => {
     expect(proof).toContain('Trust verdict: allow');
     expect(proof).toContain('Selected worker bid: public_scout_standard');
     expect(proof).toContain('| public_scout_standard | sui_worker | 0.035 SUI | 24h | public | available |');
+    expect(proof).toContain('## Clearing objects');
+    expect(proof).toContain('Clearing verdict: ready_to_anchor');
+    expect(proof).toContain('Settlement action: anchor_sui_receipt');
+    expect(proof).toContain('Bound selected bid: public_scout_standard');
+    expect(proof).toContain('Walrus ready: yes');
     expect(proof).toContain('Checker pack: research');
     expect(proof).toContain('Safe task only.');
     expect(proof).toContain('Spec hash: sha256:spec');
     expect(proof).toContain('Opportunity Scout Report');
     expect(proof).not.toContain('private strategy note');
   });
+
+  it('includes formal clearing objects in the Walrus evidence bundle', () => {
+    const bundle = buildEvidenceBundle(sampleReceipt());
+
+    expect(bundle.clearingObjects.obligationObject?.selectedBid?.bidId).toBe('public_scout_standard');
+    expect(bundle.clearingObjects.evidenceEnvelope).toMatchObject({
+      evidenceHash: 'sha256:evidence',
+      walrusReady: true,
+      walrusBlobId: 'walrus_blob_1',
+    });
+    expect(bundle.clearingObjects.clearingDecision).toMatchObject({
+      verdict: 'ready_to_anchor',
+      walrusReady: true,
+    });
+    expect(bundle.clearingObjects.settlementInstruction).toMatchObject({
+      action: 'anchor_sui_receipt',
+      selectedBidId: 'public_scout_standard',
+    });
+  });
 });
 
 function sampleReceipt(): LiveRunReceipt {
-  return {
+  const receipt: LiveRunReceipt = {
     runId: 'run_proof',
     mode: 'sui',
     status: 'delivered',
@@ -90,5 +116,9 @@ function sampleReceipt(): LiveRunReceipt {
     deliveryText: 'Opportunity Scout Report\nLink: https://example.com',
     error: undefined,
     events: [makeEvent({ source: 'sui', type: 'sui_dev_payment_recorded', message: 'Sui dev payment digest recorded.' })],
+  };
+  return {
+    ...receipt,
+    ...buildClearingObjects(receipt),
   };
 }

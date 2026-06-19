@@ -13,10 +13,12 @@
 
 import { stableHash } from '../live/hash.js';
 import type { ScoutClaim, ScoutEvidence, ScoutSourceKind, SourceObservation, SourceReceipt } from '../live/types.js';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const BASE_URL = (process.env.BASE_URL ?? 'http://127.0.0.1:4174').replace(/\/+$/, '');
 
-interface SeedTask {
+export interface SeedTask {
   title: string;
   instructions: string;
   acceptanceCriteria: string[];
@@ -31,6 +33,19 @@ interface SeedTask {
     source: ScoutSourceKind;
     sourceLabel: string;
     note: string;
+  }>;
+}
+
+export interface SeedMemoryIndexSummary {
+  workerCount: number;
+  totalMemoryRecords: number;
+  walrusBackedRecords: number;
+  suiAnchoredRecords: number;
+  passports?: Array<{
+    workerAgentId: string;
+    memoryCount: number;
+    averageClaimSupport?: number | undefined;
+    anchoredMemoryCount: number;
   }>;
 }
 
@@ -344,7 +359,7 @@ const SEED_TASKS: SeedTask[] = [
   },
 ];
 
-function buildSeedEvidence(task: SeedTask, index: number): ScoutEvidence {
+export function buildSeedEvidence(task: SeedTask, index: number): ScoutEvidence {
   const generatedAt = `2026-06-19T18:${String(index).padStart(2, '0')}:00.000Z`;
   const observations: SourceObservation[] = task.sources.map((source, sourceIndex) => {
     const record = {
@@ -404,7 +419,7 @@ function buildSeedEvidence(task: SeedTask, index: number): ScoutEvidence {
   };
 }
 
-function buildSeedDeliveryText(task: SeedTask, evidence: ScoutEvidence): string {
+export function buildSeedDeliveryText(task: SeedTask, evidence: ScoutEvidence): string {
   const lines = evidence.claims.map((claim, index) => `${index + 1}. ${claim.title} - ${claim.url}`);
   return [
     `Completed deterministic source-backed scout for: ${task.title}`,
@@ -464,26 +479,52 @@ async function seedOne(task: SeedTask, index: number): Promise<void> {
   );
 }
 
+export function validateSeedMemoryIndex(index: SeedMemoryIndexSummary, expectedRecordCount = SEED_TASKS.length): void {
+  if (index.totalMemoryRecords < expectedRecordCount) {
+    throw new Error(`Seed memory index only has ${index.totalMemoryRecords}/${expectedRecordCount} expected records.`);
+  }
+  if (index.walrusBackedRecords < expectedRecordCount) {
+    throw new Error(`Seed memory index only has ${index.walrusBackedRecords}/${expectedRecordCount} Walrus-backed records.`);
+  }
+  if (index.suiAnchoredRecords < expectedRecordCount) {
+    throw new Error(`Seed memory index only has ${index.suiAnchoredRecords}/${expectedRecordCount} Sui-anchored records.`);
+  }
+  const broken = (index.passports ?? []).filter(
+    (passport) => passport.memoryCount > 0 && (passport.averageClaimSupport === undefined || passport.anchoredMemoryCount === 0),
+  );
+  if (broken.length > 0) {
+    throw new Error(`Seed produced incomplete passport(s): ${broken.map((passport) => passport.workerAgentId).join(', ')}.`);
+  }
+}
+
 async function main(): Promise<void> {
   console.log(`Seeding verifiable agent memory against ${BASE_URL}\n`);
+  const failures: string[] = [];
   for (let index = 0; index < SEED_TASKS.length; index += 1) {
     try {
       await seedOne(SEED_TASKS[index]!, index);
     } catch (error) {
-      console.error(`   failed: ${(error as Error).message}`);
+      const message = `[${index + 1}/${SEED_TASKS.length}] ${SEED_TASKS[index]!.title}: ${(error as Error).message}`;
+      failures.push(message);
+      console.error(`   failed: ${message}`);
     }
   }
 
-  const index = await api<{ workerCount: number; totalMemoryRecords: number; walrusBackedRecords: number; suiAnchoredRecords: number }>(
-    'GET',
-    '/api/walrus/memory',
-  );
+  if (failures.length > 0) {
+    throw new Error(`Seed failed for ${failures.length} task(s):\n${failures.join('\n')}`);
+  }
+
+  const index = await api<SeedMemoryIndexSummary>('GET', '/api/walrus/memory');
+  validateSeedMemoryIndex(index);
   console.log(
     `\nWalrus memory index: workers=${index.workerCount} records=${index.totalMemoryRecords} walrusBacked=${index.walrusBackedRecords} suiAnchored=${index.suiAnchoredRecords}`,
   );
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+const entrypointPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
+if (fileURLToPath(import.meta.url) === entrypointPath) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

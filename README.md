@@ -96,6 +96,15 @@ npm run sui:anchor-plan
 npm run smoke:stake-live
 ```
 
+## Deterministic Seed Data
+
+```bash
+cd tenderboard
+npm run seed:memory
+```
+
+The seed drives the real HTTP loop with deterministic worker evidence. It now exits non-zero unless all 6 seeded records are Walrus-backed and Sui-anchored in the final memory index.
+
 ## Sui Setup
 
 Current testnet deployment:

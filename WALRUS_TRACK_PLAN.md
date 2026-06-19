@@ -60,8 +60,8 @@ Everything in this doc serves one sentence the judges should be able to repeat:
 | Long-running state over time | passports accrue track record across jobs | **built** |
 | Tooling to help devs adopt Walrus / MemWal | `MemoryStore` interface + MemWal adapter | **backend built; live credentials/package install remain** |
 
-**Gap to close:** visible inspector UI + deterministic seed data + live MemWal credential smoke.
-Real testnet blob readback, Sui receipt anchor, MemWal backend shape, and oracle-gated stake/slash
+**Gap to close:** visible inspector UI + live MemWal credential smoke. Real testnet blob readback,
+Sui receipt anchor, deterministic seed data, MemWal backend shape, and oracle-gated stake/slash
 are now proven.
 
 ---
@@ -109,8 +109,6 @@ pattern in `TenderBoardServerOptions`).
   overlay, but the environment still needs `@mysten-incubation/memwal`, delegate key, account id,
   and server URL for a real write.
 - **No inspector UI** (passport directory / blob viewer / hash-match).
-- **Demo data depends on live HN/GitHub luck** — rapid seed runs return thin results, so
-  some workers show `undefined` claim support / 0 anchored. Looks broken.
 - **Identity is inconsistent** across files (see Section 12).
 - **Stake/slash needs production hardening.** The backend executor is now oracle-gated, but the
   Move entrypoint itself is still permissive; production should require an oracle capability or
@@ -193,8 +191,8 @@ WalrusProof
 4. **Deterministic seed.** Inject a well-formed `workerEvidence: ScoutEvidence` (claims
    bound to observations) via the `worker-delivery` body so every seeded run reaches
    `ready_to_anchor` and anchors cleanly — independent of live API luck.
-   - *Done when:* `seed:memory` yields every worker with `averageClaimSupport` defined and
-     ≥1 anchored record, every time.
+   - **Done:** `seed:memory` fails loudly on task errors or incomplete final index. Verified in
+     `sui-dev`: 3 workers, 6 records, 6 Walrus-backed, 6 Sui-anchored.
 5. **Seed variety.** 3 workers × 3–4 jobs with differing support scores (some `requires_review`
    on purpose) so the directory shows the gate working, not just green checks.
 
@@ -328,4 +326,6 @@ Actions:
 - Published package v3 with `reputation_stake`; ran oracle-gated live stake/slash smoke on Sui testnet.
 - Added challenge assessment oracle and slash executor guard.
 - Added `MemWalMemoryStore` semantic overlay behind `MEMORY_BACKEND=memwal`.
-- Current checks: 57 tests green; typecheck clean.
+- Hardened `seed:memory` into an acceptance check; temp `sui-dev` smoke produced 3 workers / 6
+  records / 6 Walrus-backed / 6 Sui-anchored.
+- Current checks: 60 tests green; typecheck clean.

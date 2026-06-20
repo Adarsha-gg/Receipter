@@ -42,6 +42,10 @@ describe('Sui wallet transaction builders', () => {
       chain: 'sui:testnet',
       walletStandard: 'sui:signAndExecuteTransaction',
     });
+    expect(paymentIntentPlan).toMatchObject({
+      paymentKitMode: 'sui_wallet_transaction_request',
+      paymentKitCompatibility: 'sui:wallet-standard-sign-and-execute-v1',
+    });
     expect(request).toMatchObject({
       objectType: 'receipter.sui_wallet_transaction_request.v1',
       kind: 'x402_payment',

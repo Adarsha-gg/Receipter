@@ -80,6 +80,8 @@ export function buildPaymentIntentPlan(input: BuildPaymentPlansInput): PaymentIn
       paymentIntent: plan,
       config: input.config,
     });
+    plan.paymentKitMode = 'sui_wallet_transaction_request';
+    plan.paymentKitCompatibility = 'sui:wallet-standard-sign-and-execute-v1';
   }
 
   return plan;

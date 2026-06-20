@@ -1124,9 +1124,12 @@ async function storeEvidence(
     makeEvent({
       at: now,
       source: 'sui',
-      type: 'sui_anchor_ready',
-      message: 'Walrus evidence id is ready to be committed to the Sui receipt registry.',
-      data: { registry: config.suiReceiptRegistryId, packageId: config.suiPackageId },
+      type: clearingObjects.clearingDecision.verdict === 'ready_to_anchor' ? 'sui_anchor_ready' : 'sui_anchor_blocked',
+      message:
+        clearingObjects.clearingDecision.verdict === 'ready_to_anchor'
+          ? 'Walrus evidence id is ready to be committed to the Sui receipt registry.'
+          : 'Walrus evidence was stored, but verification requires manual review before Sui anchoring.',
+      data: { registry: config.suiReceiptRegistryId, packageId: config.suiPackageId, verdict: clearingObjects.clearingDecision.verdict },
     }),
   ];
 

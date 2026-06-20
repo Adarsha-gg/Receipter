@@ -89,4 +89,5 @@ This file tracks the places where WalrusProof still uses local CLI, demo, metada
 - [x] Add replay-protection persistence outside local JSON files.
   - Completed: x402 payment verification writes nonce and transaction digest records to `x402-replay-ledger.json` under the receipts directory before unlocking the run.
   - Files: `tenderboard/src/live/replayLedger.ts`, `tenderboard/src/server/httpServer.ts`.
-- [ ] Add hosted deployment docs that do not depend on a local CLI.
+- [x] Add hosted deployment docs that do not depend on a local CLI.
+  - Completed: `DEPLOYMENT.md` documents the live `TENDERBOARD_MODE=sui` env, persistent receipts/replay storage, Walrus endpoints, signer-ready Sui transaction flow, and the no-local-CLI deployment path.

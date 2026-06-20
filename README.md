@@ -105,6 +105,8 @@ http://127.0.0.1:4174?live=1
 
 The `?live=1` judging path disables bundled sample fallback. If `/api/walrus/memory` is unavailable, the UI shows a live API failure instead of silently showing demo records. Opening the app without that flag may show clearly labeled sample records when the API is offline.
 
+Hosted deployment notes are in [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Run Checks
 
 ```bash

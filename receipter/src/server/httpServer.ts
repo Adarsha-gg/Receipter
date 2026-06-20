@@ -761,9 +761,9 @@ async function approvePayment(
   const suiPaymentDigest =
     config.mode === 'sui-dev'
       ? makeSuiDevDigest('payment', runId)
-      : body.allowCliFallback && config.suiCliPath ? ((automaticPaymentResult = await executeAutomaticSuiPayment(receipt, config)).digest) : undefined;
+      : body.allowCliFallback && config.suiCliFallbackEnabled && config.suiCliPath ? ((automaticPaymentResult = await executeAutomaticSuiPayment(receipt, config)).digest) : undefined;
   if (!suiPaymentDigest) {
-    throw httpError(400, 'Live Sui payment requires a signed x402 payload via /api/x402/verify. CLI fallback is test-only and must be requested explicitly.');
+    throw httpError(400, 'Live Sui payment requires a signed x402 payload via /api/x402/verify. CLI fallback is test-only and requires allowCliFallback plus SUI_CLI_FALLBACK_ENABLED=1.');
   }
   return recordPaymentApproval(runId, suiPaymentDigest, config, store, bus, automaticPaymentResult
     ? {
@@ -1146,9 +1146,9 @@ async function anchorReceipt(
             config,
             ...(suiRpcFetch ? { fetchImpl: suiRpcFetch } : {}),
           })).transaction)
-        : body.allowCliFallback && config.suiCliPath ? ((automaticAnchorResult = await executeAutomaticSuiAnchor(receipt, config)).digest) : undefined;
+        : body.allowCliFallback && config.suiCliFallbackEnabled && config.suiCliPath ? ((automaticAnchorResult = await executeAutomaticSuiAnchor(receipt, config)).digest) : undefined;
   if (!suiAnchorDigest) {
-    throw httpError(400, 'Live Sui anchoring requires anchorPayload from a signed wallet transaction. CLI fallback is test-only and must be requested explicitly.');
+    throw httpError(400, 'Live Sui anchoring requires anchorPayload from a signed wallet transaction. CLI fallback is test-only and requires allowCliFallback plus SUI_CLI_FALLBACK_ENABLED=1.');
   }
 
   const receiptPlan = requireReceiptPlan(receipt);

@@ -250,7 +250,8 @@ export interface SelectedBidReference {
   requestedDataLabel: TaskDataLabel;
 }
 
-export type PaymentKitMode = 'sui_pay_uri_metadata_only';
+export type PaymentKitMode = 'sui_pay_uri_metadata_only' | 'sui_wallet_transaction_request';
+export type PaymentKitCompatibility = 'sui:pay-uri-v1' | 'sui:wallet-standard-sign-and-execute-v1';
 
 export type SuiWalletTransactionKind = 'x402_payment' | 'receipt_anchor';
 export type SuiWalletSignerRole = 'hirer' | 'operator';
@@ -507,7 +508,7 @@ export interface PaymentIntentPlan {
   expectedNetwork: string;
   paymentUri: string;
   paymentKitMode: PaymentKitMode;
-  paymentKitCompatibility: 'sui:pay-uri-v1';
+  paymentKitCompatibility: PaymentKitCompatibility;
   walletTransactionRequest?: SuiWalletTransactionRequest | undefined;
   expiresAt: string;
   createdAt: string;
@@ -530,7 +531,7 @@ export interface ReceiptPlan {
   expectedNetwork: string;
   paymentUri: string;
   paymentKitMode: PaymentKitMode;
-  paymentKitCompatibility: 'sui:pay-uri-v1';
+  paymentKitCompatibility: PaymentKitCompatibility;
   paymentDigest: string | undefined;
   walrusBlobId: string | undefined;
   walrusBlobObjectId: string | undefined;
@@ -784,6 +785,7 @@ export interface SafeConfig {
     walrusPublisherConfigured: boolean;
     walrusAggregatorConfigured: boolean;
     suiCliConfigured: boolean;
+    suiCliFallbackEnabled: boolean;
     readyForSui: boolean;
     missingSuiSettings: string[];
   };
@@ -821,6 +823,7 @@ export interface ReceipterConfig {
   harborUploadUrl?: string | undefined;
   suiCliPath: string | undefined;
   suiClientConfig: string | undefined;
+  suiCliFallbackEnabled: boolean;
   missingSuiSettings: string[];
   safe: SafeConfig;
 }

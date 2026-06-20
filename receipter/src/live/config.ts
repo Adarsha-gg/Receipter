@@ -36,6 +36,7 @@ export function loadReceipterConfig(env: NodeJS.ProcessEnv = process.env): Recei
   const harborUploadUrl = blankToUndefined(env.HARBOR_UPLOAD_URL);
   const suiCliPath = blankToUndefined(env.SUI_CLI_PATH);
   const suiClientConfig = blankToUndefined(env.SUI_CLIENT_CONFIG);
+  const suiCliFallbackEnabled = parseBoolean(env.SUI_CLI_FALLBACK_ENABLED ?? 'false', 'SUI_CLI_FALLBACK_ENABLED');
 
   const missingSuiSettings = suiRequiredSettings({
     suiPackageId,
@@ -80,6 +81,7 @@ export function loadReceipterConfig(env: NodeJS.ProcessEnv = process.env): Recei
       walrusPublisherConfigured: Boolean(walrusPublisherUrl),
       walrusAggregatorConfigured: Boolean(walrusAggregatorUrl),
       suiCliConfigured: Boolean(suiCliPath),
+      suiCliFallbackEnabled,
       readyForSui: missingSuiSettings.length === 0,
       missingSuiSettings,
     },
@@ -117,6 +119,7 @@ export function loadReceipterConfig(env: NodeJS.ProcessEnv = process.env): Recei
     harborUploadUrl,
     suiCliPath,
     suiClientConfig,
+    suiCliFallbackEnabled,
     missingSuiSettings,
     safe,
   };
@@ -179,6 +182,12 @@ function parseAmount(value: string): string {
     throw new Error(`Invalid RECEIPTER_MAX_PAYMENT_SUI: ${value}.`);
   }
   return amount.toFixed(3);
+}
+
+function parseBoolean(value: string, name: string): boolean {
+  if (value === 'true' || value === '1') return true;
+  if (value === 'false' || value === '0') return false;
+  throw new Error(`Invalid ${name}: ${value}. Expected true/false or 1/0.`);
 }
 
 function blankToUndefined(value: string | undefined): string | undefined {

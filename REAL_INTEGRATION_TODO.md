@@ -26,8 +26,8 @@ This file tracks the places where Receipter still uses local CLI, demo, metadata
   - Risk: a UI or caller can submit a digest unless every path routes through `/api/x402/verify`.
   - Real version: only accept payment via verified x402 payload or server-built signed transaction result.
 
-- [ ] Upgrade Payment Kit from metadata-only URI to real wallet UX.
-  - Current: `paymentKitMode` is `sui_pay_uri_metadata_only`.
+- [x] Upgrade Payment Kit from metadata-only URI to real wallet UX.
+  - Completed: configured live Sui runs now carry `paymentKitMode = sui_wallet_transaction_request`, `paymentKitCompatibility = sui:wallet-standard-sign-and-execute-v1`, and an embedded signer-ready `walletTransactionRequest`. Underconfigured/local smoke runs keep the metadata-only `sui:pay` URI fallback.
   - File: `receipter/src/sui/paymentPlan.ts`.
   - Real version: wallet connect, transaction preview, explicit signing, digest returned to verifier.
 
@@ -85,7 +85,8 @@ This file tracks the places where Receipter still uses local CLI, demo, metadata
 - [ ] Add wallet connect for Sui.
 - [ ] Add zkLogin onboarding for non-crypto users.
 - [ ] Add sponsored gas for first-time buyers.
-- [ ] Add a production operator key policy instead of `.env` local key paths.
+- [x] Add a production operator key policy instead of `.env` local key paths.
+  - Completed: production live mode defaults to wallet-signed transaction requests. Local Sui CLI execution is now a test-only fallback that requires both a request-level `allowCliFallback` flag and `SUI_CLI_FALLBACK_ENABLED=1`; merely setting `SUI_CLI_PATH` / `SUI_CLIENT_CONFIG` is not enough.
 - [x] Add replay-protection persistence outside local JSON files.
   - Completed: x402 payment verification writes nonce and transaction digest records to `x402-replay-ledger.json` under the receipts directory before unlocking the run.
   - Files: `receipter/src/live/replayLedger.ts`, `receipter/src/server/httpServer.ts`.

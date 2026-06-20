@@ -91,6 +91,7 @@ function testConfig(): ReceipterConfig {
     walrusAggregatorUrl: 'https://aggregator.walrus-testnet.walrus.space',
     suiCliPath: undefined,
     suiClientConfig: undefined,
+    suiCliFallbackEnabled: false,
     missingSuiSettings: [],
     safe: {
       mode: 'sui',
@@ -115,6 +116,7 @@ function testConfig(): ReceipterConfig {
         walrusPublisherConfigured: true,
         walrusAggregatorConfigured: true,
         suiCliConfigured: false,
+        suiCliFallbackEnabled: false,
         readyForSui: true,
         missingSuiSettings: [],
       },

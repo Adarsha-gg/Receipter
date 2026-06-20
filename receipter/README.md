@@ -12,7 +12,7 @@ The core product is the Walrus memory layer plus a Sui-native agent identity obj
 4. Receipter scores the worker route against prior Walrus memory before execution.
 5. Receipter creates a verification manifest, memory scope, and Sui work order id.
 6. Worker task access is guarded by an x402-style HTTP 402 challenge.
-7. The challenge carries a Sui Payment Kit-compatible URI plus Payment Intent metadata for that exact work order.
+7. The challenge carries signer-ready Sui wallet transaction metadata for that exact work order, with a `sui:pay` URI retained as a compatibility fallback.
 8. Hirer agent retries with a Sui payment payload.
 9. The local Sui facilitator/verifier for the x402-style flow verifies run, resource, nonce, amount, receiver, worker, and Sui settlement.
 10. Worker agent receives the paid task packet and delivers source-backed evidence.
@@ -130,13 +130,13 @@ Export a call plan:
 npm run sui:anchor-plan <run-id>
 ```
 
-In live `sui` mode, clients request signer-ready transaction data from `GET /api/runs/:id/payment-transaction` and `GET /api/runs/:id/anchor-transaction`. Payment settlement is accepted through `/api/x402/verify`; receipt anchoring is accepted through `POST /api/runs/:id/anchor-receipt` with the structured `anchorPayload` returned by the wallet flow. Raw `suiPaymentDigest` and `suiAnchorDigest` bypasses are rejected in live mode. `SUI_CLI_PATH` remains an explicit test-only fallback.
+In live `sui` mode, clients request signer-ready transaction data from `GET /api/runs/:id/payment-transaction` and `GET /api/runs/:id/anchor-transaction`. Payment settlement is accepted through `/api/x402/verify`; receipt anchoring is accepted through `POST /api/runs/:id/anchor-receipt` with the structured `anchorPayload` returned by the wallet flow. Raw `suiPaymentDigest` and `suiAnchorDigest` bypasses are rejected in live mode. `SUI_CLI_PATH` remains a test-only fallback and is ignored unless `SUI_CLI_FALLBACK_ENABLED=1` is also set.
 
 Do not claim mainnet anchoring until the package and Walrus publisher path are redeployed on mainnet.
 
 In `sui` mode payment approval requires a verified signed x402-style Sui payment payload, the Walrus evidence step uses the configured HTTP publisher, and the Sui anchor step verifies the signed receipt-registry transaction through Sui JSON-RPC events before recording the digest. `sui-dev` remains a local smoke mode only; do not use it for the hackathon demo pitch.
 
-Receipter generates Payment Kit-compatible URI metadata for SUI payment approval planning. Worker task access is exposed as x402-style paid HTTP access for agents on Sui: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest.
+Receipter generates signer-ready Sui wallet transaction requests for SUI payment approval. Worker task access is exposed as x402-style paid HTTP access for agents on Sui: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest. The older `sui:pay` URI remains as a compatibility fallback for underconfigured local smoke runs.
 
 The app includes its own local Sui facilitator/verifier for this x402-style flow. In `sui` mode it calls `SUI_RPC_URL` with `sui_getTransactionBlock` and verifies successful execution, receiver balance change, a package-owned `PaymentIntentRecorded` event, Payment Kit nonce binding, request/resource binding, amount, receiver, coin type, worker id, and replay protection before unlocking the worker task. This is not a Coinbase-hosted facilitator and not an official Sui x402 network standard.
 

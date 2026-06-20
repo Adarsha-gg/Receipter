@@ -351,6 +351,19 @@ describe('Receipter product server', () => {
         maxPayment: { amount: '0.050', currency: 'SUI' },
       });
       const receipt = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
+      expect(receipt.paymentIntentPlan).toMatchObject({
+        paymentKitMode: 'sui_wallet_transaction_request',
+        paymentKitCompatibility: 'sui:wallet-standard-sign-and-execute-v1',
+        walletTransactionRequest: {
+          objectType: 'receipter.sui_wallet_transaction_request.v1',
+          kind: 'x402_payment',
+          walletStandard: 'sui:signAndExecuteTransaction',
+        },
+      });
+      expect(receipt.receiptPlan).toMatchObject({
+        paymentKitMode: 'sui_wallet_transaction_request',
+        paymentKitCompatibility: 'sui:wallet-standard-sign-and-execute-v1',
+      });
       const signingRequest = await (await fetch(`${baseUrl}/api/runs/${created.runId}/payment-transaction`)).json();
       expect(signingRequest).toMatchObject({
         objectType: 'receipter.payment_signing_request.v1',

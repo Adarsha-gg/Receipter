@@ -25,6 +25,9 @@ import { buildX402PaymentPayload, executeSuiX402Payment } from '../sui/paymentEx
 import { buildSuiAnchorPlan } from '../sui/anchorPlan.js';
 import { buildSuiReceiptAnchorPayload, buildSuiReceiptAnchorTransactionRequest } from '../sui/anchorTransactionBuilder.js';
 import { parseSuiReceiptAnchorPayload, verifySuiReceiptAnchor } from '../sui/anchorVerifier.js';
+import { buildAgentPassportUpdateTransactionData } from '../sui/agentPassportPlan.js';
+import { buildAgentPassportUpdatePayload, buildAgentPassportUpdateWalletRequest } from '../sui/agentPassportTransaction.js';
+import { parseSuiAgentPassportUpdatePayload, verifySuiAgentPassportUpdate } from '../sui/agentPassportVerifier.js';
 import {
   buildAttachStakeWalletRequest,
   buildCreateOracleRegistryWalletRequest,
@@ -392,6 +395,25 @@ async function route(
     return;
   }
 
+  const passportUpdateTransactionMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/passport-update-transaction$/);
+  if (method === 'GET' && passportUpdateTransactionMatch) {
+    sendJson(res, 200, await buildPassportUpdateSigningResponse(passportUpdateTransactionMatch[1]!, config, store, memoryStore));
+    return;
+  }
+
+  const passportUpdateMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/passport-update$/);
+  if (method === 'POST' && passportUpdateMatch) {
+    const payload = parseSuiAgentPassportUpdatePayload(await readJson<unknown>(req));
+    const verification = await verifySuiAgentPassportUpdate({
+      payload,
+      config,
+      ...(suiRpcFetch ? { fetchImpl: suiRpcFetch } : {}),
+    });
+    const receipt = await recordPassportUpdate(passportUpdateMatch[1]!, payload, verification, store, bus);
+    sendJson(res, 200, { receipt, verification });
+    return;
+  }
+
   const cancelMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/cancel$/);
   if (method === 'POST' && cancelMatch) {
     const receipt = await cancelRun(cancelMatch[1]!, store, bus);
@@ -459,6 +481,7 @@ async function createRun(
     paymentIntentId: paymentIntentPlan.intentId,
     hirerOwnerAddress: config.suiOperatorAddress,
     workerOwnerAddress: config.workerAgentAddress,
+    workerAgentPassportObjectId: config.workerAgentPassportObjectId,
   });
   const reputationSnapshot = buildWorkerReputationCard(
     workerAgentId,
@@ -644,6 +667,78 @@ function buildStakeSigningResponse(walletTransactionRequest: SuiStakeWalletTrans
       walletTransactionRequest,
     },
   };
+}
+
+async function buildPassportUpdateSigningResponse(
+  runId: string,
+  config: TenderBoardConfig,
+  store: RunStore,
+  memoryStore: MemoryStore,
+) {
+  const receipt = await store.require(runId);
+  if (receipt.status !== 'anchored' || !receipt.suiAnchorDigest) {
+    throw httpError(409, 'Run must be Sui-anchored before updating the AgentPassport memory pointer.');
+  }
+
+  const now = new Date().toISOString();
+  const receipts = await loadAllReceipts(store);
+  const memoryIndex = buildWalrusMemoryIndex(receipts, now);
+  const memoryIndexWalrus = await memoryStore.putMemoryIndex(memoryIndex);
+  const passport = buildAgentMemoryPassport(receipt.workerAgentId, receipts, now);
+  const updatePlan = buildAgentPassportUpdateTransactionData({
+    network: config.suiNetwork,
+    packageId: config.suiPackageId,
+    passport,
+    memoryIndexBlobId: memoryIndexWalrus.blobId,
+    anchoredReceipt: receipt,
+  });
+  if (!updatePlan.ready) {
+    throw httpError(409, `AgentPassport update transaction is not ready. Missing: ${updatePlan.missing.join(', ')}.`);
+  }
+  const walletTransactionRequest = buildAgentPassportUpdateWalletRequest(updatePlan);
+
+  return {
+    objectType: 'walrusproof.agent_passport_update_signing_request.v1',
+    runId,
+    status: receipt.status,
+    verifyEndpoint: `/api/runs/${runId}/passport-update`,
+    passport,
+    memoryIndexWalrus,
+    updatePlan,
+    walletTransactionRequest,
+    passportUpdatePayloadTemplate: buildAgentPassportUpdatePayload(walletTransactionRequest, '<SIGNED_SUI_TRANSACTION_DIGEST>'),
+  };
+}
+
+async function recordPassportUpdate(
+  runId: string,
+  payload: ReturnType<typeof parseSuiAgentPassportUpdatePayload>,
+  verification: Awaited<ReturnType<typeof verifySuiAgentPassportUpdate>>,
+  store: RunStore,
+  bus: RunEventBus,
+): Promise<LiveRunReceipt> {
+  const receipt = await store.require(runId);
+  const now = new Date().toISOString();
+  const event = makeEvent({
+    at: now,
+    source: 'sui',
+    type: 'agent_passport_memory_updated',
+    message: 'Sui AgentPassport memory pointer updated from a verified signed transaction.',
+    data: {
+      transaction: payload.transaction,
+      passportObjectId: payload.walletTransactionRequest.expected.passportObjectId,
+      ownerAddress: payload.walletTransactionRequest.expected.ownerAddress,
+      memoryIndexBlobId: payload.walletTransactionRequest.expected.memoryIndexBlobId,
+      latestRecordHash: payload.walletTransactionRequest.expected.latestRecordHash,
+      latestWalrusBlobId: payload.walletTransactionRequest.expected.latestWalrusBlobId,
+      latestSuiAnchorDigest: payload.walletTransactionRequest.expected.latestSuiAnchorDigest,
+      verification,
+    },
+  });
+  await store.update(runId, { updatedAt: now });
+  await store.appendEvent(runId, event);
+  bus.publish(runId, event);
+  return store.require(runId);
 }
 
 async function approvePayment(

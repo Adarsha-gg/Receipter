@@ -63,3 +63,12 @@ Remaining process blocker:
   - `POST /api/stake/slash-transaction`
   - `POST /api/stake/verify`
 - Added Sui RPC verification for successful stake/challenge/slash transactions and expected `reputation_stake` events.
+
+## AgentPassport Update Follow-Up
+
+- Started branch `codex/passport-anchor-update`.
+- Added `TENDERBOARD_WORKER_AGENT_PASSPORT_OBJECT_ID` so worker memory passports can bind to an actual owner-held Sui object.
+- Added anchored-run passport update flow:
+  - `GET /api/runs/:id/passport-update-transaction`
+  - `POST /api/runs/:id/passport-update`
+- The update flow stores the current memory index on Walrus, builds an owner-signed `agent_passport::update_memory_pointer` transaction request, and verifies the signed transaction through Sui RPC by checking `AgentPassportMemoryUpdated`.

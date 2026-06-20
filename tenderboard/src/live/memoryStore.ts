@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { buildEvidenceBundle } from './walrusRuntime.js';
-import type { LiveRunReceipt, TenderBoardConfig } from './types.js';
-import { storeEvidenceOnWalrus, type WalrusStoreResult } from './walrusRuntime.js';
+import type { LiveRunReceipt, TenderBoardConfig, WalrusMemoryIndex } from './types.js';
+import { storeEvidenceOnWalrus, storeJsonObjectOnWalrus, type WalrusStoreResult } from './walrusRuntime.js';
 
 const requireOptional = createRequire(import.meta.url);
 
@@ -10,6 +10,7 @@ export type MemoryStoreBackend = 'walrus' | 'memwal';
 export interface MemoryStore {
   readonly backend: MemoryStoreBackend;
   putEvidenceBundle(receipt: LiveRunReceipt): Promise<WalrusStoreResult>;
+  putMemoryIndex(index: WalrusMemoryIndex): Promise<WalrusStoreResult>;
 }
 
 export interface MemWalRememberJob {
@@ -51,6 +52,10 @@ export class WalrusMemoryStore implements MemoryStore {
   putEvidenceBundle(receipt: LiveRunReceipt): Promise<WalrusStoreResult> {
     return storeEvidenceOnWalrus(receipt, this.config, this.fetchImpl);
   }
+
+  putMemoryIndex(index: WalrusMemoryIndex): Promise<WalrusStoreResult> {
+    return storeJsonObjectOnWalrus(index, this.config, this.fetchImpl);
+  }
 }
 
 export class MemWalMemoryStore implements MemoryStore {
@@ -71,6 +76,10 @@ export class MemWalMemoryStore implements MemoryStore {
       await this.memwalClient.waitForRememberJob(jobId);
     }
     return walrus;
+  }
+
+  putMemoryIndex(index: WalrusMemoryIndex): Promise<WalrusStoreResult> {
+    return this.walrusStore.putMemoryIndex(index);
   }
 }
 

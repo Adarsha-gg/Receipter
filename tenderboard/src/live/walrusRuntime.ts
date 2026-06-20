@@ -142,6 +142,38 @@ export async function storeEvidenceOnWalrus(
     return makeWalrusDevBlob(receipt, privacyEncryption);
   }
 
+  return storeTextOnWalrus(makeEvidenceBundleText(receipt, privacyEncryption), config, fetchImpl, uploadSelection, privacyEncryption);
+}
+
+export async function storeJsonObjectOnWalrus(
+  value: unknown,
+  config: TenderBoardConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<WalrusStoreResult> {
+  const uploadSelection = selectWalrusUploadStrategy(config);
+
+  if (config.mode === 'sui-dev') {
+    const hash = stableHash(value).slice('sha256:'.length);
+    return {
+      blobId: `walrus_dev_blob_${hash.slice(0, 32)}`,
+      blobObjectId: `0x${hash.slice(0, 64)}`,
+      certifiedEpoch: 0,
+      endEpoch: 2,
+      readUrl: `walrus-dev://${hash.slice(0, 32)}`,
+      uploadStrategy: 'walrus-dev',
+    };
+  }
+
+  return storeTextOnWalrus(`${JSON.stringify(value, null, 2)}\n`, config, fetchImpl, uploadSelection);
+}
+
+async function storeTextOnWalrus(
+  bodyText: string,
+  config: TenderBoardConfig,
+  fetchImpl: typeof fetch,
+  uploadSelection: WalrusUploadSelection,
+  privacyEncryption?: SealEncryptMemoryResult | undefined,
+): Promise<WalrusStoreResult> {
   if (uploadSelection.strategy === 'harbor') {
     throw new Error(
       'WALRUS_UPLOAD_STRATEGY=harbor is selected, but the Harbor upload adapter is not implemented in this build. Use WALRUS_UPLOAD_STRATEGY=raw-walrus for the current production path.',
@@ -162,7 +194,7 @@ export async function storeEvidenceOnWalrus(
   const response = await fetchImpl(uploadUrl, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: makeEvidenceBundleText(receipt, privacyEncryption),
+    body: bodyText,
   });
 
   if (!response.ok) {

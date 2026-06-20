@@ -340,6 +340,13 @@ describe('renderReceiptProof', () => {
         endEpoch: 500,
         readUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/walrus_blob_for_memwal',
       }),
+      putMemoryIndex: async () => ({
+        blobId: 'walrus_memory_index_for_memwal',
+        blobObjectId: '0xmemoryindex',
+        certifiedEpoch: undefined,
+        endEpoch: 500,
+        readUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/walrus_memory_index_for_memwal',
+      }),
     };
     const store = new MemWalMemoryStore(
       walrusStore,

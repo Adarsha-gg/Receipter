@@ -29,6 +29,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
   const suiStakeOracleRegistryId = blankToUndefined(env.SUI_STAKE_ORACLE_REGISTRY_ID);
   const suiOperatorAddress = blankToUndefined(env.SUI_OPERATOR_ADDRESS);
   const workerAgentAddress = blankToUndefined(env.TENDERBOARD_WORKER_AGENT_ADDRESS) ?? suiOperatorAddress;
+  const workerAgentPassportObjectId = blankToUndefined(env.TENDERBOARD_WORKER_AGENT_PASSPORT_OBJECT_ID);
   const walrusPublisherUrl = blankToUndefined(env.WALRUS_PUBLISHER_URL);
   const walrusAggregatorUrl = blankToUndefined(env.WALRUS_AGGREGATOR_URL);
   const walrusUploadStrategy = parseWalrusUploadStrategy(env.WALRUS_UPLOAD_STRATEGY ?? 'raw-walrus');
@@ -109,6 +110,7 @@ export function loadTenderBoardConfig(env: NodeJS.ProcessEnv = process.env): Ten
     suiStakeOracleRegistryId,
     suiOperatorAddress,
     workerAgentAddress,
+    workerAgentPassportObjectId,
     walrusPublisherUrl,
     walrusAggregatorUrl,
     walrusUploadStrategy,

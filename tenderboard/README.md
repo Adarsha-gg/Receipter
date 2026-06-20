@@ -235,9 +235,11 @@ POST /api/runs/:id/worker-delivery     worker agent submits delivery evidence
 POST /api/runs/:id/store-evidence      operator stores the memory bundle on Walrus
 GET  /api/runs/:id/anchor-transaction  operator gets signer-ready Sui anchor transaction data
 POST /api/runs/:id/anchor-receipt      operator submits verified anchorPayload from signed Sui tx
+GET  /api/runs/:id/passport-update-transaction get signer-ready AgentPassport memory update tx
+POST /api/runs/:id/passport-update     verify signed AgentPassportMemoryUpdated tx
 ```
 
-CLI/dev-only today: explicit backend Sui CLI fallback for payment and receipt anchoring; the built-in Opportunity Scout delivery helper; `sui-dev` deterministic local smoke mode; and credentialed MemWal smoke unless MemWal env vars are configured. Live stake, challenge, and slash routes produce signer-ready transaction requests and verify the signed Sui transaction through RPC events. In production, an external worker agent should submit its own delivery and source evidence.
+CLI/dev-only today: explicit backend Sui CLI fallback for payment and receipt anchoring; the built-in Opportunity Scout delivery helper; `sui-dev` deterministic local smoke mode; and credentialed MemWal smoke unless MemWal env vars are configured. Live AgentPassport updates, stake, challenge, and slash routes produce signer-ready transaction requests and verify the signed Sui transaction through RPC events. In production, an external worker agent should submit its own delivery and source evidence.
 
 ## Important Files
 

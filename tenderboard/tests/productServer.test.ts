@@ -479,7 +479,7 @@ describe('WalrusProof product server', () => {
         status: 'working',
       });
 
-      const delivered = await postJson(`${baseUrl}/api/runs/${created.runId}/worker-delivery`, {});
+      const delivered = await postJson(`${baseUrl}/api/runs/${created.runId}/worker-delivery`, { useDemoWorker: true });
       expect(delivered.status).toBe('delivered');
       expect(delivered.agentHandoff.status).toBe('ready_to_anchor');
       expect(delivered.deliveryText).toContain('Opportunity Scout Report');
@@ -621,7 +621,12 @@ describe('WalrusProof product server', () => {
         ownership: {
           chain: 'sui',
           address: '0xworker_owner',
-          proof: 'agent_profile',
+          proof: 'owner_address_only',
+        },
+        chainOwnershipProof: {
+          status: 'owner_address_only',
+          ownerAddress: '0xworker_owner',
+          proof: 'owner_address_only',
         },
         memoryCount: 1,
         walrusMemoryCount: 1,
@@ -801,7 +806,7 @@ describe('WalrusProof product server', () => {
     }
   });
 
-  it('blocks Sui anchoring when delivery evidence is not verification-admissible', async () => {
+  it('rejects worker delivery without the external source-evidence contract', async () => {
     const { baseUrl, close } = await startTestServer({
       TENDERBOARD_MODE: 'sui-dev',
       TENDERBOARD_RECEIPTS_DIR: tempDir,
@@ -815,34 +820,54 @@ describe('WalrusProof product server', () => {
       });
 
       await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
-      const delivered = await postJson(`${baseUrl}/api/runs/${created.runId}/worker-delivery`, {
-        deliveryText: 'I completed the work but did not include source receipts.',
-      });
-      expect(delivered.verificationManifest.summary).toMatchObject({
-        admissibility: 'insufficient',
-        evidenceStrength: 'delivery_only',
-        settlementEligible: false,
-      });
-
-      const withEvidence = await postJson(`${baseUrl}/api/runs/${created.runId}/store-evidence`, {});
-      expect(withEvidence.status).toBe('delivered');
-      expect(withEvidence.agentHandoff.status).toBe('requires_review');
-      expect(withEvidence.clearingDecision).toMatchObject({
-        verdict: 'requires_review',
-        verificationAdmissibility: 'insufficient',
-        evidenceStrength: 'walrus_backed',
-      });
-      expect(withEvidence.clearingDecision.blockerIds).toEqual(expect.arrayContaining(['criteria_coverage', 'public_sources']));
-      expect(withEvidence.settlementInstruction.action).toBe('manual_review');
-
-      const anchorResponse = await fetch(`${baseUrl}/api/runs/${created.runId}/anchor-receipt`, {
+      const deliveryResponse = await fetch(`${baseUrl}/api/runs/${created.runId}/worker-delivery`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          deliveryText: 'I completed the work but did not include source receipts.',
+        }),
       });
-      const anchorBody = await anchorResponse.json();
-      expect(anchorResponse.status).toBe(409);
-      expect(anchorBody.error).toContain('Run cannot be anchored from status: delivered');
+      const deliveryBody = await deliveryResponse.json();
+      expect(deliveryResponse.status).toBe(400);
+      expect(deliveryBody.error).toContain('Worker delivery requires walrusproof.external_worker_delivery.v1 payload');
+
+      const receipt = await (await fetch(`${baseUrl}/api/runs/${created.runId}`)).json();
+      expect(receipt.status).toBe('working');
+      expect(receipt.deliveryText).toBeUndefined();
+    } finally {
+      await close();
+    }
+  });
+
+  it('keeps the built-in Opportunity Scout delivery as a sui-dev demo fallback only', async () => {
+    const { baseUrl, close } = await startTestServer({
+      TENDERBOARD_MODE: 'sui',
+      TENDERBOARD_RECEIPTS_DIR: tempDir,
+      SUI_NETWORK: 'testnet',
+      SUI_OPERATOR_ADDRESS: '0xoperator',
+      SUI_PACKAGE_ID: '0xpackage',
+      SUI_RECEIPT_REGISTRY_ID: '0xregistry',
+      WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
+      WALRUS_AGGREGATOR_URL: 'https://aggregator.walrus.testnet.example',
+    });
+
+    try {
+      const created = await postJson(`${baseUrl}/api/runs`, {
+        title: 'Require external worker',
+        instructions: 'Make it useful.',
+        maxPayment: { amount: '0.050', currency: 'SUI' },
+      });
+      await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, { suiPaymentDigest: '0xpayment_digest' });
+
+      const response = await fetch(`${baseUrl}/api/runs/${created.runId}/worker-delivery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ useDemoWorker: true }),
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body.error).toContain('only available as an explicit sui-dev demo fallback');
     } finally {
       await close();
     }

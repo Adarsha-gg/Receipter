@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { MoneyInput, PaymentIntentPlan, ReceiptPlan, SelectedBidReference, TenderBoardConfig } from '../live/types.js';
+import { buildSuiX402PaymentTransactionRequestFromIntent } from './paymentTransactionBuilder.js';
 
 export const SUI_COIN_TYPE = '0x2::sui::SUI' as const;
 export const MIST_PER_SUI = 1_000_000_000n;
@@ -52,7 +53,7 @@ export function buildPaymentIntentPlan(input: BuildPaymentPlansInput): PaymentIn
     receiptRegistryId: input.config.suiReceiptRegistryId,
   });
 
-  return {
+  const plan: PaymentIntentPlan = {
     objectType: 'tenderboard.payment_intent_plan.v1',
     intentId: `payment_intent_${input.runId}`,
     paymentNonce,
@@ -71,6 +72,17 @@ export function buildPaymentIntentPlan(input: BuildPaymentPlansInput): PaymentIn
     expiresAt: new Date(new Date(input.createdAt).getTime() + 24 * 60 * 60 * 1000).toISOString(),
     createdAt: input.createdAt,
   };
+
+  if (input.config.suiPackageId && !operatorAddress.startsWith('<')) {
+    plan.walletTransactionRequest = buildSuiX402PaymentTransactionRequestFromIntent({
+      runId: input.runId,
+      workerAgentId: input.selectedBid?.workerAgentId ?? input.config.workerAgentId,
+      paymentIntent: plan,
+      config: input.config,
+    });
+  }
+
+  return plan;
 }
 
 export function buildInitialReceiptPlan(intent: PaymentIntentPlan, workerAgentId: string, updatedAt: string): ReceiptPlan {

@@ -1,18 +1,26 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { LiveRunReceipt, TenderBoardConfig } from '../live/types.js';
+import type { LiveRunReceipt, SuiReceiptAnchorPayload, SuiWalletTransactionRequest, TenderBoardConfig } from '../live/types.js';
 import { buildSuiAnchorPlan, type SuiAnchorPlan } from './anchorPlan.js';
+import { buildSuiReceiptAnchorPayload, buildSuiReceiptAnchorTransactionRequest } from './anchorTransactionBuilder.js';
 
 const execFileAsync = promisify(execFile);
 const VECTOR_ARGUMENT_INDEXES = new Set([1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 21]);
 
 export interface SuiAnchorExecutionResult {
+  executionMode: 'cli_fallback_test_only';
   digest: string;
+  payload: SuiReceiptAnchorPayload;
+  transactionRequest: SuiWalletTransactionRequest;
   stdout: string;
   stderr: string;
   args: string[];
 }
 
+/**
+ * Fallback/test-only smoke path. Production callers should build a wallet
+ * transaction request, have an operator sign it, then verify/store the digest.
+ */
 export async function executeSuiAnchorReceipt(receipt: LiveRunReceipt, config: TenderBoardConfig): Promise<SuiAnchorExecutionResult> {
   if (!config.suiCliPath) {
     throw new Error('SUI_CLI_PATH is required for automatic Sui receipt anchoring.');
@@ -29,7 +37,15 @@ export async function executeSuiAnchorReceipt(receipt: LiveRunReceipt, config: T
     maxBuffer: 1024 * 1024 * 16,
   });
   const digest = parseSuiTransactionDigest(stdout);
-  return { digest, stdout, stderr, args };
+  return {
+    executionMode: 'cli_fallback_test_only',
+    digest,
+    payload: buildSuiReceiptAnchorPayload(plan, digest),
+    transactionRequest: buildSuiReceiptAnchorTransactionRequest(plan),
+    stdout,
+    stderr,
+    args,
+  };
 }
 
 export function buildSuiAnchorCliArgs(plan: SuiAnchorPlan, config: TenderBoardConfig): string[] {

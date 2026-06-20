@@ -35,15 +35,17 @@ export async function verifyMemoryRecord(
   fetchImpl: typeof fetch = fetch,
 ): Promise<VerifiedMemoryRecord> {
   const recomputed = buildAgentMemoryRecord(receipt);
-  const checks: VerificationCheck[] = [
+  const baseChecks: VerificationCheck[] = [
     verifyMemoryHash(receipt, recomputed.memoryHash),
     verifySourceReceiptHash(receipt),
     verifyWorkerEvidenceHash(receipt),
+    verifyClaimResults(receipt),
     verifyWalrusBinding(receipt),
     verifySuiAnchorBinding(receipt),
     verifyEvidenceBundleHash(receipt),
     await verifyWalrusReadback(receipt, fetchImpl),
   ];
+  const checks = [...baseChecks, verifyCompleteness(receipt, baseChecks)];
   const verified = checks.every((check) => check.status !== 'failed');
 
   return {
@@ -143,6 +145,29 @@ function verifyWorkerEvidenceHash(receipt: LiveRunReceipt): VerificationCheck {
   return { id: 'worker_evidence_hash', status: 'passed', detail: `Worker evidence hash ${recomputed} matches.` };
 }
 
+function verifyClaimResults(receipt: LiveRunReceipt): VerificationCheck {
+  const claims = receipt.workerEvidence?.claims ?? [];
+  const results = receipt.verificationManifest.claimResults ?? [];
+  if (claims.length === 0 && results.length === 0) {
+    return { id: 'source_claims', status: 'skipped', detail: 'No structured source claims are attached.' };
+  }
+  if (claims.length === 0) {
+    return { id: 'source_claims', status: 'failed', detail: 'Verification results exist but worker evidence has no source claims.' };
+  }
+  if (results.length !== claims.length) {
+    return { id: 'source_claims', status: 'failed', detail: `Expected ${claims.length} claim result(s), found ${results.length}.` };
+  }
+
+  const resultByClaimId = new Map(results.map((result) => [result.claimId, result]));
+  const unsupportedClaims = claims
+    .map((claim) => resultByClaimId.get(claim.claimId))
+    .filter((result) => !result || result.verdict !== 'supported');
+  if (unsupportedClaims.length > 0) {
+    return { id: 'source_claims', status: 'failed', detail: `${unsupportedClaims.length} source claim(s) are not supported.` };
+  }
+  return { id: 'source_claims', status: 'passed', detail: `${claims.length} source claim(s) are supported.` };
+}
+
 function verifyWalrusBinding(receipt: LiveRunReceipt): VerificationCheck {
   if (!receipt.walrusBlobId) {
     return { id: 'walrus_binding', status: 'skipped', detail: 'No Walrus blob is bound to this record yet.' };
@@ -177,6 +202,17 @@ async function verifyWalrusReadback(receipt: LiveRunReceipt, fetchImpl: typeof f
   }
 
   try {
+    if (receipt.walrusBlobId) {
+      const url = new URL(receipt.walrusReadUrl);
+      const blobIdFromPath = decodeURIComponent(url.pathname.split('/').filter(Boolean).at(-1) ?? '');
+      if (blobIdFromPath !== receipt.walrusBlobId) {
+        return {
+          id: 'walrus_readback',
+          status: 'failed',
+          detail: `Walrus read URL does not point at bound blob ${receipt.walrusBlobId}.`,
+        };
+      }
+    }
     const response = await fetchImpl(receipt.walrusReadUrl);
     if (!response.ok) {
       return { id: 'walrus_readback', status: 'failed', detail: `Walrus readback returned HTTP ${response.status}.` };
@@ -213,6 +249,38 @@ async function verifyWalrusReadback(receipt: LiveRunReceipt, fetchImpl: typeof f
       detail: `Walrus readback failed: ${(error as Error).message}`,
     };
   }
+}
+
+function verifyCompleteness(receipt: LiveRunReceipt, checks: VerificationCheck[]): VerificationCheck {
+  const failures: string[] = [];
+  const byId = new Map(checks.map((check) => [check.id, check]));
+  const requirePassed = (id: string, reason: string) => {
+    if (byId.get(id)?.status !== 'passed') failures.push(`${id} ${reason}`);
+  };
+
+  if (receipt.memoryRecord) {
+    requirePassed('memory_hash', 'must pass when a memory record is stored.');
+  }
+  if (receipt.workerEvidence) {
+    requirePassed('source_receipt_hash', 'must pass when worker evidence is attached.');
+    requirePassed('worker_evidence_hash', 'must pass when worker evidence is attached.');
+    requirePassed('source_claims', 'must pass when worker evidence is attached.');
+  }
+  if (receipt.walrusBlobId) {
+    requirePassed('walrus_binding', 'must pass when a Walrus blob is bound.');
+    if (receipt.mode === 'sui') {
+      requirePassed('walrus_readback', 'must pass for Sui-mode Walrus records.');
+    }
+  }
+  if (receipt.suiAnchorDigest) {
+    requirePassed('sui_anchor_binding', 'must pass when a Sui anchor is bound.');
+    requirePassed('source_claims', 'must pass before a Sui-anchored record is verified.');
+  }
+
+  if (failures.length > 0) {
+    return { id: 'verification_completeness', status: 'failed', detail: failures.join(' ') };
+  }
+  return { id: 'verification_completeness', status: 'passed', detail: 'All required proofs for the claimed record state are present and passing.' };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

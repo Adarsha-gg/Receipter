@@ -39,9 +39,17 @@ describe('loadTenderBoardConfig', () => {
     expect(config.safe.memory).toMatchObject({
       backend: 'memwal',
       memwalConfigured: true,
+      memwalReady: true,
+      missingMemwalSettings: [],
       memwalServerConfigured: true,
       memwalAccountConfigured: true,
       memwalNamespace: 'walrusproof-test',
+      sealEncryptionMode: 'disabled',
+      sealLiveConfigured: false,
+    });
+    expect(config.safe.walrus).toMatchObject({
+      uploadStrategy: 'raw-walrus',
+      harborUploadConfigured: false,
     });
     expect(safeText).not.toContain('do_not_leak');
     expect(safeText).not.toContain('client.yaml');
@@ -68,5 +76,39 @@ describe('loadTenderBoardConfig', () => {
 
   it('rejects unknown memory backends', () => {
     expect(() => loadTenderBoardConfig({ MEMORY_BACKEND: 'postgres' })).toThrow('Expected walrus or memwal');
+  });
+
+  it('fails loudly when production MemWal mode is missing credentials', () => {
+    expect(() =>
+      loadTenderBoardConfig({
+        TENDERBOARD_MODE: 'sui',
+        MEMORY_BACKEND: 'memwal',
+        MEMWAL_ACCOUNT_ID: 'account',
+      }),
+    ).toThrow('TENDERBOARD_MODE=sui with MEMORY_BACKEND=memwal requires MEMWAL_DELEGATE_KEY, MEMWAL_SERVER_URL');
+  });
+
+  it('surfaces MemWal readiness gaps in dev mode without leaking credentials', () => {
+    const config = loadTenderBoardConfig({
+      TENDERBOARD_MODE: 'sui-dev',
+      MEMORY_BACKEND: 'memwal',
+      MEMWAL_SERVER_URL: 'https://memory.walrus.example',
+      SEAL_ENCRYPTION_MODE: 'deterministic-test',
+      WALRUS_UPLOAD_STRATEGY: 'harbor',
+      HARBOR_UPLOAD_URL: 'https://harbor.example/upload',
+    });
+
+    expect(config.safe.memory).toMatchObject({
+      backend: 'memwal',
+      memwalConfigured: false,
+      memwalReady: false,
+      missingMemwalSettings: ['MEMWAL_DELEGATE_KEY', 'MEMWAL_ACCOUNT_ID'],
+      sealEncryptionMode: 'deterministic-test',
+      sealLiveConfigured: false,
+    });
+    expect(config.safe.walrus).toMatchObject({
+      uploadStrategy: 'harbor',
+      harborUploadConfigured: true,
+    });
   });
 });

@@ -35,6 +35,11 @@ export interface MemWalSdkModule {
   };
 }
 
+export interface MemWalReadiness {
+  ready: boolean;
+  missingSettings: string[];
+}
+
 export class WalrusMemoryStore implements MemoryStore {
   readonly backend = 'walrus' as const;
 
@@ -75,20 +80,37 @@ export function createMemoryStore(config: TenderBoardConfig, fetchImpl?: typeof 
     return walrusStore;
   }
 
+  assertMemWalReady(config);
   return new MemWalMemoryStore(walrusStore, createMemWalClient(config), config.memwalNamespace);
 }
 
 export function createMemWalClient(config: TenderBoardConfig, moduleLoader: () => MemWalSdkModule = loadMemWalSdk): MemWalClient {
-  if (!config.memwalDelegateKey || !config.memwalAccountId || !config.memwalServerUrl) {
-    throw new Error('MEMORY_BACKEND=memwal requires MEMWAL_DELEGATE_KEY, MEMWAL_ACCOUNT_ID, and MEMWAL_SERVER_URL.');
-  }
+  assertMemWalReady(config);
   const options = {
-    key: config.memwalDelegateKey,
-    accountId: config.memwalAccountId,
-    serverUrl: config.memwalServerUrl,
+    key: config.memwalDelegateKey as string,
+    accountId: config.memwalAccountId as string,
+    serverUrl: config.memwalServerUrl as string,
     ...(config.memwalNamespace ? { namespace: config.memwalNamespace } : {}),
   };
   return moduleLoader().MemWal.create(options);
+}
+
+export function getMemWalReadiness(config: Pick<TenderBoardConfig, 'memwalDelegateKey' | 'memwalAccountId' | 'memwalServerUrl'>): MemWalReadiness {
+  const missingSettings: string[] = [];
+  if (!config.memwalDelegateKey) missingSettings.push('MEMWAL_DELEGATE_KEY');
+  if (!config.memwalAccountId) missingSettings.push('MEMWAL_ACCOUNT_ID');
+  if (!config.memwalServerUrl) missingSettings.push('MEMWAL_SERVER_URL');
+  return {
+    ready: missingSettings.length === 0,
+    missingSettings,
+  };
+}
+
+export function assertMemWalReady(config: Pick<TenderBoardConfig, 'memwalDelegateKey' | 'memwalAccountId' | 'memwalServerUrl'>): void {
+  const readiness = getMemWalReadiness(config);
+  if (!readiness.ready) {
+    throw new Error(`MEMORY_BACKEND=memwal requires ${readiness.missingSettings.join(', ')}.`);
+  }
 }
 
 export function buildMemWalReputationFact(receipt: LiveRunReceipt, walrus: WalrusStoreResult): string {

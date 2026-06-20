@@ -33,8 +33,8 @@ Everything in this doc serves one sentence the judges should be able to repeat:
   Walrus blob and confirm the on-chain hash matches.
 - **Developer-facing surface:** a `MemoryStore` interface + **MemWal adapter** so any
   agent framework can write/read verifiable memory on Walrus the same way.
-- **The loop (already implemented end to end in `sui-dev`):**
-  task → safe packet → award worker bid → SUI payment (x402 gate) → worker delivery →
+- **The loop (submission story uses live Sui/Walrus testnet proof; `sui-dev` is local smoke only):**
+  task → safe packet → award worker bid → SUI payment (x402-style gate) → worker delivery →
   source-claim verification → Walrus evidence blob → Sui receipt anchor → passport update →
   next job's trust gate reads prior memory.
 
@@ -97,8 +97,7 @@ pattern in `TenderBoardServerOptions`).
 
 ### Real (verified this session)
 - Product API server + 11 endpoints; browser console.
-- Full loop runs end to end in `sui-dev`; `npm run seed:memory` produced **3 worker
-  agents, 6 memory records, 6 Walrus(-dev) blobs, 2 Sui-anchored**.
+- Full live proof exists for payment, Walrus readback, Sui receipt anchor, passport update, and stake/slash smoke. `npm run seed:memory` remains deterministic local/dev acceptance data.
 - Multi-worker sourcing: `preferredBidId` award + 5 bid templates (3 publicly selectable).
 - Verification gate genuinely refuses to anchor weak evidence (`requires_review`).
 - Sui Move package `tenderboard::receipts` (source-level): `anchor_receipt`,
@@ -129,7 +128,7 @@ WalrusProof
 │   └── MemWalMemoryStore    (MemWal delegate key)
 ├── Product API server (httpServer.ts)
 │   ├── sourcing: bids + award (preferredBidId)
-│   ├── x402 Sui payment gate + facilitator
+│   ├── x402-style Sui payment gate + local facilitator/verifier
 │   ├── worker delivery + source-claim verification
 │   ├── clearing/settlement gate (ready_to_anchor | requires_review)
 │   └── memory endpoints (index / passport / record)
@@ -175,9 +174,11 @@ WalrusProof
      hash matches.
 2. **Publish Move package to testnet.** Install Sui CLI, `sui client publish`, capture
    `SUI_PACKAGE_ID` + `Registry` object id; anchor one real receipt via `sui:anchor-plan`.
-   - **Done:** package upgraded to v4 `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`;
+   - **Done:** package upgraded to v5 `0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651`;
      registry `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`;
      full proof anchor `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP` emitted `ReceiptAnchored`.
+   - **Done:** Sui `AgentPassport` object `0x8a136d56df3a6d616498524f537074133d1cb63d24ac556f3a6aa81cd6fbb06e`
+     minted, updated with latest Walrus/Sui proof pointers, and linked to the stake reference.
 3. **Wire `sui` mode env** end to end so one full run produces a real blob **and** a real
    anchor digest.
    - **Done:** run `run_20260619170152_fh8zk6` produced real Walrus blob
@@ -197,7 +198,7 @@ WalrusProof
    bound to observations) via the `worker-delivery` body so every seeded run reaches
    `ready_to_anchor` and anchors cleanly — independent of live API luck.
    - **Done:** `seed:memory` fails loudly on task errors or incomplete final index. Verified in
-     `sui-dev`: 3 workers, 6 records, 6 Walrus-backed, 6 Sui-anchored.
+     local smoke: 3 workers, 6 records, 6 Walrus-backed, 6 Sui-anchored.
 5. **Seed variety.** 3 workers × 3–4 jobs with differing support scores (some `requires_review`
    on purpose) so the directory shows the gate working, not just green checks.
 
@@ -279,7 +280,7 @@ Then: publish package → set ids → run one job in `sui` mode → confirm real
 3. Click a job → **"Open on Walrus"**: raw evidence loads from the public aggregator.
 4. Click **"Verify"**: recompute `memoryHash`, show it matches the Sui-anchored hash
    (explorer link to the `ReceiptAnchored` event).
-5. Create a new job → compare worker bids → **award one** → SUI payment (x402 402→pay) →
+5. Create a new job → compare worker bids → **award one** → SUI payment (x402-style 402→pay) →
    worker delivers → verification gate → Walrus blob → Sui anchor → **passport updates live**.
 6. Show a `requires_review` record to prove the gate refuses weak evidence.
 7. One line: "every record here is a Walrus blob anyone can verify — portable across apps,
@@ -335,10 +336,10 @@ and data fixtures, not public branding. The old CROO/RetainerHub plan was moved 
 - Added `npm run seed:memory` (drives the real loop over HTTP).
 - Verified: 3 workers / 6 records / 6 Walrus(-dev) blobs / 2 anchored; 36 tests green.
 - Open follow-up: deterministic seed (Milestone B #4) so all workers anchor reliably.
-- Published package v4 with `reputation_stake`; ran oracle-gated live stake/slash smoke on Sui testnet.
+- Published package v5 with `agent_passport`, `receipts`, and `reputation_stake`; minted a live Sui `AgentPassport`, updated it with Walrus/Sui proof pointers, attached stake reference, and ran oracle-gated live stake/slash smoke on Sui testnet.
 - Added challenge assessment oracle and slash executor guard.
 - Added `MemWalMemoryStore` semantic overlay behind `MEMORY_BACKEND=memwal`.
-- Hardened `seed:memory` into an acceptance check; temp `sui-dev` smoke produced 3 workers / 6
+- Hardened `seed:memory` into an acceptance check; temp local smoke produced 3 workers / 6
   records / 6 Walrus-backed / 6 Sui-anchored.
 - Extended `createWalrusProofOracleClient()` with `assessStakeChallenge(...)` for external
   agents/marketplaces to consume verifier-gated slashing.

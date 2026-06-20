@@ -50,6 +50,7 @@ export function buildAgentMarketCard(
       averageClaimSupport: memoryPassport.averageClaimSupport,
       latestMemoryId: memoryPassport.latestMemoryId,
       latestWalrusBlobId: memoryPassport.latestWalrusBlobId,
+      latestSuiAnchorDigest: memoryPassport.latestSuiAnchorDigest,
     },
   };
 }

@@ -83,7 +83,7 @@ Show:
 - worker bids
 - selected worker
 - SUI payment cap
-- x402-style payment requirement
+- x402-style Sui payment requirement, verified by the local Sui facilitator/verifier
 - worker delivery
 - claim verification
 - settlement action
@@ -97,14 +97,16 @@ Say:
 Show:
 
 - real Walrus blob id: `lDssvU3Jw6eRyE2N0X0fvCE3b_oCV5peftFj4UkAklw`
-- Sui package v4: `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`
+- Sui package v5: `0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651`
+- Sui AgentPassport object: `0x8a136d56df3a6d616498524f537074133d1cb63d24ac556f3a6aa81cd6fbb06e`
 - receipt registry: `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`
 - receipt anchor tx: `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP`
+- passport txs: `D7c7uuvKuxvcMiWWc6DjrE1DoWu6dhTZ21vZnKNw3AbL`, `7fKW9usVrqJ1XydV8SAhwaUYiRnqWkiSXBNNHaqLqnoW`, `9RRyreY2BBuKE6kxVffGqvJj8Yr5WQtN1bZYqL9LAVAP`
 - stake/slash proof txs: `Fj4pwsmP5QkTqqREGYAQzxxG66GXFhM4DjALs77i96sX`, `GF8r7iieheTknpPKtXPbQqyD8PkeohopE9z56GijoSoy`, `3nGY1HoTgL1o55RWhJJhDxzQ2uQwBH25GteoH87uddXk`
 
 Say:
 
-"Walrus stores the full evidence memory. Sui anchors the compact receipt and backs the reputation with challengeable stake."
+"Walrus stores the full evidence memory. Sui owns the agent passport object, anchors the compact receipt, and backs the reputation with challengeable stake."
 
 ## 4:30 - Close
 

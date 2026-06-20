@@ -1,8 +1,8 @@
 # WalrusProof Market - Walrus-Native Agent Memory Market
 
-WalrusProof Market is a Walrus-native operator console for hiring worker agents safely. It exists to make agent work durable and reusable: every task becomes a paid work order, every delivery must produce source-backed evidence, every completed run becomes a portable Walrus memory record, and Sui provides the payment/finality rail for compact receipts.
+WalrusProof Market is a Walrus-native operator console for hiring worker agents safely. It exists to make agent work durable and reusable: every task becomes a paid work order, every delivery must produce source-backed evidence, every completed run becomes a portable Walrus memory record, and Sui owns the agent passport, payment/finality rail, receipt anchor, and stake/slash accountability layer.
 
-The core product is the Walrus memory layer. Sui is still meaningful, but it supports the memory product: SUI payments gate worker access, Sui transaction digests bind work orders, and the Sui receipt registry anchors compact hashes after Walrus stores the full evidence bundle.
+The core product is the Walrus memory layer plus a Sui-native agent identity object. Walrus stores the full evidence and memory; Sui owns the `AgentPassport`, gates access with SUI-denominated x402-style paid HTTP access, anchors compact proof hashes, and attaches slashable stake to the passport.
 
 ## Core Product Loop
 
@@ -14,14 +14,15 @@ The core product is the Walrus memory layer. Sui is still meaningful, but it sup
 6. Worker task access is guarded by an x402-style HTTP 402 challenge.
 7. The challenge carries a Sui Payment Kit-compatible URI plus Payment Intent metadata for that exact work order.
 8. Hirer agent retries with a Sui payment payload.
-9. The Sui-native x402 facilitator verifies run, resource, nonce, amount, receiver, worker, and Sui settlement.
+9. The local Sui facilitator/verifier for the x402-style flow verifies run, resource, nonce, amount, receiver, worker, and Sui settlement.
 10. Worker agent receives the paid task packet and delivers source-backed evidence.
 11. The verification layer checks claim-to-source binding, evidence strength, Walrus readiness, and settlement blockers.
 12. Full receipt/evidence is stored as a Walrus memory bundle only after delivery.
 13. The Walrus bundle becomes the worker's portable agent memory record.
 14. Compact proof fields are committed to the Sui receipt registry only when verification is admissible.
 15. The worker reputation passport updates only after the Sui receipt anchor is recorded.
-16. Future work orders use the worker's Walrus memory passport in the pre-run trust gate.
+16. The Sui `AgentPassport` object points at the latest Walrus blob, latest memory hash, latest Sui anchor digest, and stake position.
+17. Future work orders use the worker's Walrus memory passport in the pre-run trust gate.
 
 ## Walrus Memory Layer
 
@@ -29,7 +30,7 @@ Walrus is the durable memory substrate, not a side upload. Every delivered run p
 
 The backend writes memory through an injectable `MemoryStore` interface. The default `WalrusMemoryStore` wraps the raw Walrus HTTP publisher/aggregator path used in live testnet runs, while keeping the server ready for a future `MemWalMemoryStore` without changing the product API.
 
-Passports are now Sui-owner aware: new worker passports include `ownerAddress` and an `ownership` proof block, and the oracle API can verify by worker id or owner address.
+Passports are now Sui-native at the contract layer: `tenderboard::agent_passport::AgentPassport` is an owner-held Sui object with agent id, Walrus metadata pointer, latest memory hash, latest Walrus blob id, latest Sui anchor digest, record counts, challenge/slash counters, and a stake position reference. The API passport still exposes `ownerAddress` and `ownership` for app-level verification.
 
 The memory layer gives the app its loop:
 
@@ -47,7 +48,7 @@ GET /api/walrus/memory/:workerAgentId  worker Walrus memory passport
 GET /api/runs/:id/memory               run-level Walrus memory record
 ```
 
-## Sui Payment And Finality Layer
+## Sui Passport, Payment, And Finality Layer
 
 Move package:
 
@@ -59,11 +60,16 @@ sui client publish
 Current testnet deployment:
 
 ```text
-Package v2:      0xe87a8b5c87cfbf8e3251bed02f0be8a45220512f3f17e341f2c677a0154d4a47
+Package v5:      0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651
 Original pkg:    0x87a14a921a1ced0d2fd410ed0d6285d1722efabaf304d6a169971b902f6152c9
 Registry:        0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb
 Upgrade cap:     0xc50924def84e7bcadb6aaaea58f887017903102ace49363f82b9e18bad698b7d
 Deployer:        0xb401ec7dde816354d0745fbba538674c51e5f7bcbb3816305df538f32d9c7727
+Passport object: 0x8a136d56df3a6d616498524f537074133d1cb63d24ac556f3a6aa81cd6fbb06e
+V5 upgrade tx:   75yRfdfQFTM167qzvS9iBvY1L9rpVWpopRAuJZhZ8fRD
+Passport mint:   D7c7uuvKuxvcMiWWc6DjrE1DoWu6dhTZ21vZnKNw3AbL
+Passport update: 7fKW9usVrqJ1XydV8SAhwaUYiRnqWkiSXBNNHaqLqnoW
+Stake attached:  9RRyreY2BBuKE6kxVffGqvJj8Yr5WQtN1bZYqL9LAVAP
 V2 upgrade tx:   GRN22WmqYbZrM9kjgsZLw9wrvxZUixsh3AZ6YQXvZzo7
 Smoke anchor tx: 3Yr14XHTAGLvHVa6RABeFsPXbxe2DRhhW5qZjRmhgmz8
 ```
@@ -108,7 +114,7 @@ TENDERBOARD_MODE=sui
 SUI_NETWORK=testnet
 SUI_RPC_URL=https://fullnode.testnet.sui.io:443
 SUI_OPERATOR_ADDRESS=...
-SUI_PACKAGE_ID=0xe87a8b5c87cfbf8e3251bed02f0be8a45220512f3f17e341f2c677a0154d4a47
+SUI_PACKAGE_ID=0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651
 SUI_RECEIPT_REGISTRY_ID=0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb
 SUI_CLI_PATH=C:\Users\adars\.sui-bin\testnet-v1.73.1\sui.exe
 SUI_CLIENT_CONFIG=C:\Users\adars\.sui\sui_config\client.yaml
@@ -128,11 +134,11 @@ If `SUI_CLI_PATH` is configured, `POST /api/runs/:id/anchor-receipt` executes th
 
 Do not claim mainnet anchoring until the package and Walrus publisher path are redeployed on mainnet.
 
-In `sui-dev` mode the app records deterministic Sui dev digests and Walrus dev blob/object ids so the full product loop can be demoed locally. In `sui` mode payment approval requires a real Sui payment transaction digest, the Walrus evidence step uses the configured HTTP publisher, and the Sui anchor step records the real receipt-registry transaction digest.
+In `sui` mode payment approval requires a real Sui payment transaction digest, the Walrus evidence step uses the configured HTTP publisher, and the Sui anchor step records the real receipt-registry transaction digest. `sui-dev` remains a local smoke mode only; do not use it for the hackathon demo pitch.
 
-WalrusProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning. Worker task access is exposed as an x402 paid API: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest.
+WalrusProof Market generates Payment Kit-compatible URI metadata for SUI payment approval planning. Worker task access is exposed as x402-style paid HTTP access for agents on Sui: unpaid worker requests receive HTTP `402` with Sui payment instructions, and paid requests receive the task packet with an `X-Payment-Response` header bound to the recorded Sui transaction digest.
 
-The app includes its own Sui-native x402 facilitator. In `sui-dev` it verifies deterministic local Sui dev digests for demoability. In `sui` mode it calls `SUI_RPC_URL` with `sui_getTransactionBlock` and verifies successful execution, receiver balance change, a package-owned `PaymentIntentRecorded` event, Payment Kit nonce binding, request/resource binding, amount, receiver, coin type, worker id, and replay protection before unlocking the worker task. This is not the Coinbase-hosted facilitator; it is the missing Sui-specific facilitator path for WalrusProof Market.
+The app includes its own local Sui facilitator/verifier for this x402-style flow. In `sui` mode it calls `SUI_RPC_URL` with `sui_getTransactionBlock` and verifies successful execution, receiver balance change, a package-owned `PaymentIntentRecorded` event, Payment Kit nonce binding, request/resource binding, amount, receiver, coin type, worker id, and replay protection before unlocking the worker task. This is not a Coinbase-hosted facilitator and not an official Sui x402 network standard.
 
 ## Verification Layer
 
@@ -182,6 +188,14 @@ Open:
 http://127.0.0.1:4174
 ```
 
+For the live judging/demo path, use `TENDERBOARD_MODE=sui` with the Sui and Walrus testnet env vars above, then open:
+
+```text
+http://127.0.0.1:4174?live=1
+```
+
+With `?live=1`, `?judging=1`, or `?mode=judging`, the downloaded UI fails loudly if `/api/walrus/memory` is unavailable instead of falling back to bundled sample records. Without those flags, bundled records are allowed only as clearly labeled sample data for UI review.
+
 ## Commands
 
 ```bash
@@ -200,7 +214,7 @@ The browser uses the same API external agents can call:
 
 ```text
 POST /api/runs                         hirer agent creates a safe Sui work order
-POST /api/x402/verify                  Sui x402 facilitator verifies payment and unlocks work
+POST /api/x402/verify                  local Sui facilitator/verifier checks payment and unlocks work
 POST /api/runs/:id/approve-payment     hirer agent records Sui payment approval
 GET  /api/runs/:id/agent-handoff       worker agent reads the awarded handoff
 GET  /api/walrus/memory                read the global Walrus memory index
@@ -214,7 +228,7 @@ POST /api/runs/:id/store-evidence      operator stores the memory bundle on Walr
 POST /api/runs/:id/anchor-receipt      operator records the Sui receipt anchor
 ```
 
-In `sui-dev`, `/worker-delivery` can run the built-in Opportunity Scout worker for demos. In production, an external worker agent should submit its own delivery and source evidence.
+CLI/dev-only today: backend Sui CLI execution for payment, receipt anchoring, stake, challenge, and slash; the built-in Opportunity Scout delivery helper; `sui-dev` deterministic local smoke mode; and credentialed MemWal smoke unless MemWal env vars are configured. In production, an external worker agent should submit its own delivery and source evidence.
 
 ## Important Files
 
@@ -229,7 +243,7 @@ src/live/agentMemory.ts        Walrus-backed worker memory records/passports
 src/oracle/                    lightweight oracle client for external integrations
 src/live/proof.ts              receipt-to-markdown proof renderer
 src/sui/anchorPlan.ts          receipt-to-Sui call plan renderer
-sui/                           Sui Move receipt registry package
+sui/                           Sui Move passport, receipt registry, and reputation stake package
 ```
 
 ## Safety Rules

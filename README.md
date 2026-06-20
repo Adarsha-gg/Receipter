@@ -2,7 +2,7 @@
 
 WalrusProof is a Walrus-native reputation layer for AI agent work.
 
-It turns every paid agent job into a verifiable proof-of-work memory: sanitized task packet, worker bid, SUI payment intent, source-checked evidence, Walrus evidence blob, Sui receipt anchor, and an owner-bound agent passport that other products can verify.
+It turns every paid agent job into a verifiable proof-of-work memory: sanitized task packet, worker bid, SUI payment intent, source-checked evidence, Walrus evidence blob, Sui receipt anchor, and an owner-held Sui `AgentPassport` object that points to the agent's portable Walrus memory.
 
 ## What It Does
 
@@ -14,6 +14,7 @@ It turns every paid agent job into a verifiable proof-of-work memory: sanitized 
 6. The worker delivers evidence.
 7. The full receipt/evidence payload is stored as a Walrus evidence bundle.
 8. The compact proof pointer is anchored to the Sui receipt registry.
+9. The worker's Sui `AgentPassport` object points at the latest Walrus memory, Sui anchor digest, and stake reference.
 
 The wedge is simple: agents can do paid work, but buyers need proof of what was sent, why the worker was trusted, what "done" meant, where evidence lives, and why payment should count as reputation.
 
@@ -28,11 +29,13 @@ The longer-term product is portable agent reputation: safe task intake, privacy 
 - private-note exclusion
 - env-style secret detection
 - SUI-denominated payment cap
+- x402-style paid HTTP access for agents on Sui, verified by a local Sui facilitator/verifier
 - buyer-defined acceptance criteria
 - checker packs: `research`, `code`, `commerce`
 - trust decision in each receipt
 - verification manifest in each receipt
 - Sui Move receipt registry package
+- Sui `agent_passport` module for owner-held agent identity and Walrus memory pointers
 - Sui/Walrus readiness checks
 - Walrus evidence-bundle storage flow
 - optional MemWal semantic memory overlay behind `MEMORY_BACKEND=memwal`
@@ -43,10 +46,14 @@ The longer-term product is portable agent reputation: safe task intake, privacy 
 - TypeScript oracle client for passport verification and stake challenge assessment
 - Sui anchor-plan export
 - live Sui testnet proof:
-  - package v4: `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`
+  - package v5: `0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651`
   - receipt registry: `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`
+  - Sui AgentPassport object: `0x8a136d56df3a6d616498524f537074133d1cb63d24ac556f3a6aa81cd6fbb06e`
   - real Walrus blob: `lDssvU3Jw6eRyE2N0X0fvCE3b_oCV5peftFj4UkAklw`
   - receipt anchor tx: `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP`
+  - passport mint tx: `D7c7uuvKuxvcMiWWc6DjrE1DoWu6dhTZ21vZnKNw3AbL`
+  - passport memory update tx: `7fKW9usVrqJ1XydV8SAhwaUYiRnqWkiSXBNNHaqLqnoW`
+  - passport stake attach tx: `9RRyreY2BBuKE6kxVffGqvJj8Yr5WQtN1bZYqL9LAVAP`
   - configured-registry stake/slash txs: open `Fj4pwsmP5QkTqqREGYAQzxxG66GXFhM4DjALs77i96sX`, decision `GF8r7iieheTknpPKtXPbQqyD8PkeohopE9z56GijoSoy`, slash `3nGY1HoTgL1o55RWhJJhDxzQ2uQwBH25GteoH87uddXk`
 - receipt JSON downloads
 - proof markdown export
@@ -68,7 +75,7 @@ WalrusProof should not become a generic marketplace or payment wrapper. The defe
 
 ```text
 tenderboard/                                      main TypeScript app
-tenderboard/sui                                  Sui Move receipt + reputation stake package
+tenderboard/sui                                  Sui Move passport + receipt + reputation stake package
 specs/2026-06-19-sui-overflow-tenderboard         Sui Overflow product spec
 SUBMISSION.md                                     submission copy
 SUBMISSION_PACKAGE.md                             copy/paste submission fields
@@ -89,6 +96,14 @@ Open:
 ```text
 http://127.0.0.1:4174
 ```
+
+For the live hackathon demo, run the app from `tenderboard` with `TENDERBOARD_MODE=sui` and real Sui/Walrus testnet env vars, then open:
+
+```text
+http://127.0.0.1:4174?live=1
+```
+
+The `?live=1` judging path disables bundled sample fallback. If `/api/walrus/memory` is unavailable, the UI shows a live API failure instead of silently showing demo records. Opening the app without that flag may show clearly labeled sample records when the API is offline.
 
 ## Run Checks
 
@@ -115,12 +130,15 @@ The seed drives the real HTTP loop with deterministic worker evidence. It now ex
 
 Current testnet deployment:
 
-- package v4: `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`
+- package v5: `0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651`
 - receipt registry: `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`
 - stake oracle registry: `0x78aeac24fbcde9b26b8d8ed5e9f51defde5258f6045bb91d8f2c4d3982e9dc35`
+- Sui AgentPassport: `0x8a136d56df3a6d616498524f537074133d1cb63d24ac556f3a6aa81cd6fbb06e`
 - upgrade cap: `0xc50924def84e7bcadb6aaaea58f887017903102ace49363f82b9e18bad698b7d`
 
 To run live mode locally, set `SUI_OPERATOR_ADDRESS`, `SUI_PACKAGE_ID`, `SUI_RECEIPT_REGISTRY_ID`, `SUI_STAKE_ORACLE_REGISTRY_ID`, `SUI_CLI_PATH`, `SUI_CLIENT_CONFIG`, `WALRUS_PUBLISHER_URL`, and `WALRUS_AGGREGATOR_URL`.
+
+CLI/dev-only today: backend Sui CLI execution for payment, receipt anchoring, stake, challenge, and slash; the built-in worker delivery helper; `sui-dev` deterministic local smoke mode; and credentialed MemWal smoke unless MemWal credentials are configured.
 
 ## Memory Backend
 

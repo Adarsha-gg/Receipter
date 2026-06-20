@@ -3,11 +3,32 @@ import { promisify } from 'node:util';
 import { assertStakeChallengeAdmissible, type StakeChallengeAssessment } from '../live/challengeOracle.js';
 import type { TenderBoardConfig } from '../live/types.js';
 import { textToHexBytes } from './anchorExecutor.js';
+import { assertPositiveMist } from './stakeValidation.js';
+
+export {
+  buildAttachStakeWalletRequest,
+  buildCreateOracleRegistryWalletRequest,
+  buildOpenStakePositionWalletRequest,
+  buildRaiseChallengeWalletRequest,
+  buildResolveChallengeWalletRequest,
+  buildSlashStakeWalletRequest,
+  validateAttachStakeInput,
+  validateIssueChallengeDecisionInput,
+  validateOpenStakePositionInput,
+  validateSlashStakeInput,
+  validateSlashStakeWithDecisionInput,
+  type SuiStakeWalletTransactionRequest,
+} from './stakePlan.js';
 
 const execFileAsync = promisify(execFile);
 
 export interface OpenStakePositionInput {
   workerAgentId: string;
+  amountMist: string;
+}
+
+export interface AttachStakeInput {
+  positionId: string;
   amountMist: string;
 }
 
@@ -36,6 +57,13 @@ export interface OpenStakePositionResult {
 }
 
 export interface SlashStakeResult {
+  digest: string;
+  stdout: string;
+  stderr: string;
+  args: string[];
+}
+
+export interface AttachStakeResult {
   digest: string;
   stdout: string;
   stderr: string;
@@ -92,6 +120,20 @@ export async function executeSlashStake(input: SlashStakeInput, config: TenderBo
     maxBuffer: 1024 * 1024 * 16,
   });
   const parsed = parseSuiTransactionOutput(stdout, 'Sui stake slash transaction failed');
+  return { digest: parsed.digest, stdout, stderr, args };
+}
+
+export async function executeAttachStake(input: AttachStakeInput, config: TenderBoardConfig): Promise<AttachStakeResult> {
+  if (!config.suiCliPath) {
+    throw new Error('SUI_CLI_PATH is required for automatic Sui stake execution.');
+  }
+
+  const args = buildAttachStakeCliArgs(input, config);
+  const { stdout, stderr } = await execFileAsync(config.suiCliPath, args, {
+    windowsHide: true,
+    maxBuffer: 1024 * 1024 * 16,
+  });
+  const parsed = parseSuiTransactionOutput(stdout, 'Sui stake attach transaction failed');
   return { digest: parsed.digest, stdout, stderr, args };
 }
 
@@ -194,6 +236,32 @@ export function buildOpenStakePositionCliArgs(input: OpenStakePositionInput, con
     '--move-call',
     `${config.suiPackageId}::reputation_stake::open_position`,
     'workerAgentId',
+    'stake.0',
+    '--gas-budget',
+    '100000000',
+    '--json',
+  );
+  return args;
+}
+
+export function buildAttachStakeCliArgs(input: AttachStakeInput, config: TenderBoardConfig): string[] {
+  assertPackage(config);
+  assertPositiveMist(input.amountMist, 'amountMist');
+
+  const args = ['client'];
+  if (config.suiClientConfig) {
+    args.push('--client.config', config.suiClientConfig);
+  }
+  args.push(
+    'ptb',
+    '--split-coins',
+    'gas',
+    `[${input.amountMist}]`,
+    '--assign',
+    'stake',
+    '--move-call',
+    `${config.suiPackageId}::reputation_stake::add_stake`,
+    `@${input.positionId}`,
     'stake.0',
     '--gas-budget',
     '100000000',
@@ -326,12 +394,6 @@ export function parseCreatedObjectId(parsed: unknown, config: TenderBoardConfig,
 function assertPackage(config: TenderBoardConfig): void {
   if (!config.suiPackageId) {
     throw new Error('SUI_PACKAGE_ID is required for automatic Sui stake execution.');
-  }
-}
-
-function assertPositiveMist(value: string, label: string): void {
-  if (!/^[0-9]+$/.test(value) || BigInt(value) <= 0n) {
-    throw new Error(`${label} must be a positive integer MIST amount.`);
   }
 }
 

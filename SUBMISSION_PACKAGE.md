@@ -16,7 +16,7 @@ Portable, verifiable reputation for AI agent work: every paid job becomes a Walr
 
 ## Description
 
-WalrusProof is a sovereign work-memory and reputation layer for AI agents. It turns completed agent jobs into portable proof records: a sanitized task packet, worker bid, SUI payment intent, source-checked evidence, full Walrus evidence bundle, compact Sui receipt anchor, and an Agent Passport that future buyers can verify.
+WalrusProof is a sovereign work-memory and reputation layer for AI agents. It turns completed agent jobs into portable proof records: a sanitized task packet, worker bid, SUI payment intent, source-checked evidence, full Walrus evidence bundle, compact Sui receipt anchor, and an owner-held Sui AgentPassport that future buyers can verify.
 
 The core product is the Agent Passport directory. A judge can open a worker passport, inspect each job, open the raw Walrus blob, and run record-level verification against the stored memory hash and Sui anchor. This makes reputation portable across apps instead of trapped in one marketplace database.
 
@@ -52,10 +52,19 @@ http://127.0.0.1:4174
 
 If deploying before submission, use the deployed app URL here.
 
+Live judging URL for local review:
+
+```text
+http://127.0.0.1:4174?live=1
+```
+
+The `?live=1` path requires the live API. If the API is unavailable, the UI shows a failure instead of bundled sample records.
+
 ## Testnet Deployment
 
-- Sui package v4: `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`
+- Sui package v5: `0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651`
 - receipt registry: `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`
+- AgentPassport object: `0x8a136d56df3a6d616498524f537074133d1cb63d24ac556f3a6aa81cd6fbb06e`
 - stake oracle registry: `0x78aeac24fbcde9b26b8d8ed5e9f51defde5258f6045bb91d8f2c4d3982e9dc35`
 
 ## Live Proofs
@@ -65,6 +74,9 @@ If deploying before submission, use the deployed app URL here.
 - Sui payment tx: `Es2rZN4rvyhJ4GHTS4Cmcvi9JDsqj77UEZr5RNqNFMSU`
 - Sui receipt anchor tx: `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP`
 - stake open tx: `Fj4pwsmP5QkTqqREGYAQzxxG66GXFhM4DjALs77i96sX`
+- passport mint tx: `D7c7uuvKuxvcMiWWc6DjrE1DoWu6dhTZ21vZnKNw3AbL`
+- passport memory update tx: `7fKW9usVrqJ1XydV8SAhwaUYiRnqWkiSXBNNHaqLqnoW`
+- passport stake attach tx: `9RRyreY2BBuKE6kxVffGqvJj8Yr5WQtN1bZYqL9LAVAP`
 - challenge decision tx: `GF8r7iieheTknpPKtXPbQqyD8PkeohopE9z56GijoSoy`
 - slash tx: `3nGY1HoTgL1o55RWhJJhDxzQ2uQwBH25GteoH87uddXk`
 
@@ -108,4 +120,6 @@ MEMORY_BACKEND=memwal npm run smoke:memwal-live
 
 - The credentialed MemWal live smoke requires `@mysten-incubation/memwal`, `MEMWAL_DELEGATE_KEY`, `MEMWAL_ACCOUNT_ID`, and `MEMWAL_SERVER_URL`.
 - The current public product is local/demo-server first. Deploy the UI before submission if you want a hosted website URL.
+- x402 is implemented as Sui-native x402-style paid HTTP access with a local Sui facilitator/verifier, not a Coinbase-hosted facilitator or official Sui x402 standard.
+- Backend Sui CLI flows and the built-in worker delivery helper are demo/dev paths; production should use wallet/signer flows and external worker submission.
 - Some internal package and schema names retain stable legacy identifiers (`tenderboard`, `suiproof`) to avoid breaking the deployed testnet package and existing receipts. Public branding is WalrusProof.

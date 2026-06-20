@@ -1,17 +1,24 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { LiveRunReceipt, TenderBoardConfig, X402SuiPaymentPayload } from '../live/types.js';
+import type { LiveRunReceipt, SuiWalletTransactionRequest, TenderBoardConfig, X402SuiPaymentPayload } from '../live/types.js';
+import { buildSuiX402PaymentTransactionRequest, workerTaskResource } from './paymentTransactionBuilder.js';
 
 const execFileAsync = promisify(execFile);
 
 export interface SuiX402PaymentExecutionResult {
+  executionMode: 'cli_fallback_test_only';
   digest: string;
   payload: X402SuiPaymentPayload;
+  transactionRequest: SuiWalletTransactionRequest;
   stdout: string;
   stderr: string;
   args: string[];
 }
 
+/**
+ * Fallback/test-only smoke path. Production callers should build a wallet
+ * transaction request and verify the signed digest through the x402 facilitator.
+ */
 export async function executeSuiX402Payment(
   receipt: LiveRunReceipt,
   config: TenderBoardConfig,
@@ -27,8 +34,10 @@ export async function executeSuiX402Payment(
   });
   const digest = parseSuiTransactionDigest(stdout);
   return {
+    executionMode: 'cli_fallback_test_only',
     digest,
     payload: buildX402PaymentPayload(receipt, digest),
+    transactionRequest: buildSuiX402PaymentTransactionRequest(receipt, config),
     stdout,
     stderr,
     args,
@@ -54,7 +63,7 @@ export function buildSuiX402PaymentCliArgs(receipt: LiveRunReceipt, config: Tend
   args.push(
     'ptb',
     ...makeByteVectorArgs('runId', receipt.runId),
-    ...makeByteVectorArgs('resource', workerTaskResource(receipt)),
+    ...makeByteVectorArgs('resource', workerTaskResource(receipt.runId)),
     ...makeByteVectorArgs('paymentIntentId', paymentIntent.intentId),
     ...makeByteVectorArgs('paymentNonce', paymentIntent.paymentNonce),
     ...makeByteVectorArgs('settlementNonce', paymentIntent.settlementNonce),
@@ -103,7 +112,7 @@ export function buildX402PaymentPayload(receipt: LiveRunReceipt, transaction: st
     network: `sui:${paymentIntent.expectedNetwork}`,
     transaction,
     runId: receipt.runId,
-    resource: workerTaskResource(receipt),
+    resource: workerTaskResource(receipt.runId),
     paymentIntentId: paymentIntent.intentId,
     paymentNonce: paymentIntent.paymentNonce,
     settlementNonce: paymentIntent.settlementNonce,
@@ -112,10 +121,6 @@ export function buildX402PaymentPayload(receipt: LiveRunReceipt, transaction: st
     coinType: paymentIntent.coinType,
     workerAgentId: receipt.workerAgentId,
   };
-}
-
-function workerTaskResource(receipt: LiveRunReceipt): string {
-  return `/api/runs/${receipt.runId}/worker-task`;
 }
 
 function parseSuiTransactionDigest(stdout: string): string {

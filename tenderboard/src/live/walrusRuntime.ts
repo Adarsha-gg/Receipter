@@ -1,6 +1,16 @@
 import { stableHash } from './hash.js';
 import { buildAgentMemoryRecord } from './agentMemory.js';
 import type { LiveRunReceipt, TenderBoardConfig } from './types.js';
+import { encryptPrivateMemoryForUpload, type SealEncryptMemoryResult, type SealPrivacyEngine } from './privacySeal.js';
+
+export type WalrusUploadStrategyKind = 'walrus-dev' | 'raw-walrus' | 'harbor';
+
+export interface WalrusUploadSelection {
+  strategy: WalrusUploadStrategyKind;
+  live: boolean;
+  configured: boolean;
+  reason: string;
+}
 
 export interface WalrusStoreResult {
   blobId: string;
@@ -8,6 +18,8 @@ export interface WalrusStoreResult {
   certifiedEpoch: number | undefined;
   endEpoch: number | undefined;
   readUrl: string | undefined;
+  uploadStrategy?: WalrusUploadStrategyKind;
+  privacyEncryption?: SealEncryptMemoryResult | undefined;
 }
 
 export interface EvidenceBundle {
@@ -42,6 +54,7 @@ export interface EvidenceBundle {
   workerBidBoard: LiveRunReceipt['workerBidBoard'];
   trust: LiveRunReceipt['trustDecision'];
   verification: LiveRunReceipt['verificationManifest'];
+  privacyEncryption: SealEncryptMemoryResult | undefined;
   clearingObjects: {
     obligationObject: LiveRunReceipt['obligationObject'];
     evidenceEnvelope: LiveRunReceipt['evidenceEnvelope'];
@@ -53,7 +66,7 @@ export interface EvidenceBundle {
   events: LiveRunReceipt['events'];
 }
 
-export function buildEvidenceBundle(receipt: LiveRunReceipt): EvidenceBundle {
+export function buildEvidenceBundle(receipt: LiveRunReceipt, privacyEncryption?: SealEncryptMemoryResult | undefined): EvidenceBundle {
   return {
     schema: 'tenderboard.sui.evidence.v1',
     run: {
@@ -86,30 +99,33 @@ export function buildEvidenceBundle(receipt: LiveRunReceipt): EvidenceBundle {
     workerBidBoard: receipt.workerBidBoard,
     trust: receipt.trustDecision,
     verification: receipt.verificationManifest,
+    privacyEncryption,
     clearingObjects: {
       obligationObject: receipt.obligationObject,
       evidenceEnvelope: receipt.evidenceEnvelope,
       clearingDecision: receipt.clearingDecision,
       settlementInstruction: receipt.settlementInstruction,
     },
-    deliveryText: receipt.deliveryText,
-    workerEvidence: receipt.workerEvidence,
+    deliveryText: privacyEncryption ? undefined : receipt.deliveryText,
+    workerEvidence: privacyEncryption ? undefined : receipt.workerEvidence,
     events: receipt.events,
   };
 }
 
-export function makeEvidenceBundleText(receipt: LiveRunReceipt): string {
-  return `${JSON.stringify(buildEvidenceBundle(receipt), null, 2)}\n`;
+export function makeEvidenceBundleText(receipt: LiveRunReceipt, privacyEncryption?: SealEncryptMemoryResult | undefined): string {
+  return `${JSON.stringify(buildEvidenceBundle(receipt, privacyEncryption), null, 2)}\n`;
 }
 
-export function makeWalrusDevBlob(receipt: LiveRunReceipt): WalrusStoreResult {
-  const hash = stableHash(buildEvidenceBundle(receipt)).slice('sha256:'.length);
+export function makeWalrusDevBlob(receipt: LiveRunReceipt, privacyEncryption?: SealEncryptMemoryResult | undefined): WalrusStoreResult {
+  const hash = stableHash(buildEvidenceBundle(receipt, privacyEncryption)).slice('sha256:'.length);
   return {
     blobId: `walrus_dev_blob_${hash.slice(0, 32)}`,
     blobObjectId: `0x${hash.slice(0, 64)}`,
     certifiedEpoch: 0,
     endEpoch: 2,
     readUrl: `walrus-dev://${hash.slice(0, 32)}`,
+    uploadStrategy: 'walrus-dev',
+    ...(privacyEncryption ? { privacyEncryption } : {}),
   };
 }
 
@@ -117,9 +133,19 @@ export async function storeEvidenceOnWalrus(
   receipt: LiveRunReceipt,
   config: TenderBoardConfig,
   fetchImpl: typeof fetch = fetch,
+  sealEngine?: SealPrivacyEngine,
 ): Promise<WalrusStoreResult> {
+  const uploadSelection = selectWalrusUploadStrategy(config);
+  const privacyEncryption = await encryptPrivateMemoryForUpload(receipt, config, sealEngine);
+
   if (config.mode === 'sui-dev') {
-    return makeWalrusDevBlob(receipt);
+    return makeWalrusDevBlob(receipt, privacyEncryption);
+  }
+
+  if (uploadSelection.strategy === 'harbor') {
+    throw new Error(
+      'WALRUS_UPLOAD_STRATEGY=harbor is selected, but the Harbor upload adapter is not implemented in this build. Use WALRUS_UPLOAD_STRATEGY=raw-walrus for the current production path.',
+    );
   }
 
   if (!config.walrusPublisherUrl) {
@@ -136,7 +162,7 @@ export async function storeEvidenceOnWalrus(
   const response = await fetchImpl(uploadUrl, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: makeEvidenceBundleText(receipt),
+    body: makeEvidenceBundleText(receipt, privacyEncryption),
   });
 
   if (!response.ok) {
@@ -144,10 +170,43 @@ export async function storeEvidenceOnWalrus(
   }
 
   const body = (await response.json()) as WalrusPublisherResponse;
-  return parseWalrusPublisherResponse(body, config);
+  return parseWalrusPublisherResponse(body, config, uploadSelection.strategy, privacyEncryption);
 }
 
-function parseWalrusPublisherResponse(body: WalrusPublisherResponse, config: TenderBoardConfig): WalrusStoreResult {
+export function selectWalrusUploadStrategy(config: TenderBoardConfig): WalrusUploadSelection {
+  if (config.mode === 'sui-dev') {
+    return {
+      strategy: 'walrus-dev',
+      live: false,
+      configured: true,
+      reason: 'TENDERBOARD_MODE=sui-dev uses deterministic local Walrus blob ids.',
+    };
+  }
+
+  const strategy = config.walrusUploadStrategy ?? 'raw-walrus';
+  if (strategy === 'raw-walrus') {
+    return {
+      strategy,
+      live: true,
+      configured: Boolean(config.walrusPublisherUrl),
+      reason: 'Raw Walrus publisher upload path is active.',
+    };
+  }
+
+  return {
+    strategy,
+    live: false,
+    configured: Boolean(config.harborUploadUrl),
+    reason: 'Harbor was selected, but the Harbor upload adapter is not implemented in this build.',
+  };
+}
+
+function parseWalrusPublisherResponse(
+  body: WalrusPublisherResponse,
+  config: TenderBoardConfig,
+  uploadStrategy: WalrusUploadStrategyKind,
+  privacyEncryption: SealEncryptMemoryResult | undefined,
+): WalrusStoreResult {
   const newlyCreated = body.newlyCreated?.blobObject;
   if (newlyCreated?.blobId) {
     return {
@@ -156,6 +215,8 @@ function parseWalrusPublisherResponse(body: WalrusPublisherResponse, config: Ten
       certifiedEpoch: numberOrUndefined(newlyCreated.certifiedEpoch),
       endEpoch: numberOrUndefined(newlyCreated.storage?.endEpoch),
       readUrl: buildWalrusReadUrl(config, newlyCreated.blobId),
+      uploadStrategy,
+      ...(privacyEncryption ? { privacyEncryption } : {}),
     };
   }
 
@@ -167,6 +228,8 @@ function parseWalrusPublisherResponse(body: WalrusPublisherResponse, config: Ten
       certifiedEpoch: undefined,
       endEpoch: numberOrUndefined(alreadyCertified.endEpoch),
       readUrl: buildWalrusReadUrl(config, alreadyCertified.blobId),
+      uploadStrategy,
+      ...(privacyEncryption ? { privacyEncryption } : {}),
     };
   }
 

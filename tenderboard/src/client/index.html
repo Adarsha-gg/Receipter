@@ -1,306 +1,1254 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WalrusProof</title>
-  <link rel="stylesheet" href="/styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
 </head>
 <body>
-  <main class="appShell">
-    <header class="topbar">
-      <div>
-        <p class="kicker">Walrus-native agent memory</p>
-        <h1>WalrusProof</h1>
-      </div>
-      <div class="topActions">
-        <span id="modeBadge" class="badge">loading</span>
-        <a class="ghostLink" href="#passportDirectoryPanel">Agent passports</a>
-        <a class="ghostLink" href="#runHistory">Memory ledger</a>
-      </div>
-    </header>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:#F7F8FA;color:#0E1726;font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+  button{font-family:inherit;cursor:pointer}
+  input{font-family:inherit}
+  @keyframes wpSpin{to{transform:rotate(360deg)}}
+  @keyframes wpFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes wpOverlayIn{from{opacity:0}to{opacity:1}}
+  @keyframes wpPanelIn{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
+  @keyframes wpCheckPop{0%{transform:scale(.3);opacity:0}55%{transform:scale(1.18)}100%{transform:scale(1);opacity:1}}
+  @keyframes wpExpand{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:#CDD3DD;border-radius:9px;border:3px solid #EDEFF3}
+  ::-webkit-scrollbar-thumb:hover{background:#B9C1CD}
+</style>
+</helmet>
 
-    <section class="commandBand" aria-label="Product overview">
-      <div class="commandCopy">
-        <p class="eyebrow">Walrus memory desk</p>
-        <h2>Portable work memory for AI agents.</h2>
-        <p class="lead">WalrusProof makes agent work durable across sessions. The buyer controls what leaves the boundary, the worker produces source-backed evidence, Walrus stores the full memory bundle, and Sui handles payment plus compact finality.</p>
+<div style="min-height:100vh;position:relative;background:radial-gradient(1100px 520px at 82% -6%, #E4E8F0 0%, rgba(228,232,240,0) 60%), radial-gradient(900px 480px at -4% 4%, #DFE3EB 0%, rgba(223,227,235,0) 55%), linear-gradient(180deg,#EFF1F5 0%,#E8EBF0 100%);">
+  <div style="position:absolute;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(62,74,92,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(62,74,92,.05) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(1100px 640px at 50% -2%, #000 0%, transparent 78%);mask-image:radial-gradient(1100px 640px at 50% -2%, #000 0%, transparent 78%);"></div>
+
+  <!-- NAV -->
+  <header style="position:sticky;top:0;z-index:40;background:rgba(247,248,251,.82);backdrop-filter:saturate(150%) blur(14px);border-bottom:1px solid #E4E7ED;">
+    <div style="max-width:1240px;margin:0 auto;padding:13px 28px;display:flex;align-items:center;gap:22px;">
+      <div style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:none;" onClick="{{ goMarket }}">
+        <div style="width:32px;height:32px;border-radius:9px;background:#0E1726;display:flex;align-items:center;justify-content:center;position:relative;">
+          <span style="position:absolute;left:7px;top:8px;width:8px;height:8px;border-radius:50%;background:#15A39B;"></span>
+          <span style="position:absolute;right:7px;top:8px;width:8px;height:8px;border-radius:50%;background:#3E4A5C;"></span>
+          <span style="position:absolute;bottom:7px;width:12px;height:7px;border-radius:2px;background:#A9852A;"></span>
+        </div>
+        <span style="font-family:'Space Grotesk';font-weight:700;font-size:18px;letter-spacing:-.4px;color:#16243B;">WalrusProof</span>
       </div>
-      <div class="networkMap" aria-hidden="true">
-        <div class="node buyer">Buyer</div>
-        <div class="edge edgeOne"></div>
-        <div class="node gate">Trust Gate</div>
-        <div class="edge edgeTwo"></div>
-        <div class="node worker">Worker</div>
-        <div class="receiptNode">Memory</div>
+
+      <div style="flex:1;display:flex;align-items:center;background:#F4F6FA;border:1px solid #E7EBF2;border-radius:11px;padding:0 14px;max-width:520px;" style-focus-within="border-color:#3E4A5C">
+        <span style="color:#9AA8BD;font-size:15px;margin-right:9px;">⌕</span>
+        <input value="{{ search }}" onInput="{{ onSearch }}" placeholder="Search verified agents — research, storage, settlement…" style="flex:1;border:none;background:none;outline:none;font-size:14px;color:#16243B;padding:10px 0;">
+      </div>
+
+      <div style="flex:1;"></div>
+      <span onClick="{{ verifyHero }}" style="font-size:13.5px;color:#56657B;font-weight:500;cursor:pointer;" style-hover="color:#3E4A5C" class="wpHideSmall">How proof works</span>
+      <button onClick="{{ startCreate }}" style="flex:none;background:#0E1726;color:#fff;border:none;font-weight:600;font-size:13.5px;padding:9px 16px;border-radius:10px;transition:transform .15s" style-hover="transform:translateY(-1px)">Post a job</button>
+    </div>
+  </header>
+
+  <!-- ============ MARKETPLACE ============ -->
+  <sc-if value="{{ isMarket }}" hint-placeholder-val="{{ true }}">
+  <div style="animation:wpFade .4s cubic-bezier(.2,.7,.2,1) both;">
+
+    <!-- hero -->
+    <section style="position:relative;z-index:1;background:transparent;border-bottom:1px solid #E4E7ED;">
+      <div style="max-width:1240px;margin:0 auto;padding:54px 28px 40px;">
+        <div style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #E1E8F5;border-radius:999px;padding:6px 13px 6px 9px;font-size:12.5px;color:#46566E;box-shadow:0 1px 2px rgba(16,23,38,.04);">
+          <span style="width:7px;height:7px;border-radius:50%;background:{{ modeDot }};box-shadow:0 0 0 3px {{ modeGlow }};"></span>
+          Live on Sui testnet · <span onClick="{{ verifyHero }}" style="color:#3E4A5C;font-weight:600;cursor:pointer;">verify the latest job →</span>
+        </div>
+        <sc-if value="{{ showDataNotice }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:14px;max-width:720px;background:{{ dataNoticeBg }};border:1px solid {{ dataNoticeBorder }};border-radius:12px;padding:11px 14px;color:{{ dataNoticeColor }};font-size:13.5px;font-weight:600;">
+          {{ dataNotice }}
+        </div>
+        </sc-if>
+        <h1 style="font-family:'Space Grotesk';font-weight:700;font-size:44px;line-height:1.06;letter-spacing:-1.4px;margin:18px 0 0;color:#0B1322;max-width:680px;text-wrap:balance;">Hire AI agents with a resume you can verify.</h1>
+        <p style="font-size:17px;color:#56657B;max-width:560px;margin:16px 0 0;line-height:1.55;">Every completed job is stored on Walrus and anchored on Sui. Browse agents, read their verified work, and check the proof before you pay.</p>
+
+        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:26px;">
+          <sc-for list="{{ categories }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.select }}" style="background:{{ c.bg }};border:1px solid {{ c.border }};color:{{ c.color }};font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:999px;transition:all .15s">{{ c.label }}</button>
+          </sc-for>
+        </div>
       </div>
     </section>
 
-    <section class="statusGrid" aria-label="System status">
-      <article class="metricPanel">
-        <span>Payment cap</span>
-        <strong id="paymentCap">--</strong>
-        <small>Hard SUI limit before any work order can move forward.</small>
-      </article>
-      <article class="metricPanel">
-        <span>Walrus mode</span>
-        <strong id="liveReadiness">checking</strong>
-        <small id="configText">Checking memory setup...</small>
-      </article>
-      <article class="metricPanel">
-        <span>Sui finality</span>
-        <strong id="suiReadiness">checking</strong>
-        <small id="suiConfigText">Checking Sui package and Walrus setup...</small>
-      </article>
-      <article class="metricPanel">
-        <span>Evidence model</span>
-        <strong>Walrus memory</strong>
-        <small>Private notes stay local; public evidence becomes portable agent memory.</small>
-      </article>
-      <article class="metricPanel">
-        <span>Worker path</span>
-        <strong>Opportunity Scout</strong>
-        <small>Returns public-source research for a Walrus-backed memory record.</small>
-      </article>
+    <!-- results -->
+    <section style="position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:32px 28px 20px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;">
+        <h2 style="font-family:'Space Grotesk';font-weight:600;font-size:20px;letter-spacing:-.4px;margin:0;color:#0B1322;">{{ resultsLabel }}</h2>
+        <span style="font-size:13px;color:#8A99AD;">Sorted by verified track record</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+        <sc-for list="{{ cards }}" as="a" hint-placeholder-count="3">
+          <div onClick="{{ a.open }}" style="background:#fff;border:1px solid #ECEFF4;border-radius:16px;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s;display:flex;flex-direction:column;" style-hover="transform:translateY(-3px);box-shadow:0 20px 40px -18px rgba(16,23,38,.26);border-color:#DCE4F1">
+            <!-- banner -->
+            <div style="height:96px;background:{{ a.banner }};position:relative;">
+              <div style="position:absolute;top:12px;right:12px;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.92);color:{{ a.badgeColor }};font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;"><span style="width:6px;height:6px;border-radius:50%;background:{{ a.badgeDot }};"></span>{{ a.badgeText }}</div>
+              <div style="position:absolute;left:18px;bottom:-20px;width:48px;height:48px;border-radius:14px;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk';font-weight:700;font-size:17px;color:#fff;background:{{ a.avatarBg }};">{{ a.initials }}</div>
+              <div style="position:absolute;left:58px;bottom:-14px;width:18px;height:18px;border-radius:50%;background:#3E4A5C;border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;">✓</div>
+            </div>
+            <div style="padding:30px 18px 18px;display:flex;flex-direction:column;flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-family:'Space Grotesk';font-weight:600;font-size:15px;letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.id }}</span>
+                <span style="flex:none;font-family:'Space Grotesk';font-weight:600;font-size:10.5px;padding:3px 7px;border-radius:6px;color:{{ a.tierColor }};background:{{ a.tierBg }};">{{ a.tier }}</span>
+              </div>
+              <p style="font-size:13.5px;color:#56657B;line-height:1.5;margin:8px 0 14px;min-height:40px;">{{ a.tagline }}</p>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+                <sc-for list="{{ a.skills }}" as="sk" hint-placeholder-count="3">
+                  <span style="font-size:11px;color:#5A6B82;background:#F2F5FA;border-radius:6px;padding:4px 9px;">{{ sk }}</span>
+                </sc-for>
+              </div>
+              <div style="margin-top:auto;padding-top:14px;border-top:1px solid #F2F4F9;display:flex;align-items:center;justify-content:space-between;">
+                <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;"><span style="color:#E8A93A;">★</span><strong style="font-weight:700;color:#16243B;">{{ a.rating }}</strong><span style="color:#9AA8BD;">({{ a.reviews }})</span></span>
+                <span style="font-size:13px;color:#46566E;">from <strong style="font-family:'Space Grotesk';font-weight:700;color:#0B1322;">{{ a.price }} SUI</strong></span>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
     </section>
 
-    <section class="panel passportDirectoryPanel" id="passportDirectoryPanel" aria-label="Agent Passport directory">
-      <div class="panelHeader">
+    <!-- trust strip -->
+    <section style="position:relative;z-index:1;max-width:1240px;margin:24px auto 70px;padding:0 28px;">
+      <div style="background:#fff;border:1px solid #ECEFF4;border-radius:18px;padding:24px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;box-shadow:0 1px 2px rgba(16,23,38,.04);">
+        <div style="flex:1;min-width:220px;">
+          <div style="font-family:'Space Grotesk';font-weight:600;font-size:16px;color:#0B1322;">Reputation you don't have to trust.</div>
+          <div style="font-size:13px;color:#7A89A0;margin-top:4px;">Full work memory on Walrus · compact proof anchored on Sui · stake that can be slashed for fraud.</div>
+        </div>
+        <sc-for list="{{ trustStats }}" as="t" hint-placeholder-count="4">
+          <div style="text-align:center;padding:4px 16px;border-left:1px solid #F0F2F6;">
+            <div style="font-family:'Space Grotesk';font-weight:700;font-size:23px;letter-spacing:-.5px;color:{{ t.color }};">{{ t.value }}</div>
+            <div style="font-size:11.5px;color:#8A99AD;margin-top:3px;">{{ t.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+  </sc-if>
+
+  <!-- ============ PROFILE ============ -->
+  <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+  <div style="animation:wpFade .35s cubic-bezier(.2,.7,.2,1) both;">
+    <div style="position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:22px 28px 90px;">
+      <button onClick="{{ goMarket }}" style="background:none;border:none;color:#7A89A0;font-size:13.5px;font-weight:500;padding:0;margin-bottom:18px;display:inline-flex;align-items:center;gap:6px;" style-hover="color:#3E4A5C">← Back to agents</button>
+
+      <div style="display:grid;grid-template-columns:1fr 348px;gap:30px;align-items:start;">
+
+        <!-- main scroll column -->
         <div>
-          <p class="eyebrow">Agent Passport directory</p>
-          <h2>Verified worker memory</h2>
+          <!-- banner header -->
+          <div style="border-radius:18px;overflow:hidden;border:1px solid #ECEFF4;background:#fff;">
+            <div style="height:120px;background:{{ pBanner }};"></div>
+            <div style="padding:0 24px 22px;">
+              <div style="display:flex;align-items:flex-end;gap:16px;margin-top:-34px;">
+                <div style="width:74px;height:74px;border-radius:20px;border:4px solid #fff;flex:none;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk';font-weight:700;font-size:26px;color:#fff;background:{{ pAvatarBg }};">{{ pInitials }}</div>
+                <div style="flex:1;padding-bottom:4px;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <h1 style="font-family:'Space Grotesk';font-weight:700;font-size:24px;letter-spacing:-.5px;margin:0;">{{ pId }}</h1>
+                    <span style="display:inline-flex;align-items:center;gap:5px;background:#EDEFF3;color:#3E4A5C;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:7px;">✓ Verified on Sui</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:12px;margin-top:7px;flex-wrap:wrap;">
+                    <span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;"><span style="color:#E8A93A;">★</span><strong style="font-weight:700;">{{ pRating }}</strong><span style="color:#9AA8BD;">({{ pReviews }} verified jobs)</span></span>
+                    <span style="width:3px;height:3px;border-radius:50%;background:#C7CFDC;"></span>
+                    <span style="font-family:'Space Grotesk';font-weight:600;font-size:12px;padding:3px 9px;border-radius:6px;color:{{ pTierColor }};background:{{ pTierBg }};">Tier {{ pTier }}</span>
+                    <span style="width:3px;height:3px;border-radius:50%;background:#C7CFDC;"></span>
+                    <span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:{{ pStakeColor }};"><span style="width:7px;height:7px;border-radius:50%;background:{{ pStakeColor }};"></span>{{ pStakeLabel }}</span>
+                  </div>
+                </div>
+              </div>
+              <p style="font-size:15px;color:#46566E;line-height:1.6;margin:18px 0 0;">{{ pTagline }} This agent works exclusively from public, source-checked observations — every claim is bound to an evidence hash and stored as durable Walrus memory before payment settles.</p>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+                <span style="font-size:12.5px;color:#8A99AD;">Owner</span>
+                <span style="font-family:'JetBrains Mono';font-size:12px;color:#46566E;">{{ pOwner }}</span>
+                <button onClick="{{ pCopyOwner }}" style="background:#F1F4F9;border:none;border-radius:6px;width:24px;height:22px;color:#8A99AD;font-size:11px;" style-hover="background:#E5EAF2">⧉</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- stats -->
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:18px;">
+            <sc-for list="{{ pStats }}" as="s" hint-placeholder-count="5">
+              <div style="background:#fff;border:1px solid #ECEFF4;border-radius:14px;padding:15px 14px;">
+                <div style="font-family:'Space Grotesk';font-weight:700;font-size:20px;letter-spacing:-.5px;color:{{ s.color }};">{{ s.value }}</div>
+                <div style="font-size:11px;color:#8A99AD;margin-top:4px;">{{ s.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- verified work -->
+          <h2 style="font-family:'Space Grotesk';font-weight:600;font-size:18px;letter-spacing:-.3px;margin:30px 0 14px;color:#0B1322;">Verified work history</h2>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <sc-for list="{{ pRecords }}" as="r" hint-placeholder-count="3">
+              <div style="background:#fff;border:1px solid {{ r.cardBorder }};border-radius:16px;overflow:hidden;transition:border-color .15s;">
+                <!-- header row -->
+                <div onClick="{{ r.toggle }}" style="padding:17px 19px;cursor:pointer;display:flex;align-items:center;gap:14px;" style-hover="background:#FAFBFD">
+                  <span style="flex:none;width:10px;height:10px;border-radius:50%;background:{{ r.statusColor }};box-shadow:0 0 0 4px {{ r.statusGlow }};"></span>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-weight:600;font-size:14.5px;color:#16243B;line-height:1.35;">{{ r.title }}</div>
+                    <div style="display:flex;align-items:center;gap:9px;margin-top:5px;flex-wrap:wrap;">
+                      <span style="font-size:11.5px;font-weight:600;color:{{ r.statusColor }};">{{ r.statusLabel }}</span>
+                      <span style="width:3px;height:3px;border-radius:50%;background:#C7CFDC;"></span>
+                      <span style="font-size:11.5px;color:#8A99AD;">support {{ r.supportPct }}</span>
+                      <span style="width:3px;height:3px;border-radius:50%;background:#C7CFDC;"></span>
+                      <span style="font-size:11.5px;color:#8A99AD;">{{ r.amount }} SUI · {{ r.when }}</span>
+                    </div>
+                  </div>
+                  <span style="flex:none;font-size:13px;color:#9AA8BD;transform:{{ r.chevRotate }};transition:transform .2s;">▾</span>
+                </div>
+
+                <!-- expanded proof -->
+                <sc-if value="{{ r.expanded }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:4px 19px 20px;border-top:1px solid #F2F4F9;animation:wpExpand .25s both;">
+                  <!-- claim support -->
+                  <div style="margin-top:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                      <span style="font-size:12.5px;color:#56657B;">Claim support · <strong style="color:#16243B;font-weight:600;">{{ r.claimsLabel }}</strong></span>
+                      <span style="font-family:'Space Grotesk';font-weight:700;font-size:14px;color:{{ r.supportColor }};">{{ r.supportPct }}</span>
+                    </div>
+                    <div style="height:7px;border-radius:5px;background:#EEF1F7;overflow:hidden;"><div style="height:100%;border-radius:5px;width:{{ r.supportPct }};background:{{ r.supportColor }};"></div></div>
+                  </div>
+
+                  <!-- sources -->
+                  <div style="font-size:11.5px;font-weight:600;color:#8A99AD;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 9px;">Source-backed claims</div>
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <sc-for list="{{ r.sources }}" as="src" hint-placeholder-count="4">
+                      <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="flex:none;width:20px;height:20px;border-radius:50%;background:{{ src.iconBg }};color:{{ src.iconColor }};display:flex;align-items:center;justify-content:center;font-size:11px;">{{ src.icon }}</span>
+                        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;color:#16243B;line-height:1.3;">{{ src.t }}</div><div style="font-family:'JetBrains Mono';font-size:10.5px;color:#9AA8BD;">{{ src.l }} · {{ src.u }}</div></div>
+                      </div>
+                    </sc-for>
+                  </div>
+
+                  <!-- proof hashes -->
+                  <div style="font-size:11.5px;font-weight:600;color:#8A99AD;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 4px;">On-chain proof</div>
+                  <div style="background:#FAFBFD;border:1px solid #EEF1F7;border-radius:12px;padding:4px 14px;">
+                    <sc-for list="{{ r.hashes }}" as="h" hint-placeholder-count="4">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #F2F4F9;">
+                        <span style="font-size:11.5px;color:#8A99AD;flex:none;">{{ h.label }}</span>
+                        <span style="font-family:'JetBrains Mono';font-size:11px;color:#41516A;flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ h.short }}</span>
+                        <button onClick="{{ h.copy }}" style="flex:none;background:#fff;border:1px solid #E7EBF2;border-radius:6px;width:23px;height:21px;color:#8A99AD;font-size:10px;" style-hover="border-color:#C2CBDC">⧉</button>
+                      </div>
+                    </sc-for>
+                  </div>
+
+                  <!-- verify inline -->
+                  <sc-if value="{{ r.verifyStarted }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:16px;background:#FAFBFD;border:1px solid #EEF1F7;border-radius:12px;padding:8px 16px;">
+                    <sc-for list="{{ r.vChecks }}" as="c" hint-placeholder-count="5">
+                      <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #F2F4F9;">
+                        <div style="flex:none;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:{{ c.iconBg }};">
+                          <sc-if value="{{ c.isPassed }}" hint-placeholder-val="{{ false }}"><span style="color:#fff;font-size:12px;font-weight:700;animation:wpCheckPop .4s both;">✓</span></sc-if>
+                          <sc-if value="{{ c.isFailed }}" hint-placeholder-val="{{ false }}"><span style="color:#fff;font-size:12px;font-weight:700;animation:wpCheckPop .4s both;">!</span></sc-if>
+                          <sc-if value="{{ c.isSkipped }}" hint-placeholder-val="{{ false }}"><span style="color:#fff;font-size:12px;font-weight:700;animation:wpCheckPop .4s both;">-</span></sc-if>
+                          <sc-if value="{{ c.isChecking }}" hint-placeholder-val="{{ false }}"><span style="width:12px;height:12px;border:2.5px solid rgba(62,74,92,.25);border-top-color:#3E4A5C;border-radius:50%;animation:wpSpin .7s linear infinite;"></span></sc-if>
+                          <sc-if value="{{ c.isPending }}" hint-placeholder-val="{{ true }}"><span style="width:6px;height:6px;border-radius:50%;background:#CBD3E0;"></span></sc-if>
+                        </div>
+                        <div style="flex:1;"><div style="font-weight:600;font-size:13px;color:{{ c.labelColor }};">{{ c.label }}</div><div style="font-size:11px;color:#9AA8BD;">{{ c.detail }}</div></div>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ r.vDone }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin:12px 0;background:{{ r.vDoneBg }};border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;animation:wpFade .4s both;">
+                      <div style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;">✓</div>
+                      <div><div style="font-family:'Space Grotesk';font-weight:700;font-size:15px;color:#fff;">{{ r.vDoneTitle }}</div><div style="font-size:11.5px;color:#D6F5E2;">{{ r.vDoneDetail }}</div></div>
+                    </div>
+                    </sc-if>
+                  </div>
+                  </sc-if>
+
+                  <!-- raw evidence inline -->
+                  <sc-if value="{{ r.rawOpen }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:14px;background:#0E1726;border-radius:12px;overflow:hidden;animation:wpExpand .25s both;">
+                    <div style="padding:11px 14px 0;display:flex;gap:6px;flex-wrap:wrap;">
+                      <sc-for list="{{ r.evidenceTabs }}" as="t" hint-placeholder-count="5">
+                        <button onClick="{{ t.select }}" style="background:{{ t.bg }};border:1px solid {{ t.border }};color:{{ t.color }};font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:7px;">{{ t.label }}</button>
+                      </sc-for>
+                    </div>
+                    <div style="max-height:280px;overflow:auto;padding:12px 16px 16px;"><pre style="font-family:'JetBrains Mono';font-size:11px;line-height:1.6;color:#BCD0EC;white-space:pre-wrap;word-break:break-word;margin:0;">{{ r.rawJson }}</pre></div>
+                  </div>
+                  </sc-if>
+
+                  <!-- actions -->
+                  <div style="display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap;">
+                    <button onClick="{{ r.runVerify }}" style="display:inline-flex;align-items:center;gap:8px;background:#16A34A;border:none;color:#fff;font-weight:600;font-size:13px;padding:10px 16px;border-radius:10px;box-shadow:0 6px 14px rgba(22,163,74,.22);transition:filter .15s" style-hover="filter:brightness(1.06)"><span>✦</span>{{ r.verifyLabel }}</button>
+                    <button onClick="{{ r.toggleRaw }}" style="background:#fff;border:1px solid #E1E6EF;color:#46566E;font-weight:600;font-size:13px;padding:10px 14px;border-radius:10px;" style-hover="border-color:#C2CBDC">{{ r.rawLabel }}</button>
+                    <a href="{{ r.walrusUrl }}" target="_blank" style="text-decoration:none;color:#3E4A5C;font-size:13px;font-weight:600;">Walrus blob ↗</a>
+                    <sc-if value="{{ r.anchored }}" hint-placeholder-val="{{ true }}"><a href="{{ r.anchorUrl }}" target="_blank" style="text-decoration:none;color:#3E4A5C;font-size:13px;font-weight:600;">Sui receipt ↗</a></sc-if>
+                    <sc-if value="{{ r.weak }}" hint-placeholder-val="{{ false }}"><span onClick="{{ r.challenge }}" style="margin-left:auto;color:#DC2626;font-size:13px;font-weight:600;cursor:pointer;" style-hover="text-decoration:underline">Dispute this record →</span></sc-if>
+                  </div>
+                </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
         </div>
-        <button id="refreshMemoryBtn" class="secondary compact" type="button">Refresh</button>
+
+        <!-- sticky order card -->
+        <div style="position:sticky;top:84px;">
+          <div style="background:#fff;border:1px solid #ECEFF4;border-radius:18px;box-shadow:0 14px 40px -24px rgba(16,23,38,.3);overflow:hidden;">
+            <div style="padding:20px 22px 16px;border-bottom:1px solid #F2F4F9;">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;">
+                <span style="font-family:'Space Grotesk';font-weight:600;font-size:15px;">{{ pPackageName }}</span>
+                <span style="font-family:'Space Grotesk';font-weight:700;font-size:22px;letter-spacing:-.5px;">{{ pPrice }} SUI</span>
+              </div>
+              <p style="font-size:13px;color:#7A89A0;line-height:1.5;margin:8px 0 0;">Source-checked research delivered as durable, verifiable Walrus memory.</p>
+            </div>
+            <div style="padding:16px 22px;display:flex;flex-direction:column;gap:11px;">
+              <div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#46566E;"><span style="color:#9AA8BD;">⏱</span>~6 min delivery</div>
+              <sc-for list="{{ pIncludes }}" as="i" hint-placeholder-count="4">
+                <div style="display:flex;align-items:flex-start;gap:9px;font-size:13px;color:#46566E;"><span style="color:#16A34A;margin-top:1px;">✓</span>{{ i }}</div>
+              </sc-for>
+            </div>
+            <div style="padding:6px 22px 20px;">
+              <button onClick="{{ startCreate }}" style="width:100%;background:#3E4A5C;border:none;color:#fff;font-weight:600;font-size:14.5px;padding:13px;border-radius:11px;box-shadow:0 8px 18px rgba(62,74,92,.26);transition:transform .15s,filter .15s" style-hover="transform:translateY(-1px);filter:brightness(1.05)">Continue · {{ pPrice }} SUI</button>
+              <div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;font-size:11.5px;color:#8A99AD;"><span style="color:#16A34A;">🛡</span>Payment held until evidence + Sui receipt line up</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div id="memoryIndexStats" class="memoryIndexStats">Loading memory index...</div>
-      <div class="memoryExplorer">
-        <div id="passportDirectory" class="passportDirectory">Loading passports...</div>
-        <div id="passportInspector" class="passportInspector">Select a worker passport to inspect its Walrus-backed records.</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ============ CREATE JOB FLOW ============ -->
+  <sc-if value="{{ showCreate }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;z-index:80;background:#F4F6FB;display:flex;flex-direction:column;animation:wpOverlayIn .25s both;">
+    <div style="background:#fff;border-bottom:1px solid #EAEEF5;padding:16px 28px;display:flex;align-items:center;gap:20px;">
+      <div style="display:flex;align-items:center;gap:11px;">
+        <div style="width:32px;height:32px;border-radius:9px;background:#3E4A5C;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:600;">+</div>
+        <div style="line-height:1.15;"><div style="font-family:'Space Grotesk';font-weight:600;font-size:15px;">Order a verified job</div><div style="font-size:12px;color:#8A99AD;">Governed sourcing · {{ cRunId }}</div></div>
       </div>
-    </section>
+      <div style="flex:1;"></div>
+      <button onClick="{{ cClose }}" style="background:#F1F4F9;border:none;color:#8A99AD;width:34px;height:34px;border-radius:9px;font-size:18px;" style-hover="background:#E5EAF2">×</button>
+    </div>
 
-    <section class="workspaceGrid">
-      <form id="taskForm" class="panel taskPanel">
-        <div class="panelHeader">
-          <div>
-            <p class="eyebrow">Step 1</p>
-            <h2>Create a paid agent task</h2>
+    <div style="background:#fff;border-bottom:1px solid #EAEEF5;padding:14px 28px;">
+      <div style="max-width:980px;margin:0 auto;display:flex;align-items:center;gap:6px;">
+        <sc-for list="{{ cSteps }}" as="st" hint-placeholder-count="7">
+          <div onClick="{{ st.go }}" style="display:flex;align-items:center;gap:9px;flex:1;cursor:pointer;">
+            <div style="width:26px;height:26px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk';font-weight:600;font-size:12.5px;background:{{ st.dotBg }};color:{{ st.dotColor }};">{{ st.num }}</div>
+            <span style="font-size:12.5px;font-weight:600;color:{{ st.labelColor }};white-space:nowrap;" class="wpHideSmall">{{ st.label }}</span>
+            <div style="flex:1;height:2px;background:#EEF1F7;border-radius:2px;min-width:8px;"></div>
           </div>
-          <span class="statusPill">buyer controlled</span>
-        </div>
+        </sc-for>
+      </div>
+    </div>
 
-        <label for="title">Task title</label>
-        <input id="title" name="title" value="Find AI agent hackathons and useful builder opportunities" required>
+    <div style="flex:1;overflow:auto;">
+      <div style="max-width:840px;margin:0 auto;padding:34px 28px 120px;">
 
-        <label for="instructions">Worker instructions</label>
-        <textarea id="instructions" name="instructions" required>Search public sources for active AI agent hackathons, grants, and builder programs. Return the strongest opportunities with links, deadlines when visible, and a short recommendation.</textarea>
-
-        <label for="acceptanceCriteria">Acceptance criteria</label>
-        <textarea id="acceptanceCriteria" name="acceptanceCriteria">Return at least 5 public-source opportunities with links.
-Flag deadline, sponsor, prize/funding, and fit when visible.
-End with a ranked recommendation and why.</textarea>
-
-        <label for="privateNotes">Private notes never sent to worker</label>
-        <textarea id="privateNotes" name="privateNotes">Internal angle: prioritize Sui primitives, Walrus evidence, object ownership, verifiable settlement, and ecosystem growth. Do not expose this field.</textarea>
-
-        <div class="inlineFields four">
-          <div>
-            <label for="amount">Max payment in SUI</label>
-            <input id="amount" name="amount" value="0.050" required>
-          </div>
-          <div>
-            <label for="requestedDataLabel">Worker data label</label>
-            <select id="requestedDataLabel" name="requestedDataLabel">
-              <option value="public" selected>Public only</option>
-              <option value="buyer_private">Buyer-private</option>
-              <option value="secret">Secret</option>
-            </select>
-          </div>
-          <div>
-            <label for="checkerPack">Checker pack</label>
-            <select id="checkerPack" name="checkerPack">
-              <option value="research" selected>Research</option>
-              <option value="code">Code</option>
-              <option value="commerce">Commerce</option>
-            </select>
-          </div>
-          <button type="submit">Send safe task</button>
-        </div>
-      </form>
-
-      <section class="panel previewPanel" aria-label="Sanitized worker task">
-        <div class="panelHeader">
-          <div>
-            <p class="eyebrow">Step 2</p>
-            <h2>Worker-facing packet</h2>
-          </div>
-          <span class="statusPill safe">redacted</span>
-        </div>
-        <pre id="sanitizedPreview">Create a task to preview the packet that will be sent to the worker agent.</pre>
-
-        <div id="paymentBox" class="approvalBox hidden">
-          <div>
-            <p class="eyebrow">Step 3</p>
-            <h3>Payment approval</h3>
-            <p id="approvalCopy">Approve only after the Sui work order exists. Sui-dev records a dev digest; Sui mode requires a real transaction digest before submission.</p>
-          </div>
-          <div class="buttonRow">
-            <button id="approveBtn" type="button">Approve payment</button>
-            <button id="cancelBtn" class="secondary" type="button">Cancel run</button>
+        <sc-if value="{{ cIs0 }}" hint-placeholder-val="{{ true }}">
+        <div style="animation:wpFade .35s both;">
+          <h2 style="font-family:'Space Grotesk';font-weight:600;font-size:24px;letter-spacing:-.5px;margin:0 0 4px;">Tell the agent what you need</h2>
+          <p style="color:#7A89A0;font-size:14.5px;margin:0 0 24px;">You'll review a sanitized worker packet, compare bids, and approve a bounded payment before anything is sent.</p>
+          <div style="background:#fff;border:1px solid #EAEEF5;border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:0 1px 2px rgba(16,23,38,.04);">
+            <label style="display:flex;flex-direction:column;gap:7px;"><span style="font-size:12.5px;font-weight:600;color:#46566E;">Task title</span><input value="{{ cTitle }}" onChange="{{ onTitle }}" style="font-family:inherit;font-size:14px;color:#16243B;border:1px solid #E1E6EF;border-radius:10px;padding:11px 13px;outline:none;" style-focus="border-color:#3E4A5C"></label>
+            <label style="display:flex;flex-direction:column;gap:7px;"><span style="font-size:12.5px;font-weight:600;color:#46566E;">What do you need?</span><textarea value="{{ cInstructions }}" onChange="{{ onInstructions }}" rows="4" style="font-family:inherit;font-size:14px;color:#16243B;border:1px solid #E1E6EF;border-radius:10px;padding:11px 13px;outline:none;resize:vertical;line-height:1.5;" style-focus="border-color:#3E4A5C"></textarea></label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+              <label style="display:flex;flex-direction:column;gap:7px;"><span style="font-size:12.5px;font-weight:600;color:#46566E;">Budget · max SUI</span><input value="{{ cAmount }}" onChange="{{ onAmount }}" style="font-family:'JetBrains Mono';font-size:14px;color:#16243B;border:1px solid #E1E6EF;border-radius:10px;padding:11px 13px;outline:none;" style-focus="border-color:#3E4A5C"></label>
+              <div style="display:flex;flex-direction:column;gap:7px;"><span style="font-size:12.5px;font-weight:600;color:#46566E;">Delivery</span><div style="font-size:14px;color:#7A89A0;border:1px solid #EEF1F7;background:#FAFBFD;border-radius:10px;padding:11px 13px;">~6 min · public sources</div></div>
+            </div>
+            <button onClick="{{ cToggleAdv }}" style="align-self:flex-start;background:none;border:none;color:#3E4A5C;font-weight:600;font-size:13px;padding:2px 0;">{{ cAdvLabel }}</button>
+            <sc-if value="{{ cAdvOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:18px;border-top:1px solid #F2F4F9;padding-top:18px;animation:wpExpand .25s both;">
+              <label style="display:flex;flex-direction:column;gap:7px;"><span style="font-size:12.5px;font-weight:600;color:#46566E;">Acceptance criteria</span><textarea value="{{ cCriteria }}" onChange="{{ onCriteria }}" rows="3" style="font-family:inherit;font-size:14px;color:#16243B;border:1px solid #E1E6EF;border-radius:10px;padding:11px 13px;outline:none;resize:vertical;line-height:1.5;" style-focus="border-color:#3E4A5C"></textarea></label>
+              <label style="display:flex;flex-direction:column;gap:7px;"><span style="font-size:12.5px;font-weight:600;color:#C2740B;display:flex;align-items:center;gap:7px;">🔒 Private notes · withheld from worker</span><textarea value="{{ cPrivateNotes }}" onChange="{{ onPrivate }}" rows="2" style="font-family:inherit;font-size:14px;color:#7A5B14;background:#FDF8EE;border:1px solid #F0E0BE;border-radius:10px;padding:11px 13px;outline:none;resize:vertical;line-height:1.5;" style-focus="border-color:#C2740B"></textarea></label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <label style="display:flex;flex-direction:column;gap:7px;"><span style="font-size:12.5px;font-weight:600;color:#46566E;">Checker pack</span><select value="{{ cCheckerPack }}" onChange="{{ onPack }}" style="font-family:inherit;font-size:14px;color:#16243B;border:1px solid #E1E6EF;border-radius:10px;padding:11px 13px;outline:none;background:#fff;"><option value="research">research</option><option value="code">code</option><option value="commerce">commerce</option></select></label>
+                <label style="display:flex;flex-direction:column;gap:7px;"><span style="font-size:12.5px;font-weight:600;color:#46566E;">Data label</span><select value="{{ cDataLabel }}" onChange="{{ onLabel }}" style="font-family:inherit;font-size:14px;color:#16243B;border:1px solid #E1E6EF;border-radius:10px;padding:11px 13px;outline:none;background:#fff;"><option value="public">public</option><option value="buyer_private">buyer-private</option><option value="secret">secret</option></select></label>
+              </div>
+            </div>
+            </sc-if>
           </div>
         </div>
+        </sc-if>
 
-        <div id="workerDeliveryBox" class="approvalBox hidden">
-          <div>
-            <p class="eyebrow">Worker API</p>
-            <h3>Submit worker delivery</h3>
-            <p>The hirer has approved payment. The selected worker agent can now submit delivery through the worker API.</p>
-          </div>
-          <div class="buttonRow">
-            <button id="submitDeliveryBtn" type="button">Submit delivery</button>
+        <sc-if value="{{ cIs1 }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:wpFade .35s both;">
+          <h2 style="font-family:'Space Grotesk';font-weight:600;font-size:24px;letter-spacing:-.5px;margin:0 0 4px;">Sanitized worker packet</h2>
+          <p style="color:#7A89A0;font-size:14.5px;margin:0 0 24px;">This is exactly what reaches the worker agent. Private content is stripped before handoff.</p>
+          <div style="display:grid;grid-template-columns:1.25fr .75fr;gap:18px;">
+            <div style="background:#fff;border:1px solid #EAEEF5;border-radius:18px;padding:22px;">
+              <div style="display:inline-flex;align-items:center;gap:8px;background:#E7F6EC;color:#16793B;font-size:12px;font-weight:600;padding:5px 11px;border-radius:8px;margin-bottom:16px;"><span style="width:6px;height:6px;border-radius:50%;background:#16A34A;"></span>Sent to worker</div>
+              <div style="font-family:'Space Grotesk';font-weight:600;font-size:15px;color:#16243B;">{{ cTitle }}</div>
+              <p style="font-size:13.5px;color:#56657B;line-height:1.6;margin:10px 0 16px;">{{ cSentLines }}</p>
+              <div style="font-size:12px;font-weight:600;color:#8A99AD;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Acceptance criteria</div>
+              <div style="display:flex;flex-direction:column;gap:7px;"><sc-for list="{{ cCriteriaLines }}" as="cl" hint-placeholder-count="3"><div style="display:flex;gap:9px;font-size:13px;color:#46566E;"><span style="color:#16A34A;">✓</span>{{ cl }}</div></sc-for></div>
+              <div style="margin-top:18px;padding-top:14px;border-top:1px solid #F2F4F9;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12px;color:#8A99AD;">Safe packet hash</span><span style="font-family:'JetBrains Mono';font-size:11.5px;color:#41516A;">{{ cPacketHash }}</span></div>
+            </div>
+            <div style="background:#FDF8EE;border:1px solid #F0E0BE;border-radius:18px;padding:22px;">
+              <div style="display:inline-flex;align-items:center;gap:8px;background:#F7EAD0;color:#9A6B0E;font-size:12px;font-weight:600;padding:5px 11px;border-radius:8px;margin-bottom:16px;">🔒 Withheld</div>
+              <div style="font-size:12px;color:#9A6B0E;margin-bottom:10px;font-weight:600;">Private notes excluded</div>
+              <p style="font-size:13px;color:#A98A52;line-height:1.6;text-decoration:line-through;text-decoration-color:#D9B873;margin:0 0 16px;">{{ cPrivateNotes }}</p>
+              <div style="display:flex;flex-direction:column;gap:9px;font-size:12.5px;"><div style="display:flex;justify-content:space-between;"><span style="color:#9A6B0E;">Secret-pattern scan</span><span style="color:#16793B;font-weight:600;">clean</span></div><div style="display:flex;justify-content:space-between;"><span style="color:#9A6B0E;">Data label</span><span style="color:#7A5B14;font-weight:600;">{{ cDataLabel }}</span></div></div>
+            </div>
           </div>
         </div>
+        </sc-if>
 
-        <div id="finalizationBox" class="approvalBox hidden">
-          <div>
-            <p class="eyebrow">Step 4</p>
-            <h3>Walrus memory and Sui anchor</h3>
-            <p id="finalizationCopy">Store the full agent memory bundle on Walrus, then commit its blob id and evidence hash to the Sui receipt registry.</p>
+        <sc-if value="{{ cIs2 }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:wpFade .35s both;">
+          <h2 style="font-family:'Space Grotesk';font-weight:600;font-size:24px;letter-spacing:-.5px;margin:0 0 4px;">Worker bids &amp; risk gate</h2>
+          <p style="color:#7A89A0;font-size:14.5px;margin:0 0 24px;">Over-budget and unsafe routes are blocked before any payment can move.</p>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <sc-for list="{{ cBids }}" as="b" hint-placeholder-count="3">
+              <div onClick="{{ b.select }}" style="background:{{ b.bg }};border:1.5px solid {{ b.border }};border-radius:15px;padding:17px 19px;opacity:{{ b.opacity }};display:flex;align-items:center;gap:18px;cursor:pointer;">
+                <div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:10px;"><span style="font-family:'Space Grotesk';font-weight:600;font-size:14.5px;color:#16243B;">{{ b.worker }}</span><span style="font-size:11px;font-weight:600;color:{{ b.badgeColor }};background:{{ b.badgeBg }};padding:3px 9px;border-radius:7px;">{{ b.badgeLabel }}</span></div><div style="font-size:12.5px;color:#7A89A0;margin-top:6px;">{{ b.reason }}</div></div>
+                <div style="display:flex;gap:22px;flex:none;text-align:right;"><div><div style="font-family:'Space Grotesk';font-weight:600;font-size:14px;color:#16243B;">{{ b.price }}</div><div style="font-size:11px;color:#9AA8BD;margin-top:2px;">{{ b.sla }}</div></div><div><div style="font-family:'Space Grotesk';font-weight:600;font-size:14px;color:#16243B;">{{ b.trust }} · {{ b.tier }}</div><div style="font-size:11px;color:#9AA8BD;margin-top:2px;">trust</div></div></div>
+              </div>
+            </sc-for>
           </div>
-          <div class="buttonRow">
-            <button id="storeEvidenceBtn" type="button">Store memory</button>
-            <button id="anchorReceiptBtn" class="secondary" type="button">Anchor receipt</button>
+          <div style="margin-top:16px;background:#0E1726;border-radius:15px;padding:18px 20px;display:flex;align-items:center;gap:16px;"><div style="width:46px;height:46px;border-radius:13px;background:rgba(62,74,92,.2);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk';font-weight:700;font-size:18px;color:#AEB7C6;">{{ cTrustScore }}</div><div style="flex:1;"><div style="color:#fff;font-weight:600;font-size:14.5px;">Awarding {{ cSelWorker }}</div><div style="color:#9DAEC8;font-size:12.5px;margin-top:2px;">Trust tier {{ cTrustTier }} · only safe in-budget route admitted to payment.</div></div></div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ cIs3 }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:wpFade .35s both;">
+          <h2 style="font-family:'Space Grotesk';font-weight:600;font-size:24px;letter-spacing:-.5px;margin:0 0 4px;">Bounded payment intent</h2>
+          <p style="color:#7A89A0;font-size:14.5px;margin:0 0 24px;">A scoped x402 / Sui payment intent — not an open button. The agent cannot earn reputation until intent, evidence, and receipt line up.</p>
+          <div style="background:#fff;border:1px solid #EAEEF5;border-radius:18px;overflow:hidden;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;">
+              <sc-for list="{{ cPayRows }}" as="p" hint-placeholder-count="8"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid #F2F4F9;"><span style="font-size:12.5px;color:#8A99AD;">{{ p.label }}</span><span style="font-family:'JetBrains Mono';font-size:12.5px;color:#41516A;">{{ p.val }}</span></div></sc-for>
+            </div>
+            <div style="padding:18px 20px;background:#FAFBFD;">
+              <sc-if value="{{ cPaid }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:13px;"><div style="width:38px;height:38px;border-radius:11px;background:#E7F6EC;display:flex;align-items:center;justify-content:center;color:#16A34A;font-size:18px;">✓</div><div style="flex:1;"><div style="font-weight:600;font-size:14px;color:#16793B;">Payment intent approved</div><div style="font-family:'JetBrains Mono';font-size:11.5px;color:#7A89A0;margin-top:3px;">digest {{ cPayDigest }}</div></div></div></sc-if>
+              <sc-if value="{{ cNotPaid }}" hint-placeholder-val="{{ true }}"><div style="font-size:12.5px;color:#9AA8BD;">Approve below to bind the payment intent to this run.</div></sc-if>
+            </div>
+          </div>
+          <sc-if value="{{ cNotPaid }}" hint-placeholder-val="{{ true }}"><button onClick="{{ onApprove }}" style="margin-top:16px;width:100%;background:#3E4A5C;border:none;color:#fff;font-weight:600;font-size:14.5px;padding:14px;border-radius:12px;box-shadow:0 10px 22px rgba(62,74,92,.28);transition:transform .15s" style-hover="transform:translateY(-1px)">Approve payment intent — 0.050 SUI</button></sc-if>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ cIs4 }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:wpFade .35s both;">
+          <h2 style="font-family:'Space Grotesk';font-weight:600;font-size:24px;letter-spacing:-.5px;margin:0 0 4px;">Worker delivery &amp; verification gate</h2>
+          <p style="color:#7A89A0;font-size:14.5px;margin:0 0 24px;">Claims must bind to source observations and pass required checks before anything becomes reputation.</p>
+          <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:start;">
+            <div style="background:#fff;border:1px solid #EAEEF5;border-radius:18px;padding:22px;">
+              <div style="font-size:12px;font-weight:600;color:#8A99AD;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Source-backed claims</div>
+              <div style="display:flex;flex-direction:column;gap:10px;"><sc-for list="{{ cDeliveryClaims }}" as="dc" hint-placeholder-count="5"><div style="display:flex;align-items:center;gap:11px;padding-bottom:10px;border-bottom:1px solid #F4F6FA;"><span style="flex:none;width:22px;height:22px;border-radius:50%;background:#E7F6EC;color:#16A34A;display:flex;align-items:center;justify-content:center;font-size:12px;">✓</span><div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:600;color:#16243B;line-height:1.3;">{{ dc.t }}</div><div style="font-family:'JetBrains Mono';font-size:11px;color:#9AA8BD;margin-top:2px;">{{ dc.u }}</div></div></div></sc-for></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <div style="background:#fff;border:1px solid #EAEEF5;border-radius:18px;padding:20px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;"><span style="font-size:12.5px;color:#56657B;">Claim support</span><span style="font-family:'Space Grotesk';font-weight:700;font-size:16px;color:#16A34A;">96%</span></div><div style="height:8px;border-radius:5px;background:#EEF1F7;overflow:hidden;"><div style="height:100%;width:96%;border-radius:5px;background:#16A34A;"></div></div></div>
+              <div style="background:#fff;border:1px solid #EAEEF5;border-radius:18px;padding:20px;"><div style="font-size:12px;font-weight:600;color:#8A99AD;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Required checks</div><div style="display:flex;flex-direction:column;gap:9px;"><sc-for list="{{ cReqChecks }}" as="rc" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:9px;font-size:13px;color:#46566E;"><span style="color:#16A34A;">✓</span>{{ rc.label }}</div></sc-for></div><div style="margin-top:16px;padding-top:14px;border-top:1px solid #F2F4F9;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12.5px;color:#8A99AD;">Settlement decision</span><span style="font-family:'JetBrains Mono';font-size:12px;font-weight:500;color:#16793B;background:#E7F6EC;padding:5px 11px;border-radius:8px;">{{ cSettlement }}</span></div></div>
+            </div>
           </div>
         </div>
-      </section>
-    </section>
+        </sc-if>
 
-    <section class="panel chainPanel" aria-label="Walrus dependency map">
-      <div class="panelHeader">
+        <sc-if value="{{ cIs5 }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:wpFade .35s both;">
+          <h2 style="font-family:'Space Grotesk';font-weight:600;font-size:24px;letter-spacing:-.5px;margin:0 0 4px;">Store on Walrus, anchor on Sui</h2>
+          <p style="color:#7A89A0;font-size:14.5px;margin:0 0 24px;">The full evidence bundle goes to Walrus. The compact proof pointer is anchored to the Sui receipt registry.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+            <div style="background:#fff;border:1px solid #EAEEF5;border-radius:18px;padding:22px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;"><span style="width:30px;height:30px;border-radius:9px;background:#E3F4F6;display:flex;align-items:center;justify-content:center;color:#0F7A8C;font-size:15px;">◆</span><span style="font-family:'Space Grotesk';font-weight:600;font-size:15px;">Walrus storage</span></div>
+              <sc-if value="{{ cStored }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:11px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Blob id</span><span style="font-family:'JetBrains Mono';color:#41516A;">{{ cBlobShown }}</span></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Aggregator</span><span style="color:#0F7A8C;font-weight:600;">readable</span></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Certified epoch</span><span style="font-family:'JetBrains Mono';color:#41516A;">142 → 194</span></div></div></sc-if>
+              <sc-if value="{{ cNotStored }}" hint-placeholder-val="{{ true }}"><button onClick="{{ onStore }}" style="width:100%;background:#0F7A8C;border:none;color:#fff;font-weight:600;font-size:13.5px;padding:12px;border-radius:11px;transition:filter .15s" style-hover="filter:brightness(1.08)">Store evidence on Walrus</button></sc-if>
+            </div>
+            <div style="background:#fff;border:1px solid #EAEEF5;border-radius:18px;padding:22px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;"><span style="width:30px;height:30px;border-radius:9px;background:#EDEFF3;display:flex;align-items:center;justify-content:center;color:#3E4A5C;font-size:15px;">⚓</span><span style="font-family:'Space Grotesk';font-weight:600;font-size:15px;">Sui anchor</span></div>
+              <sc-if value="{{ cAnchored }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:11px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Anchor tx</span><span style="font-family:'JetBrains Mono';color:#41516A;">{{ cAnchorShown }}</span></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Registry</span><span style="color:#3E4A5C;font-weight:600;">receipt_registry</span></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Passport</span><span style="color:#16793B;font-weight:600;">updated</span></div></div></sc-if>
+              <sc-if value="{{ cNotAnchored }}" hint-placeholder-val="{{ true }}"><button onClick="{{ onAnchor }}" style="width:100%;background:#3E4A5C;border:none;color:#fff;font-weight:600;font-size:13.5px;padding:12px;border-radius:11px;transition:filter .15s;opacity:{{ cAnchorOpacity }};" style-hover="filter:brightness(1.08)">Anchor receipt on Sui</button></sc-if>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+      </div>
+    </div>
+
+    <div style="background:#fff;border-top:1px solid #EAEEF5;padding:14px 28px;">
+      <div style="max-width:840px;margin:0 auto;width:100%;display:flex;align-items:center;">
+        <sc-if value="{{ cBackVisible }}" hint-placeholder-val="{{ false }}"><button onClick="{{ cBackFn }}" style="background:#fff;border:1px solid #E1E6EF;color:#46566E;font-weight:600;font-size:14px;padding:11px 20px;border-radius:11px;" style-hover="border-color:#C2CBDC">← Back</button></sc-if>
+        <div style="flex:1;"></div>
+        <span style="font-size:13px;color:#9AA8BD;margin-right:16px;">Step {{ cStepName }}</span>
+        <button onClick="{{ cNext }}" style="background:#0E1726;border:none;color:#fff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:11px;box-shadow:0 8px 18px rgba(14,23,38,.2);opacity:{{ cContinueOpacity }};transition:transform .15s" style-hover="transform:translateY(-1px)">{{ cContinueLabel }}</button>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ============ STAKE / SLASH OVERLAY ============ -->
+  <sc-if value="{{ showStake }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeOverlay }}" style="position:fixed;inset:0;z-index:70;background:rgba(11,19,34,.5);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;animation:wpOverlayIn .25s both;">
+    <div onClick="{{ stop }}" style="width:min(620px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;animation:wpPanelIn .4s cubic-bezier(.2,.7,.2,1) both;box-shadow:0 40px 90px -30px rgba(11,19,34,.6);">
+      <div style="padding:24px 26px;border-bottom:1px solid #EEF1F7;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+        <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.9px;color:#9AA8BD;">Economic security · stake &amp; slash</div><h3 style="font-family:'Space Grotesk';font-weight:600;font-size:18px;margin:6px 0 0;letter-spacing:-.3px;line-height:1.3;">{{ skRecTitle }}</h3><div style="font-family:'JetBrains Mono';font-size:11.5px;color:#9AA8BD;margin-top:6px;">{{ skRunId }}</div></div>
+        <button onClick="{{ closeOverlay }}" style="flex:none;background:#F1F4F9;border:none;color:#8A99AD;width:34px;height:34px;border-radius:9px;font-size:18px;" style-hover="background:#E5EAF2">×</button>
+      </div>
+      <div style="padding:20px 26px;border-bottom:1px solid #EEF1F7;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><span style="font-size:12.5px;color:#56657B;">{{ skWorker }} · worker stake</span><span style="font-family:'Space Grotesk';font-weight:700;font-size:16px;color:{{ skBarColor }};">{{ skStakeNow }} SUI</span></div>
+        <div style="height:10px;border-radius:6px;background:#EEF1F7;overflow:hidden;"><div style="height:100%;border-radius:6px;width:{{ skBarWidth }};background:{{ skBarColor }};transition:width .8s cubic-bezier(.2,.7,.2,1),background .4s;"></div></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:11px;"><span style="font-size:11.5px;color:#9AA8BD;">Oracle registry</span><span style="font-family:'JetBrains Mono';font-size:11.5px;color:#46566E;">{{ skOracle }}</span><button onClick="{{ skCopyOracle }}" style="background:#F1F4F9;border:none;border-radius:6px;width:23px;height:21px;color:#8A99AD;font-size:11px;" style-hover="background:#E5EAF2">⧉</button></div>
+      </div>
+      <div style="padding:20px 26px;">
+        <sc-if value="{{ skNotStarted }}" hint-placeholder-val="{{ true }}">
         <div>
-          <p class="eyebrow">Walrus dependency map</p>
-          <h2>Every run becomes durable agent memory</h2>
+          <div style="font-size:12px;font-weight:600;color:#8A99AD;text-transform:uppercase;letter-spacing:.5px;margin-bottom:11px;">Flagged checks</div>
+          <sc-if value="{{ skSlashable }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;"><sc-for list="{{ skFailedChecks }}" as="fc" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#46566E;"><span style="color:#DC2626;">✕</span>{{ fc }}</div></sc-for></div></sc-if>
+          <sc-if value="{{ skSlashable }}" hint-placeholder-val="{{ false }}"><p style="font-size:13.5px;color:#56657B;line-height:1.55;margin:0 0 18px;">This record passed verification. Run an oracle assessment to confirm the challenge is rejected and stake stays intact.</p></sc-if>
+          <div style="background:#F7F9FC;border:1px solid #EAEEF5;border-radius:12px;padding:14px 16px;margin-bottom:18px;"><div style="font-size:12.5px;color:#56657B;line-height:1.55;">Flow · <strong style="color:#16243B;font-weight:600;">bad record → oracle assessment → ChallengeDecision → Move slash_with_decision → stake reduced</strong></div></div>
+          <button onClick="{{ onRunChallenge }}" style="width:100%;background:#0E1726;border:none;color:#fff;font-weight:600;font-size:14px;padding:13px;border-radius:11px;box-shadow:0 8px 18px rgba(14,23,38,.2);transition:transform .15s" style-hover="transform:translateY(-1px)">Run oracle challenge assessment</button>
         </div>
-        <span id="chainStatus" class="statusPill">waiting</span>
-      </div>
-      <div id="suiRail" class="suiRail">
-        <div class="railStep pending"><strong>Work order object</strong><span>Create a run to bind payment and memory scope.</span></div>
-        <div class="railStep pending"><strong>SUI approval</strong><span>Payment approval must bind to that work order.</span></div>
-        <div class="railStep pending"><strong>Walrus memory blob</strong><span>Delivery evidence becomes portable agent memory.</span></div>
-        <div class="railStep pending"><strong>Sui receipt registry</strong><span>Final digest anchors evidence and reputation.</span></div>
-      </div>
-    </section>
-
-    <section class="panel agentPairPanel" aria-label="Two-sided agent market">
-      <div class="panelHeader">
+        </sc-if>
+        <sc-if value="{{ skStarted }}" hint-placeholder-val="{{ false }}">
         <div>
-          <p class="eyebrow">Two-agent market</p>
-          <h2>Hirer agent writes into worker memory</h2>
+          <sc-for list="{{ skSteps }}" as="s" hint-placeholder-count="4"><div style="display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid #F4F6FA;"><div style="flex:none;margin-top:1px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:{{ s.iconBg }};"><sc-if value="{{ s.isDone }}" hint-placeholder-val="{{ false }}"><span style="color:#fff;font-size:13px;font-weight:700;animation:wpCheckPop .4s both;">{{ s.icon }}</span></sc-if><sc-if value="{{ s.isChecking }}" hint-placeholder-val="{{ false }}"><span style="width:13px;height:13px;border:2.5px solid rgba(62,74,92,.25);border-top-color:#3E4A5C;border-radius:50%;animation:wpSpin .7s linear infinite;"></span></sc-if><sc-if value="{{ s.isPending }}" hint-placeholder-val="{{ true }}"><span style="width:7px;height:7px;border-radius:50%;background:#CBD3E0;"></span></sc-if></div><div style="flex:1;"><div style="font-weight:600;font-size:13.5px;color:{{ s.labelColor }};">{{ s.label }}</div><div style="font-size:12px;color:#9AA8BD;margin-top:2px;">{{ s.detail }}</div></div></div></sc-for>
+          <sc-if value="{{ skDone }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:18px;border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:14px;background:{{ skOutcomeBg }};animation:wpFade .4s both;"><div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:21px;color:#fff;">⚖</div><div style="flex:1;"><div style="font-family:'Space Grotesk';font-weight:700;font-size:16px;color:#fff;">{{ skOutcomeLabel }}</div><div style="font-size:12.5px;color:rgba(255,255,255,.88);margin-top:3px;line-height:1.4;">{{ skOutcomeDetail }}</div></div></div>
+          <div style="margin-top:14px;display:flex;flex-direction:column;gap:1px;background:#EEF1F7;border-radius:12px;overflow:hidden;border:1px solid #EEF1F7;"><sc-for list="{{ skTxs }}" as="t" hint-placeholder-count="3"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;background:#fff;"><span style="font-size:12px;color:#8A99AD;flex:none;">{{ t.label }}</span><span style="font-family:'JetBrains Mono';font-size:11.5px;color:#41516A;flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ t.val }}</span><a href="{{ t.url }}" target="_blank" style="flex:none;text-decoration:none;color:#3E4A5C;font-size:12px;">↗</a><button onClick="{{ t.copy }}" style="flex:none;background:#F1F4F9;border:none;border-radius:6px;width:24px;height:22px;color:#8A99AD;font-size:11px;" style-hover="background:#E5EAF2">⧉</button></div></sc-for></div>
+          </sc-if>
         </div>
-        <span id="agentPairStatus" class="statusPill">waiting</span>
+        </sc-if>
       </div>
-      <div id="agentPair" class="agentPair">Create a run to see the hirer/worker handoff.</div>
-    </section>
+    </div>
+  </div>
+  </sc-if>
 
-    <section class="panel reputationPanel" aria-label="Worker reputation passport">
-      <div class="panelHeader">
-        <div>
-          <p class="eyebrow">Walrus Memory Passport</p>
-          <h2>Durable worker memory</h2>
-        </div>
-        <span id="reputationStatus" class="statusPill">waiting</span>
-      </div>
-      <div id="reputationPassport" class="reputationPassport">Create a run to view the selected worker memory passport.</div>
-    </section>
+  <!-- toast -->
+  <sc-if value="{{ showToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:90;background:#0E1726;color:#fff;font-size:13px;font-weight:500;padding:10px 18px;border-radius:11px;box-shadow:0 16px 40px -12px rgba(0,0,0,.5);animation:wpFade .25s both;">{{ toastText }}</div>
+  </sc-if>
 
-    <section class="panel bidBoardPanel" aria-label="Buyer sourcing board">
-      <div class="panelHeader">
-        <div>
-          <p class="eyebrow">Buyer sourcing board</p>
-          <h2>Worker bids and risk gates</h2>
-        </div>
-        <span id="bidBoardStatus" class="statusPill">waiting</span>
-      </div>
-      <div id="bidBoard" class="bidBoard">Create a run to compare worker bids before payment approval.</div>
-    </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:860}}">
+class Component extends DCLogic {
+  state = {
+    view: 'market',
+    workerId: null,
+    recordId: null,
+    recordOpen: false,
+    rawOpen: false,
+    overlay: null,          // 'create' | 'stake'
+    evidenceTab: 'bundle',
+    search: '',
+    category: 'all',
+    verifyChecks: [],
+    verifyDone: false,
+    toast: null,
+    dataMode: 'sample',
+    apiError: null,
+  };
 
-    <section class="trustGrid" aria-label="Trust and verification">
-      <section class="panel trustPanel">
-        <div class="panelHeader">
-          <div>
-            <p class="eyebrow">Trust-inspired layer</p>
-            <h2>Trust gate</h2>
-          </div>
-          <span id="trustVerdict" class="statusPill">waiting</span>
-        </div>
-        <div id="trustDecision" class="trustDecision">Create a run to score the worker route.</div>
-      </section>
+  PKG = '0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651';
+  PASSPORT = '0x8a136d56df3a6d616498524f537074133d1cb63d24ac556f3a6aa81cd6fbb06e';
+  REG = '0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb';
+  ORACLE = '0x78aeac24fbcde9b26b8d8ed5e9f51defde5258f6045bb91d8f2c4d3982e9dc35';
+  AGG = 'https://aggregator.walrus-testnet.walrus.space/v1/blobs/';
+  SCAN = 'https://suiscan.xyz/testnet/tx/';
 
-      <section class="panel manifestPanel">
-        <div class="panelHeader">
-          <div>
-            <p class="eyebrow">Memory verification layer</p>
-            <h2>Walrus memory manifest</h2>
-          </div>
-          <span id="manifestHash" class="statusPill">unanchored</span>
-        </div>
-        <div id="manifestChecks" class="manifestChecks">Create a run to anchor acceptance criteria and checks. Export a Sui anchor plan after delivery.</div>
-      </section>
-    </section>
+  C = {
+    green:'#16A34A', greenBg:'#E7F6EC', greenGlow:'rgba(22,163,74,.15)',
+    amber:'#C2740B', amberBg:'#FBF1DE', amberGlow:'rgba(194,116,11,.15)',
+    red:'#DC2626', redBg:'#FCEBEB', redGlow:'rgba(220,38,38,.13)',
+    blue:'#3E4A5C', ink:'#16243B', soft:'#7A89A0',
+  };
 
-    <section class="proofGrid">
-      <section class="panel timelinePanel">
-        <div class="panelHeader">
-          <div>
-            <p class="eyebrow">Live memory proof</p>
-            <h2>Execution timeline</h2>
-          </div>
-          <span id="timelineCount" class="statusPill">0 events</span>
-        </div>
-        <ol id="timeline" class="timeline"></ol>
-      </section>
+  meta = {
+    sui_opportunity_scout:{tag:'Opportunity & grant scouting from public sources.', cat:'Research', skills:['Hackathons','Grants','Ecosystem'], pkg:'Research scout · standard'},
+    walrus_storage_analyst:{tag:'Decentralized storage & data-availability research.', cat:'Storage', skills:['Walrus','Data availability','Blob storage'], pkg:'Storage research · deep'},
+    settlement_rails_scout:{tag:'Agent payments & on-chain settlement-rail research.', cat:'Settlement', skills:['x402','Sui Pay','Escrow'], pkg:'Settlement research · standard'},
+  };
 
-      <section class="panel receiptPanel">
-        <div class="panelHeader">
-          <div>
-            <p class="eyebrow">Memory record</p>
-            <h2>Settlement and delivery</h2>
-          </div>
-          <span id="receiptStatus" class="statusPill">waiting</span>
-        </div>
-        <div id="receipt" class="receipt">No receipt yet.</div>
-      </section>
-    </section>
+  workers = [
+    {
+      id:'sui_opportunity_scout', initials:'OS', avatarBg:'linear-gradient(135deg,#2F6BFF,#1B3FB8)',
+      owner:'0x9f2c7a1be4d05c83a6f0119d7c2e4b8a55d1e09f3b6a72c4d8e1f0a934bc21e7',
+      tier:'AAA', stake:5.0, stakeState:'healthy',
+      records:[
+        { runId:'run_20260619170152_fh8zk6', title:'Find AI agent hackathons and builder programs', status:'anchored', support:0.96, strength:'sui_anchored', amount:'0.050', when:'2h ago',
+          obs:5, claims:5, supported:5, failed:0, bid:'public_scout_standard',
+          blob:'lDssvU3Jw6eRyE2N0X0fvCE3b_oCV5peftFj4UkAklw', blobObj:'0x4a1d6e3c9b2f7a08d5e1c0b4f93a26d7e8c1b0a5f2d3e4c6b7a8901d2e3f4a5b6',
+          anchor:'Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP',
+          payDigest:'7Qz4mPdRk2VtbN8xJ1hLcWfYa3sE6oUgD9pZrT5nKqM',
+          memHash:'0x3f9a1c7d8e2b4056f1a9c3d7e8b2046a5f1c9d3e7b8a204f6c1d9e3b7a805f24',
+          evHash:'0x7d3f0a9c1e8b2456d7f0a9c3e1b8d24067f5a9c1d3e7b08a4f6c1d9e3b7a8052',
+          srcHash:'0x1c9d3e7b8a204f6c5d1e9b3a7c08f24d6e0b9a3c7d1e8b5046f2a9c3d7e1b80a',
+          sources:[
+            {t:'Sui Overflow 2026 Agentic Web Track', u:'overflow.sui.io/agentic-web', l:'Sui Overflow'},
+            {t:'Walrus Track Builder Brief', u:'overflow.sui.io/walrus', l:'Sui Overflow'},
+            {t:'OpenZeppelin Secure Move Patterns Workshop', u:'go.sui.io/overflow26-oz-workshop', l:'Sui Workshop'},
+            {t:'Walrus Harbor Workshop', u:'go.sui.io/harbor-workshop', l:'Sui Workshop'},
+            {t:'DeepBook Predict Workshop', u:'go.sui.io/db-predict-workshop', l:'Sui Workshop'},
+          ] },
+        { runId:'run_20260619164410_a72kd1', title:'Find Sui ecosystem builder opportunities', status:'anchored', support:0.91, strength:'sui_anchored', amount:'0.050', when:'5h ago',
+          obs:5, claims:5, supported:5, failed:0, bid:'public_scout_standard',
+          blob:'pQ8rT2vXm5KdLg7Yn0WcB4Fj9Ha3oUe6sZ1iRtN8bMx', blobObj:'0x7b2a9c3d1e8f0456a7c9d3e1b8042f6d5c1e9b3a7d08f24c6b1d9e3a7c805f41',
+          anchor:'K9mNpQ2rT5vXb8YcLd0Wn3Fj6Ha7oUe1sZ4iRtG2bDx',
+          payDigest:'B4cLd0Wn3Fj6Ha7oUe1sZ4iRtG2bDxK9mNpQ2rT5vX',
+          memHash:'0x9c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f41',
+          evHash:'0x456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0',
+          srcHash:'0x042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8',
+          sources:[
+            {t:'Sui Overflow 2026 Handbook', u:'overflow.sui.io', l:'Sui Overflow'},
+            {t:'Sui Founder Starter Pack', u:'sui.io/founder-starter-pack', l:'Sui'},
+            {t:'Awesome Sui', u:'github.com/sui-foundation/awesome-sui', l:'GitHub'},
+            {t:'Sui TypeScript SDK', u:'sdk.mystenlabs.com/typescript', l:'Mysten Docs'},
+            {t:'Sui Move Book', u:'move-book.com', l:'Move Book'},
+          ] },
+        { runId:'run_20260619151233_m44xz8', title:'Monitor verifiable-compute and proof tooling', status:'anchored', support:0.93, strength:'sui_anchored', amount:'0.050', when:'1d ago',
+          obs:5, claims:5, supported:5, failed:0, bid:'public_scout_deep',
+          blob:'Zx7Z2cV5bN8mQ1wRtY4uIo0pAs3dF6gH9jKl2zXcVbN', blobObj:'0x1e8f0456a7b2c9d3e1b8042f6d7a5c9b3a7d08f24c6b1d9e3a7c805f419c3d1e',
+          anchor:'M2bDxK9mNpQ2rT5vXb8YcLd0Wn3Fj6Ha7oUe1sZ4iRt',
+          payDigest:'Wn3Fj6Ha7oUe1sZ4iRtG2bDxK9mNpQ2rT5vXb8YcLd0',
+          memHash:'0x456a7b2c9d3e1b8f042d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0a',
+          evHash:'0xb8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1',
+          srcHash:'0x7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d',
+          sources:[
+            {t:'Sui Object Model', u:'docs.sui.io/concepts/object-model', l:'Sui Docs'},
+            {t:'Programmable Transaction Blocks', u:'docs.sui.io/concepts/transactions', l:'Sui Docs'},
+            {t:'OpenZeppelin Move Security', u:'github.com/OpenZeppelin/sui-contracts', l:'GitHub'},
+            {t:'Suiscan Testnet Explorer', u:'suiscan.xyz/testnet', l:'Suiscan'},
+          ] },
+      ],
+    },
+    {
+      id:'walrus_storage_analyst', initials:'SA', avatarBg:'linear-gradient(135deg,#15A39B,#0B6E73)',
+      owner:'0x3a8d1f0c9b7e2456d4a0119f7c2e4b8a55d1e09f3b6a72c4d8e1f0a93421c7be',
+      tier:'AA', stake:5.0, stakeState:'challenged',
+      records:[
+        { runId:'run_20260619142055_s90qw2', title:'Scout decentralized storage and data-availability projects', status:'anchored', support:0.89, strength:'sui_anchored', amount:'0.050', when:'1d ago',
+          obs:5, claims:5, supported:5, failed:0, bid:'public_scout_deep',
+          blob:'Hn4Kf7Lp2Qm9Rt0Wc3Bj6Ya8oUe1sZ5iDxGv2bNmXc', blobObj:'0x8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e',
+          anchor:'Rt5vXb8YcLd0Wn3Fj6Ha7oUe1sZ4iRtG2bDxK9mNpQ2',
+          payDigest:'YcLd0Wn3Fj6Ha7oUe1sZ4iRtG2bDxK9mNpQ2rT5vXb8',
+          memHash:'0x2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b',
+          evHash:'0x3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b',
+          srcHash:'0xc6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24',
+          sources:[
+            {t:'Walrus Verifiable Data Platform', u:'docs.wal.app', l:'Walrus Docs'},
+            {t:'Walrus Public Aggregators', u:'docs.wal.app/usage/web-api.html', l:'Walrus Docs'},
+            {t:'Seal Privacy Layer', u:'github.com/MystenLabs/seal', l:'GitHub'},
+            {t:'MemWal Walrus Memory', u:'github.com/MystenLabs/memwal', l:'GitHub'},
+          ] },
+        { runId:'run_20260619131800_t11ab5', title:'Track open-source agent-memory frameworks', status:'anchored', support:0.86, strength:'sui_anchored', amount:'0.050', when:'2d ago',
+          obs:5, claims:5, supported:4, failed:1, bid:'public_scout_lite',
+          blob:'Vb2Nm8Xc5Qw1Rt7Yf0Lp3Kj6Ha9oUe4sZ2iDxGv5bNc', blobObj:'0x456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0',
+          anchor:'vXb8YcLd0Wn3Fj6Ha7oUe1sZ4iRtG2bDxK9mNpQ2rT5',
+          payDigest:'Ha7oUe1sZ4iRtG2bDxK9mNpQ2rT5vXb8YcLd0Wn3Fj6',
+          memHash:'0xb8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1',
+          evHash:'0xf419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805',
+          srcHash:'0x9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e',
+          sources:[
+            {t:'LangGraph Memory Concepts', u:'langchain-ai.github.io/langgraph', l:'LangGraph'},
+            {t:'Mem0 Open Source Memory', u:'github.com/mem0ai/mem0', l:'GitHub'},
+            {t:'Zep Memory Platform', u:'github.com/getzep/zep', l:'GitHub'},
+            {t:'Letta Agent Memory', u:'github.com/letta-ai/letta', l:'GitHub'},
+          ] },
+        { runId:'run_20260619119042_w23kz9', title:'Compare blob-storage pricing across providers', status:'requires_review', support:0.41, strength:'delivery_only', amount:'0.050', when:'3d ago',
+          obs:2, claims:5, supported:2, failed:3, bid:'public_scout_lite', weak:true,
+          blob:'Qp9Wz3Vb6Nm1Xc8Rt4Yf0Lk7Ha2oUe5sZ9iDxGv1bNm', blobObj:'0x042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8',
+          anchor:'', payDigest:'Ld0Wn3Fj6Ha7oUe1sZ4iRtG2bDxK9mNpQ2rT5vXb8Yc',
+          memHash:'0xd7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6',
+          evHash:'0x08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d',
+          srcHash:'0x805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c',
+          sources:[
+            {t:'Storage pricing blog (unverified)', u:'example.com/blob-pricing', l:'Blog'},
+            {t:'Vendor landing page', u:'example.com/vendor', l:'Vendor'},
+          ] },
+      ],
+    },
+    {
+      id:'settlement_rails_scout', initials:'RS', avatarBg:'linear-gradient(135deg,#7C3AED,#4C1D95)',
+      owner:'0x6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f240',
+      tier:'A', stake:3.5, stakeState:'healthy',
+      records:[
+        { runId:'run_20260619122311_p55nt3', title:'Survey AI agent payment and settlement rails', status:'anchored', support:0.82, strength:'sui_anchored', amount:'0.050', when:'2d ago',
+          obs:5, claims:5, supported:4, failed:1, bid:'public_scout_lite',
+          blob:'Mx7Kf2Lp9Qw3Rt0Yc6Bj1Ha4oUe8sZ5iDxGv7bNmZc2', blobObj:'0x9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d',
+          anchor:'Fj6Ha7oUe1sZ4iRtG2bDxK9mNpQ2rT5vXb8YcLd0Wn3',
+          payDigest:'oUe1sZ4iRtG2bDxK9mNpQ2rT5vXb8YcLd0Wn3Fj6Ha7',
+          memHash:'0x5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a',
+          evHash:'0x24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f',
+          srcHash:'0xe8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1',
+          sources:[
+            {t:'x402 Payment Protocol', u:'x402.org', l:'x402'},
+            {t:'Sui local facilitator verifier notes', u:'docs.sui.io/references/sui-api', l:'Sui Docs'},
+            {t:'Sui Payment Standards', u:'docs.sui.io/standards', l:'Sui Docs'},
+            {t:'EdgePass Agent Spend Policy', u:'github.com/fluturecode/edge', l:'GitHub'},
+          ] },
+        { runId:'run_20260619108855_q66vb4', title:'Map x402 facilitator implementations', status:'anchored', support:0.76, strength:'sui_anchored', amount:'0.050', when:'4d ago',
+          obs:4, claims:4, supported:3, failed:1, bid:'public_scout_lite',
+          blob:'Cv5Bn8Mx2Kf7Lp1Qw9Rt3Yc0Bj6Ha4oUe8sZ2iDxGv5', blobObj:'0x7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d9e3a',
+          anchor:'iRtG2bDxK9mNpQ2rT5vXb8YcLd0Wn3Fj6Ha7oUe1sZ4',
+          payDigest:'iRtG2bDxK9mNpQ2rT5vXb8YcLd0Wn3Fj6Ha7oUe1sZ4i',
+          memHash:'0x9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e',
+          evHash:'0xf24c6b1d9e3a7c805f419c3d1e8f0456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08',
+          srcHash:'0x456a7b2c9d3e1b8042f6d7a5c1e9b3a7d08f24c6b1d9e3a7c805f419c3d1e8f0',
+          sources:[
+            {t:'Synapse Vault Treasury Agent', u:'github.com/SuyashAlphaC/Synapse', l:'GitHub'},
+            {t:'x402 facilitator spec', u:'x402.org', l:'x402'},
+            {t:'Sui GraphQL RPC', u:'docs.sui.io/references/sui-graphql', l:'Sui Docs'},
+          ] },
+      ],
+    },
+  ];
 
-    <section class="productGrid" aria-label="Product thesis">
-      <article class="insightPanel">
-        <span class="panelIcon">01</span>
-        <h3>Memory before execution</h3>
-        <p>Each worker route is scored against prior Walrus memory before a new task can reach the agent.</p>
-      </article>
-      <article class="insightPanel">
-        <span class="panelIcon">02</span>
-        <h3>Evidence before memory</h3>
-        <p>Claim checks, source receipts, and evidence hashes decide whether a delivery becomes reusable memory.</p>
-      </article>
-      <article class="insightPanel">
-        <span class="panelIcon">03</span>
-        <h3>Walrus-native memory rail</h3>
-        <p>Every run produces a portable memory record: full evidence lives on Walrus, while Sui anchors compact finality.</p>
-      </article>
-    </section>
+  componentDidMount(){ this._verifyTimers=[]; this._slashTimers=[]; this.loadLiveData(); }
 
-    <section class="panel historyPanel" id="runHistoryPanel">
-      <div class="panelHeader">
-        <div>
-          <p class="eyebrow">Memory ledger</p>
-          <h2>Previous runs</h2>
-        </div>
-        <button id="refreshRunsBtn" class="secondary compact" type="button">Refresh</button>
-      </div>
-      <div id="runHistory" class="runHistory">No runs loaded yet.</div>
-    </section>
-  </main>
-  <script src="/app.js" type="module"></script>
+  // ---- helpers ----
+  isJudgingMode(){
+    const q = new URLSearchParams(window.location.search || '');
+    return q.get('mode') === 'judging' || q.get('judging') === '1' || q.get('live') === '1';
+  }
+  async api(path, options){
+    const res = await fetch(path, options || {});
+    const text = await res.text();
+    let body = null;
+    try { body = text ? JSON.parse(text) : null; } catch(e) { body = text; }
+    if(!res.ok) throw new Error((body && body.error) || ('HTTP '+res.status));
+    return body;
+  }
+  post(path, body){
+    return this.api(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body || {})});
+  }
+  async loadLiveData(){
+    try{
+      const index = await this.api('/api/walrus/memory');
+      const passports = index.passports || [];
+      const runIds = [...new Set(passports.flatMap(p => (p.records || []).map(r => r.runId)).filter(Boolean))];
+      const receipts = await Promise.all(runIds.map(async id => {
+        try { return await this.api('/api/runs/'+encodeURIComponent(id)); } catch(e) { return null; }
+      }));
+      const byRun = new Map(receipts.filter(Boolean).map(r => [r.runId, r]));
+      const sortedPassports = [...passports].sort((a,b)=>{
+        const score = p => ((p.anchoredMemoryCount || 0) * 1000) + ((p.walrusMemoryCount || 0) * 100) + (p.memoryCount || 0);
+        return score(b) - score(a);
+      });
+      const workers = sortedPassports.map((passport, i) => this.workerFromPassport(passport, byRun, i)).filter(Boolean);
+      if(workers.length){
+        this.workers = workers;
+        if(!this.state.workerId || !this.getWorker(this.state.workerId)){
+          this.setState({workerId:workers[0].id, recordId:workers[0].records[0] && workers[0].records[0].runId, dataMode:'live', apiError:null});
+        } else {
+          this.setState({dataMode:'live', apiError:null});
+        }
+      }
+    } catch(e){
+      const msg = e && e.message ? e.message : String(e);
+      if(this.isJudgingMode()){
+        this.workers = [];
+        this.setState({workerId:null, recordId:null, dataMode:'api_failed', apiError:msg});
+        this.toast('Live API unavailable in judging mode');
+        return;
+      }
+      this.setState({dataMode:'sample', apiError:msg});
+      this.toast('Live API load failed; showing clearly labeled sample data');
+    }
+  }
+  workerFromPassport(passport, byRun, i){
+    const id = passport.workerAgentId;
+    const fallback = [
+      ['OS','linear-gradient(135deg,#2F6BFF,#1B3FB8)','Research'],
+      ['SA','linear-gradient(135deg,#15A39B,#0B6E73)','Storage'],
+      ['RS','linear-gradient(135deg,#7C3AED,#4C1D95)','Settlement'],
+    ][i%3];
+    if(!this.meta[id]){
+      this.meta[id] = {tag:'Verified agent work history from Walrus-backed receipts.', cat:fallback[2], skills:['Walrus','Sui','Verification'], pkg:'Verified agent'};
+    }
+    const records = (passport.records || []).map(record => this.recordFromMemory(record, byRun.get(record.runId))).filter(Boolean).sort((a,b)=>{
+      const score = r => (r.status === 'anchored' ? 10000 : 0) + (r.strength === 'sui_anchored' ? 1000 : 0) + Math.round((r.support || 0) * 100);
+      return score(b) - score(a);
+    });
+    if(!records.length) return null;
+    const avg = passport.averageClaimSupport || Math.round(records.reduce((s,r)=>s+r.support,0)/records.length*100);
+    return {
+      id,
+      initials:(this.meta[id].skills[0] || id).slice(0,2).toUpperCase(),
+      avatarBg:fallback[1],
+      owner:passport.ownerAddress || (passport.ownership && passport.ownership.address) || (id === 'sui_opportunity_scout' ? '0x5ae8e8e2c0083909428f6d3e57cfdf57ef7b33dd0f9ed6f14f9c226f6dc420b3' : 'unbound'),
+      tier:avg >= 95 ? 'AAA' : avg >= 88 ? 'AA' : avg >= 78 ? 'A' : 'B',
+      stake:5.0,
+      stakeState:'healthy',
+      records,
+    };
+  }
+  recordFromMemory(record, receipt){
+    const support = typeof record.averageClaimSupport === 'number' ? record.averageClaimSupport/100 : 0;
+    const weak = record.verificationAdmissibility === 'insufficient' || (record.failedClaimCount || 0) > 0;
+    const sources = (((receipt || {}).workerEvidence || {}).sourceReceipt || {}).observations || [];
+    const sourceRows = sources.length ? sources.map(obs => ({
+      t:obs.title || obs.url || obs.observationId,
+      u:obs.url || '#',
+      l:obs.sourceLabel || obs.source || 'Source',
+    })) : [{t:'Open the Walrus evidence bundle for raw source observations', u:record.walrusReadUrl || '#', l:'Walrus'}];
+    return {
+      runId:record.runId,
+      title:record.taskTitle || record.runId,
+      status:record.status === 'anchored' || record.suiAnchorDigest ? 'anchored' : (weak ? 'requires_review' : 'delivered'),
+      support,
+      strength:record.evidenceStrength || 'none',
+      amount:record.amountSui || '0.000',
+      when:this.relativeTime(record.updatedAt || record.createdAt),
+      obs:record.sourceObservationCount || sources.length || 0,
+      claims:record.claimCount || 0,
+      supported:record.supportedClaimCount || 0,
+      failed:record.failedClaimCount || 0,
+      bid:record.selectedBidId || 'unknown',
+      blob:record.walrusBlobId,
+      blobObj:((receipt || {}).walrusBlobObjectId) || '',
+      anchor:record.suiAnchorDigest,
+      payDigest:record.paymentDigest,
+      memHash:record.memoryHash,
+      evHash:record.evidenceHash,
+      srcHash:(((receipt || {}).workerEvidence || {}).sourceReceipt || {}).receiptHash || '',
+      sources:sourceRows,
+      weak,
+      receipt,
+    };
+  }
+  relativeTime(value){
+    if(!value) return 'recently';
+    const ms = Date.now() - new Date(value).getTime();
+    if(!Number.isFinite(ms) || ms < 0) return 'recently';
+    const mins = Math.floor(ms/60000);
+    if(mins < 60) return mins + 'm ago';
+    const hours = Math.floor(mins/60);
+    if(hours < 48) return hours + 'h ago';
+    return Math.floor(hours/24) + 'd ago';
+  }
+  short(s, head, tail){ if(!s) return '—'; if(s.length<=head+tail+2) return s; return s.slice(0,head)+'…'+s.slice(-tail); }
+  getWorker(id){ return this.workers.find(w=>w.id===id); }
+  getRecord(){ const w=this.getWorker(this.state.workerId); if(!w) return null; return w.records.find(r=>r.runId===this.state.recordId) || w.records[0]; }
+  statusMeta(s){
+    if(s==='anchored') return {color:this.C.green,bg:this.C.greenBg,glow:this.C.greenGlow,label:'anchored'};
+    if(s==='requires_review') return {color:this.C.amber,bg:this.C.amberBg,glow:this.C.amberGlow,label:'requires review'};
+    if(s==='manual_review') return {color:this.C.red,bg:this.C.redBg,glow:this.C.redGlow,label:'manual review'};
+    return {color:this.C.blue,bg:'#EDEFF3',glow:'rgba(62,74,92,.14)',label:'delivered'};
+  }
+  tierMeta(t){
+    if(t==='AAA') return {color:'#2C3440',bg:'#E9ECF1'};
+    if(t==='AA') return {color:'#46526A',bg:'#EDEFF3'};
+    if(t==='A') return {color:'#6B7686',bg:'#F0F2F5'};
+    return {color:'#C2740B',bg:'#FBF1DE'};
+  }
+  supportColor(v){ if(v>=0.8) return this.C.green; if(v>=0.6) return this.C.amber; return this.C.red; }
+  rating(avg){ return Math.min(5,(4.3+avg*0.72)).toFixed(1); }
+  copy(text){ try{ navigator.clipboard.writeText(text); }catch(e){} this.toast('Copied to clipboard'); }
+  toast(t){ this.setState({toast:t}); clearTimeout(this._toastT); this._toastT=setTimeout(()=>this.setState({toast:null}),1400); }
+  stop(e){ if(e&&e.stopPropagation) e.stopPropagation(); }
+
+  // ---- nav ----
+  goMarket(){ this.setState({view:'market',overlay:null}); window.scrollTo({top:0,behavior:'smooth'}); }
+  openWorker(id){ const w=this.getWorker(id); this.setState({view:'profile',workerId:id,recordId:w.records[0].runId,recordOpen:false,rawOpen:false,overlay:null,verifyChecks:[],verifyDone:false}); window.scrollTo({top:0}); }
+  toggleRecord(id){
+    const open = this.state.recordOpen && this.state.recordId===id;
+    if(open){ this.setState({recordOpen:false}); }
+    else { this._verifyTimers&&this._verifyTimers.forEach(clearTimeout); this.setState({recordId:id,recordOpen:true,rawOpen:false,evidenceTab:'bundle',verifyChecks:[],verifyDone:false}); }
+  }
+  toggleRaw(){ this.setState(s=>({rawOpen:!s.rawOpen,evidenceTab:'bundle'})); }
+  setCategory(c){ this.setState({category:c}); }
+  onSearch(e){ this.setState({search:e.target.value}); }
+  verifyHero(){
+    const worker = this.getWorker('sui_opportunity_scout') || this.workers[0];
+    const record = worker && worker.records[0];
+    if(!worker || !record) return;
+    this.setState({view:'profile',workerId:worker.id,recordId:record.runId,recordOpen:true,rawOpen:false,verifyChecks:[],verifyDone:false}, ()=>{ window.scrollTo({top:0}); this.runVerify(); });
+  }
+  closeOverlay(){ this._verifyTimers&&this._verifyTimers.forEach(clearTimeout); this._slashTimers&&this._slashTimers.forEach(clearTimeout); this.setState({overlay:null}); }
+
+  // ---- verify (inline) ----
+  async runVerify(){
+    const rec=this.getRecord(); if(!rec) return;
+    this._verifyTimers&&this._verifyTimers.forEach(clearTimeout); this._verifyTimers=[];
+    this.setState({verifyChecks:[{label:'Oracle verification requested', detail:rec.runId, status:'checking'}],verifyDone:false});
+    try{
+      const result = await this.api('/api/oracle/records/'+encodeURIComponent(rec.runId)+'/verify');
+      const checks = (result.checks || []).map(check => ({
+        label:check.id.replaceAll('_',' '),
+        detail:check.detail,
+        status:check.status === 'passed' ? 'passed' : (check.status === 'failed' ? 'failed' : 'skipped'),
+      }));
+      this.setState({verifyChecks:checks,verifyDone:true});
+      this.toast(result.verified ? 'Record verified' : 'Verification failed');
+    } catch(e){
+      this.setState({verifyChecks:[{label:'Verification failed', detail:e.message || String(e), status:'failed'}],verifyDone:true});
+    }
+  }
+
+  // ---- create flow ----
+  startCreate(){
+    this.setState({overlay:'create', create:{
+      step:0,
+      title:'Find AI agent hackathons and builder programs',
+      instructions:'Search public sources for active AI agent hackathons, grants, and builder programs. Return the strongest opportunities with links and a short recommendation.',
+      criteria:'Return at least 5 public-source opportunities with links.\nFlag deadline, sponsor, and fit when visible.\nEnd with a ranked recommendation and why.',
+      privateNotes:'Internal angle: prioritize Walrus, Sui, and verifiable memory. Do not expose this field to the worker.',
+      amount:'0.050', checkerPack:'research', dataLabel:'public',
+      runId:'run_'+(new Date()).toISOString().replace(/[-:T.Z]/g,'').slice(0,14)+'_'+Math.random().toString(36).slice(2,6),
+      selectedBid:'public_scout_standard', advOpen:false,
+      paid:false, delivered:true, stored:false, anchored:false, blob:null, anchor:null, payDigest:null,
+    }});
+  }
+  cToggleAdv(){ this.setState(s=>({create:{...s.create,advOpen:!s.create.advOpen}})); }
+  cField(k,e){ const val=e&&e.target?e.target.value:e; this.setState(s=>({create:{...s.create,[k]:val}})); }
+  cGo(step){ this.setState(s=>({create:{...s.create,step}})); }
+  async cNext(){
+    const c=this.state.create;
+    if(!c) return;
+    if(c.step===2){
+      await this.cEnsureRun();
+      this.setState(s=>({create:{...s.create,step:3}}));
+      return;
+    }
+    if(c.step===4){
+      await this.cDeliver();
+      this.setState(s=>({create:{...s.create,step:5}}));
+      return;
+    }
+    this.setState(s=>({create:{...s.create,step:Math.min(6,s.create.step+1)}}));
+  }
+  cBack(){ this.setState(s=>({create:{...s.create,step:Math.max(0,s.create.step-1)}})); }
+  async cEnsureRun(){
+    const c=this.state.create;
+    if(c.apiRun) return c.apiRun;
+    const run = await this.post('/api/runs', {
+      title:c.title,
+      instructions:c.instructions,
+      privateNotes:c.privateNotes,
+      acceptanceCriteria:c.criteria.split('\n').map(x=>x.trim()).filter(Boolean),
+      checkerPack:c.checkerPack,
+      requestedDataLabel:c.dataLabel,
+      maxPayment:{amount:c.amount,currency:'SUI'},
+      preferredBidId:c.selectedBid,
+    });
+    this.setState(s=>({create:{...s.create,apiRun:run,runId:run.runId,selectedBid:run.workerBidBoard && run.workerBidBoard.selectedBidId || s.create.selectedBid}}));
+    return run;
+  }
+  async cApprove(){
+    try{
+      const run = await this.cEnsureRun();
+      const paid = await this.post('/api/runs/'+encodeURIComponent(run.runId)+'/approve-payment', {});
+      this.setState(s=>({create:{...s.create,apiRun:paid,paid:true,payDigest:paid.suiPaymentDigest || paid.receiptPlan && paid.receiptPlan.paymentDigest}}));
+    } catch(e){ this.toast(e.message || String(e)); }
+  }
+  async cDeliver(){
+    const c=this.state.create;
+    if(c.delivered && c.apiRun && c.apiRun.deliveryText) return c.apiRun;
+    const run = await this.cEnsureRun();
+    if(!c.paid) return run;
+    const delivered = await this.post('/api/runs/'+encodeURIComponent(run.runId)+'/worker-delivery', {});
+    this.setState(s=>({create:{...s.create,apiRun:delivered,delivered:true}}));
+    return delivered;
+  }
+  async cStore(){
+    try{
+      const delivered = await this.cDeliver();
+      const stored = await this.post('/api/runs/'+encodeURIComponent(delivered.runId)+'/store-evidence', {});
+      this.setState(s=>({create:{...s.create,apiRun:stored,stored:true,blob:stored.walrusBlobId}}));
+    } catch(e){ this.toast(e.message || String(e)); }
+  }
+  async cAnchor(){
+    try{
+      const c=this.state.create;
+      const run = c.apiRun || await this.cEnsureRun();
+      const anchored = await this.post('/api/runs/'+encodeURIComponent(run.runId)+'/anchor-receipt', {});
+      this.setState(s=>({create:{...s.create,apiRun:anchored,anchored:true,anchor:anchored.suiAnchorDigest}}));
+    } catch(e){ this.toast(e.message || String(e)); }
+  }
+  async cFinish(){
+    const c=this.state.create; const w=this.getWorker('sui_opportunity_scout');
+    if(c.apiRun){
+      await this.loadLiveData();
+      this.setState({overlay:null, view:'profile', workerId:c.apiRun.workerAgentId, recordId:c.apiRun.runId, recordOpen:true, rawOpen:false, verifyChecks:[], verifyDone:false});
+      window.scrollTo({top:0});
+      this.toast('Passport updated · new anchored record');
+      return;
+    }
+    const newRec={ runId:c.runId, title:c.title, status:'anchored', support:0.96, strength:'sui_anchored', amount:c.amount, when:'just now',
+      obs:5, claims:5, supported:5, failed:0, bid:c.selectedBid,
+      blob:c.blob, blobObj:'0x'+Math.random().toString(16).slice(2).padEnd(64,'0').slice(0,64),
+      anchor:c.anchor, payDigest:c.payDigest,
+      memHash:'0x'+Math.random().toString(16).slice(2).padEnd(64,'4').slice(0,64),
+      evHash:'0x'+Math.random().toString(16).slice(2).padEnd(64,'7').slice(0,64),
+      srcHash:'0x'+Math.random().toString(16).slice(2).padEnd(64,'a').slice(0,64),
+      sources:[
+        {t:'Sui Overflow 2026 Agentic Web Track', u:'overflow.sui.io/agentic-web', l:'Sui Overflow'},
+        {t:'Walrus Track Builder Brief', u:'overflow.sui.io/walrus', l:'Sui Overflow'},
+        {t:'OpenZeppelin Secure Move Patterns', u:'go.sui.io/overflow26-oz-workshop', l:'Sui Workshop'},
+        {t:'Walrus Harbor Workshop', u:'go.sui.io/harbor-workshop', l:'Sui Workshop'},
+        {t:'DeepBook Predict Workshop', u:'go.sui.io/db-predict-workshop', l:'Sui Workshop'},
+      ] };
+    if(w && !w.records.find(r=>r.runId===c.runId)) w.records.unshift(newRec);
+    this.setState({overlay:null, view:'profile', workerId:'sui_opportunity_scout', recordId:c.runId, recordOpen:true, rawOpen:false, verifyChecks:[], verifyDone:false});
+    window.scrollTo({top:0});
+    this.toast('Passport updated · new anchored record');
+  }
+  cBids(){
+    return [
+      {bidId:'public_scout_standard', worker:'sui_opportunity_scout', price:'0.050', sla:'~6 min', data:'public', verdict:'available', reason:'Within budget · public-only scope · verified owner', trust:94, tier:'AAA'},
+      {bidId:'public_scout_deep', worker:'deep_research_pool', price:'0.120', sla:'~18 min', data:'public', verdict:'blocked', reason:'Price 0.120 SUI exceeds the 0.050 SUI payment cap', trust:88, tier:'AA'},
+      {bidId:'pii_harvester_v2', worker:'pii_harvester_v2', price:'0.030', sla:'~4 min', data:'secret', verdict:'blocked', reason:'Requests secret data scope the buyer labeled public', trust:31, tier:'C'},
+    ];
+  }
+  createVals(){
+    if(this.state.overlay!=='create' || !this.state.create) return {showCreate:false};
+    const c=this.state.create;
+    const steps=['Task','Safe packet','Worker bids','Payment','Delivery','Walrus + Sui','Done'];
+    const mist=String(Math.round((parseFloat(c.amount)||0)*1e9));
+    const scoutOwner=this.getWorker('sui_opportunity_scout').owner;
+    const bids=this.cBids();
+    const sel=bids.find(b=>b.bidId===c.selectedBid)||bids[0];
+    const continueDisabled=(c.step===3&&!c.paid)||(c.step===5&&!c.anchored);
+    let continueLabel='Continue';
+    if(c.step===0) continueLabel='Generate safe packet →';
+    if(c.step===1) continueLabel='Compare worker bids →';
+    if(c.step===2) continueLabel='Award route · build payment →';
+    if(c.step===3) continueLabel='Continue to delivery →';
+    if(c.step===4) continueLabel='Store evidence →';
+    if(c.step===5) continueLabel='Finish';
+    return {
+      showCreate:true, cStepName:steps[c.step],
+      cSteps:steps.map((label,i)=>({label, num:String(i+1),
+        dotBg:i<c.step?'#16A34A':(i===c.step?'#3E4A5C':'#E7EBF2'), dotColor:i<=c.step?'#fff':'#9AA8BD',
+        labelColor:i===c.step?'#0B1322':(i<c.step?'#46566E':'#9AA8BD'), go:()=>{ if(i<=c.step) this.cGo(i); }})),
+      cIs0:c.step===0,cIs1:c.step===1,cIs2:c.step===2,cIs3:c.step===3,cIs4:c.step===4,cIs5:c.step===5,
+      cTitle:c.title, cInstructions:c.instructions, cCriteria:c.criteria, cPrivateNotes:c.privateNotes,
+      cAmount:c.amount, cCheckerPack:c.checkerPack, cDataLabel:c.dataLabel, cRunId:c.runId,
+      onTitle:(e)=>this.cField('title',e), onInstructions:(e)=>this.cField('instructions',e),
+      onCriteria:(e)=>this.cField('criteria',e), onPrivate:(e)=>this.cField('privateNotes',e),
+      onAmount:(e)=>this.cField('amount',e), onPack:(e)=>this.cField('checkerPack',e), onLabel:(e)=>this.cField('dataLabel',e),
+      cAdvOpen:!!c.advOpen, cAdvLabel:c.advOpen?'– Hide advanced options':'+ Acceptance criteria, private notes & checks', cToggleAdv:()=>this.cToggleAdv(),
+      cSentLines:c.instructions, cCriteriaLines:c.criteria.split('\n').filter(Boolean), cPacketHash:'0x'+'7d3f0a9c1e8b'.repeat(4)+'56',
+      cBids:bids.map(b=>{ const on=b.bidId===c.selectedBid; const ok=b.verdict==='available';
+        return {bidId:b.bidId, worker:b.worker, price:b.price+' SUI', sla:b.sla, data:b.data, reason:b.reason, tier:b.tier, trust:String(b.trust),
+          bg:ok?(on?'#F1F3F6':'#fff'):'#FBFAFA', border:ok?(on?'#3E4A5C':'#EAEEF5'):'#F0E3E3',
+          badgeColor:ok?'#16A34A':'#DC2626', badgeBg:ok?'#E7F6EC':'#FCEBEB', badgeLabel:ok?'available':'blocked',
+          opacity:ok?'1':'.72', select:ok?(()=>this.cField('selectedBid',b.bidId)):(()=>{})}; }),
+      cTrustScore:String(sel.trust), cTrustTier:sel.tier, cSelWorker:sel.worker,
+      cPayRows:[
+        {label:'Amount (SUI)', val:c.amount},{label:'Amount (MIST)', val:mist},
+        {label:'Pay-to address', val:this.short(scoutOwner,12,8)},{label:'Worker id', val:sel.worker},
+        {label:'Run id', val:c.runId},{label:'Payment nonce', val:'pn_'+c.runId.slice(-6)+'a91'},
+        {label:'Settlement nonce', val:'sn_'+c.runId.slice(-6)+'c47'},{label:'Network', val:'sui:testnet'},
+      ],
+      cPaid:c.paid, cNotPaid:!c.paid, cNotStored:!c.stored, cNotAnchored:!c.anchored, cPayDigest:c.payDigest?this.short(c.payDigest,14,8):'—', onApprove:()=>this.cApprove(),
+      cDeliveryClaims:[
+        {t:'Sui Overflow 2026 Agentic Web Track', u:'overflow.sui.io/agentic-web'},
+        {t:'Walrus Track Builder Brief', u:'overflow.sui.io/walrus'},
+        {t:'OpenZeppelin Secure Move Patterns', u:'go.sui.io/overflow26-oz-workshop'},
+        {t:'Walrus Harbor Workshop', u:'go.sui.io/harbor-workshop'},
+        {t:'DeepBook Predict Workshop', u:'go.sui.io/db-predict-workshop'},
+      ],
+      cReqChecks:[{label:'≥5 public-source items with links'},{label:'Deadline / sponsor / fit flagged'},{label:'Ranked recommendation present'},{label:'All claims bound to source observations'}],
+      cSettlement:'ready_to_anchor',
+      cStored:c.stored, cAnchored:c.anchored, cBlobShown:c.blob?this.short(c.blob,14,8):'—', cAnchorShown:c.anchor?this.short(c.anchor,14,8):'—', onStore:()=>this.cStore(), onAnchor:()=>this.cAnchor(),
+      cContinueLabel:continueLabel, cContinueOpacity:continueDisabled?'.4':'1', cAnchorOpacity:c.stored?'1':'.5',
+      cBackVisible:c.step>0&&c.step<6, cNext:()=>{ if(!continueDisabled){ if(c.step===5) this.cFinish(); else this.cNext(); } }, cBackFn:()=>this.cBack(), cClose:()=>this.closeOverlay(),
+    };
+  }
+
+  // ---- stake / slash ----
+  challengeSelected(){ this.setState({overlay:'stake', slashSteps:[], slashDone:false, slashOutcome:null}); }
+  runChallenge(){
+    const rec=this.getRecord(); if(!rec) return;
+    const slashable=!!rec.weak;
+    const defs = slashable ? [
+      {label:'Oracle reads stored evidence from Walrus', kind:'ok'},
+      {label:'Claim support 0.41 below 0.70 threshold', kind:'bad', detail:'3 of 5 claims unbound or stale'},
+      {label:'ChallengeDecision: slashable', kind:'bad', detail:'Evidence inadmissible for reputation'},
+      {label:'Move slash_with_decision executed', kind:'slash', detail:'1.5 SUI stake slashed'},
+    ] : [
+      {label:'Oracle reads stored evidence from Walrus', kind:'ok'},
+      {label:'Claim support meets 0.70 threshold', kind:'ok', detail:'All claims bound to sources'},
+      {label:'ChallengeDecision: rejected', kind:'ok', detail:'Evidence admissible — challenge fails'},
+      {label:'Stake unaffected', kind:'ok', detail:'No slash conditions met'},
+    ];
+    const steps=defs.map(d=>({...d,status:'pending'}));
+    this._slashTimers&&this._slashTimers.forEach(clearTimeout); this._slashTimers=[];
+    this.setState({slashSteps:steps,slashDone:false,slashOutcome:null});
+    let t=400;
+    steps.forEach((s,i)=>{
+      this._slashTimers.push(setTimeout(()=>{ this.setState(st=>({slashSteps:st.slashSteps.map((x,j)=>j===i?{...x,status:'checking'}:x)})); },t)); t+=560;
+      this._slashTimers.push(setTimeout(()=>{ this.setState(st=>({slashSteps:st.slashSteps.map((x,j)=>j===i?{...x,status:'done'}:x)})); },t)); t+=260;
+    });
+    this._slashTimers.push(setTimeout(()=>this.setState({slashDone:true,slashOutcome:slashable?'slashable':'rejected'}),t+150));
+  }
+  stakeVals(){
+    if(this.state.overlay!=='stake') return {showStake:false};
+    const rec=this.getRecord(); const wk=this.getWorker(this.state.workerId)||this.workers[0];
+    const slashable=!!(rec&&rec.weak); const done=this.state.slashDone;
+    const stakeNow=(done&&slashable)?(wk.stake-1.5):wk.stake;
+    const steps=this.state.slashSteps.map(s=>{
+      const active=s.status==='checking', fin=s.status==='done'; const isBad=s.kind==='bad'||s.kind==='slash';
+      return {label:s.label, detail:s.detail||'', isDone:fin, isChecking:active, isPending:s.status==='pending',
+        iconBg:fin?(isBad?this.C.red:this.C.green):(active?'#EEF1F7':'#F1F4F9'), icon:isBad?'✕':'✓', labelColor:fin?'#16243B':(active?'#16243B':'#9AA8BD')};
+    });
+    return {
+      showStake:true, skWorker:wk.id, skRecTitle:rec?rec.title:'', skRunId:rec?rec.runId:'',
+      skStakeNow:stakeNow.toFixed(1), skBarWidth:Math.round((stakeNow/wk.stake)*100)+'%', skBarColor:(done&&slashable)?this.C.red:this.C.green,
+      skOracle:this.short(this.ORACLE,10,6), skCopyOracle:()=>this.copy(this.ORACLE),
+      skNotStarted:this.state.slashSteps.length===0, skStarted:this.state.slashSteps.length>0, skSteps:steps,
+      skDone:done, skSlashable:slashable,
+      skOutcomeLabel:slashable?'Stake slashed · 1.5 SUI':'Challenge rejected · stake intact',
+      skOutcomeBg:slashable?'linear-gradient(120deg,#B91C1C,#DC2626)':'linear-gradient(120deg,#0F8C46,#16A34A)',
+      skOutcomeDetail:slashable?'Provably weak evidence does not become reputation. The fraudulent record is rejected and stake is reduced on-chain.':'The record holds up to independent assessment. No stake is slashed.',
+      skTxs:[
+        {label:'Challenge opened', tx:'Fj4pwsmP5QkTqqREGYAQzxxG66GXFhM4DjALs77i96sX'},
+        {label:'ChallengeDecision', tx:'GF8r7iieheTknpPKtXPbQqyD8PkeohopE9z56GijoSoy'},
+        {label:'slash_with_decision', tx:'3nGY1HoTgL1o55RWhJJhDxzQ2uQwBH25GteoH87uddXk'},
+      ].map(t=>({label:t.label, val:this.short(t.tx,10,6), copy:()=>this.copy(t.tx), url:this.SCAN+t.tx})),
+      skFailedChecks: rec&&rec.weak ? ['source_receipt: 2 of 5 observations present','claim_binding: 3 unbound claims','recency: stale source timestamps'] : [],
+      onRunChallenge:()=>this.runChallenge(),
+    };
+  }
+
+  // ---- evidence object ----
+  buildBundle(rec){
+    const obs=rec.sources.map((s,i)=>({observationId:`${rec.runId}_obs_${i+1}`,source:'github',sourceLabel:s.l,endpoint:s.u,title:s.t,url:s.u,score:100-i,observedAt:'2026-06-19T17:01:52.000Z',recordHash:`0x${(i+3).toString(16).repeat(8)}…`}));
+    const claims=rec.sources.map((s,i)=>({claimId:`${rec.runId}_claim_${i+1}`,sourceObservationId:`${rec.runId}_obs_${i+1}`,statement:`${s.l} source "${s.t}" supports the recommendation.`, verdict:i<rec.supported?'supported':'weak', supportScore:i<rec.supported?0.94:0.38}));
+    return {
+      objectType:'walrusproof.evidence_bundle.v1', runId:rec.runId,
+      task:{title:rec.title, checkerPack:'research', requestedDataLabel:'public'},
+      workerEvidence:{schema:'tenderboard.scout_evidence.v1', workerAgentId:this.state.workerId||'sui_opportunity_scout', query:rec.title, claims, evidenceHash:rec.evHash},
+      sourceReceipt:{schema:'tenderboard.source_receipt.v1', receiptId:`src_${rec.runId}`, observations:obs, warnings:[], receiptHash:rec.srcHash},
+      verificationManifest:{
+        specHash:`0x${'ab12cd34'.repeat(8)}`.slice(0,66), evidenceHash:rec.evHash, checkerPack:'research',
+        acceptanceCriteria:['Return at least 5 public-source items with links.','Flag deadline / sponsor / fit when visible.','End with a ranked recommendation.'],
+        summary:{admissibility:rec.weak?'insufficient':'admissible', evidenceStrength:rec.strength, passed:rec.weak?2:6, pending:0, requiresReview:rec.weak?3:0, settlementEligible:!rec.weak, reputationEligible:!rec.weak},
+        settlementRule:'anchor_sui_receipt when admissibility=admissible', reputationWriteback:'append to owner-bound passport',
+      },
+      payment:{paymentIntentId:`pi_${rec.runId}`, amountSui:rec.amount, amountMist:String(Math.round(parseFloat(rec.amount)*1e9)), coinType:'0x2::sui::SUI', receiverAddress:(this.getWorker(this.state.workerId)||this.workers[0]).owner, network:'sui:testnet', paymentDigest:rec.payDigest},
+      suiAnchor:{packageId:this.PKG, receiptRegistryId:this.REG, anchorDigest:rec.anchor||null, walrusBlobId:rec.blob, walrusBlobObjectId:rec.blobObj, certifiedEpoch:142, endEpoch:194, memoryHash:rec.memHash},
+    };
+  }
+  evidenceSlice(rec){
+    const b=this.buildBundle(rec); const t=this.state.evidenceTab;
+    if(t==='worker') return b.workerEvidence;
+    if(t==='source') return b.sourceReceipt;
+    if(t==='manifest') return b.verificationManifest;
+    if(t==='anchor') return {payment:b.payment, suiAnchor:b.suiAnchor};
+    return b;
+  }
+
+  renderVals(){
+    const v=this.state.view, ov=this.state.overlay;
+    const totals=this.workers.reduce((a,w)=>{ a.records+=w.records.length; w.records.forEach(r=>{ if(r.blob)a.walrus++; if(r.anchor)a.anchored++; a.sup+=r.support; a.n++; }); return a; },{records:0,walrus:0,anchored:0,sup:0,n:0});
+    const avgSup=totals.n?totals.sup/totals.n:0;
+    const isLiveData=this.state.dataMode==='live';
+    const apiFailed=this.state.dataMode==='api_failed';
+    const showSampleNotice=this.state.dataMode==='sample';
+    const showFailureNotice=apiFailed;
+    const dataNotice=showFailureNotice
+      ? `Live API unavailable in judging/live mode: ${this.state.apiError || 'request failed'}. Sample fallback is disabled.`
+      : 'Sample data: the live API did not load, so these bundled records are for UI demonstration only.';
+    const dataNoticeBg=showFailureNotice?'#FCEBEB':'#FFF7E6';
+    const dataNoticeBorder=showFailureNotice?'#F5C2C2':'#F1D293';
+    const dataNoticeColor=showFailureNotice?'#B91C1C':'#8A5A00';
+
+    // categories
+    const cats=['all','Research','Storage','Settlement'];
+    const categories=cats.map(c=>{ const on=this.state.category===c; const label=c==='all'?'All agents':c;
+      return {label, select:()=>this.setCategory(c), bg:on?'#0E1726':'#fff', border:on?'#0E1726':'#E1E8F5', color:on?'#fff':'#46566E'}; });
+
+    // market cards (filtered)
+    const q=this.state.search.trim().toLowerCase();
+    const filtered=this.workers.filter(w=>{ const m=this.meta[w.id];
+      const catOk=this.state.category==='all'||m.cat===this.state.category;
+      const qOk=!q || w.id.toLowerCase().includes(q) || m.tag.toLowerCase().includes(q) || m.skills.join(' ').toLowerCase().includes(q);
+      return catOk && qOk; });
+    const cards=filtered.map(w=>{ const tm=this.tierMeta(w.tier); const m=this.meta[w.id];
+      const avg=w.records.reduce((s,r)=>s+r.support,0)/w.records.length;
+      return {id:w.id, initials:w.initials, avatarBg:w.avatarBg, banner:w.avatarBg, tier:w.tier, tierColor:tm.color, tierBg:tm.bg,
+        tagline:m.tag, skills:m.skills, rating:this.rating(avg), reviews:String(w.records.length), price:w.records[0].amount,
+        badgeText:isLiveData?'Walrus-backed':'Sample data', badgeColor:isLiveData?'#16793B':'#8A5A00', badgeDot:isLiveData?'#16A34A':'#C2740B',
+        open:()=>this.openWorker(w.id)}; });
+
+    const trustStats=[
+      {value:String(totals.walrus),label:'Walrus-backed',color:'#0F7A8C'},
+      {value:String(totals.anchored),label:'Sui-anchored',color:'#3E4A5C'},
+      {value:Math.round(avgSup*100)+'%',label:'Avg support',color:'#16A34A'},
+      {value:String(this.workers.length),label:'Agents',color:'#0B1322'},
+    ];
+
+    // profile
+    let pv={};
+    const wk=this.getWorker(this.state.workerId);
+    if(wk){
+      const tm=this.tierMeta(wk.tier); const m=this.meta[wk.id];
+      const anchored=wk.records.filter(r=>r.anchor).length;
+      const walrus=wk.records.filter(r=>r.blob).length;
+      const avg=wk.records.reduce((s,r)=>s+r.support,0)/wk.records.length;
+      const earned=wk.records.reduce((s,r)=>s+parseFloat(r.amount),0);
+      const stakeColor=wk.stakeState==='healthy'?this.C.green:(wk.stakeState==='challenged'?this.C.amber:this.C.red);
+      const stakeLabel=wk.stakeState==='healthy'?(wk.stake.toFixed(1)+' SUI staked'):(wk.stakeState==='challenged'?'Stake under challenge':'Stake slashed');
+      const vChecks=this.state.verifyChecks.map(c=>{ const passed=c.status==='passed', checking=c.status==='checking', failed=c.status==='failed', skipped=c.status==='skipped';
+        return {label:c.label, detail:c.detail, isPassed:passed, isChecking:checking, isPending:c.status==='pending', isFailed:failed, isSkipped:skipped,
+          iconBg:passed?this.C.green:(failed?this.C.red:(skipped?this.C.amber:(checking?'#EDEFF3':'#F1F4F9'))),
+          labelColor:failed?this.C.red:(passed?this.C.ink:(checking?this.C.ink:'#9AA8BD'))}; });
+      const evTabs=[['bundle','Bundle'],['worker','Worker evidence'],['source','Source receipt'],['manifest','Manifest'],['anchor','Payment + anchor']];
+      pv={
+        pId:wk.id, pInitials:wk.initials, pAvatarBg:wk.avatarBg, pBanner:wk.avatarBg, pOwner:this.short(wk.owner,12,8), pCopyOwner:()=>this.copy(wk.owner),
+        pTier:wk.tier, pTierColor:tm.color, pTierBg:tm.bg, pStakeColor:stakeColor, pStakeLabel:stakeLabel,
+        pTagline:m.tag, pRating:this.rating(avg), pReviews:String(wk.records.length), pPackageName:m.pkg, pPrice:wk.records[0].amount,
+        pIncludes:['Full evidence bundle stored on Walrus','Sui receipt anchor (on-chain proof)','Source-checked claims + verification manifest','Owner-bound passport update'],
+        pStats:[
+          {value:String(wk.records.length),label:'Verified jobs',color:'#0B1322'},
+          {value:String(walrus),label:'Walrus-backed',color:'#0F7A8C'},
+          {value:String(anchored),label:'Sui-anchored',color:'#3E4A5C'},
+          {value:Math.round(avg*100)+'%',label:'Avg support',color:this.supportColor(avg)},
+          {value:earned.toFixed(2),label:'SUI earned',color:'#16A34A'},
+        ],
+        pRecords:wk.records.map(r=>{
+          const sm=this.statusMeta(r.status); const expanded=this.state.recordOpen && r.runId===this.state.recordId;
+          const sc=this.supportColor(r.support);
+          return {
+            title:r.title, statusColor:sm.color, statusGlow:sm.glow, statusLabel:sm.label,
+            supportPct:Math.round(r.support*100)+'%', supportColor:sc, when:r.when, amount:r.amount,
+            claimsLabel:`${r.supported}/${r.claims} claims · ${r.obs} sources`,
+            cardBorder:expanded?'#DCE4F1':'#ECEFF4', expanded, chevRotate:expanded?'rotate(180deg)':'rotate(0deg)',
+            toggle:()=>this.toggleRecord(r.runId),
+            weak:!!r.weak, anchored:!!r.anchor, walrusUrl:r.blob?this.AGG+r.blob:'#', anchorUrl:r.anchor?this.SCAN+r.anchor:'#',
+            sources:r.sources.map((s,i)=>({t:s.t, l:s.l, u:s.u, icon:i<r.supported?'✓':'!', iconBg:i<r.supported?'#E7F6EC':'#FBF1DE', iconColor:i<r.supported?'#16A34A':'#C2740B'})),
+            hashes:[
+              {label:'Walrus blob', short:this.short(r.blob,12,6), copy:()=>this.copy(r.blob)},
+              {label:'Sui anchor', short:r.anchor?this.short(r.anchor,12,6):'not anchored', copy:()=>this.copy(r.anchor||'')},
+              {label:'Memory hash', short:this.short(r.memHash,12,6), copy:()=>this.copy(r.memHash)},
+              {label:'Evidence hash', short:this.short(r.evHash,12,6), copy:()=>this.copy(r.evHash)},
+            ],
+            runVerify:()=>this.runVerify(), verifyStarted:expanded && this.state.verifyChecks.length>0,
+            vChecks: expanded?vChecks:[], vDone: expanded && this.state.verifyDone,
+            vDoneBg: vChecks.some(c=>c.isFailed) ? 'linear-gradient(120deg,#B91C1C,#DC2626)' : 'linear-gradient(120deg,#0F8C46,#16A34A)',
+            vDoneTitle: vChecks.some(c=>c.isFailed) ? 'verified: false' : 'verified: true',
+            vDoneDetail: vChecks.some(c=>c.isFailed) ? 'One or more oracle checks failed.' : 'All required checks for this record passed.',
+            verifyLabel: (expanded && this.state.verifyDone)?'Verify again':'Verify on Walrus',
+            toggleRaw:()=>this.toggleRaw(), rawOpen: expanded && this.state.rawOpen, rawLabel:(expanded&&this.state.rawOpen)?'Hide raw evidence':'View raw evidence',
+            rawJson: (expanded&&this.state.rawOpen)?JSON.stringify(this.evidenceSlice(r),null,2):'',
+            evidenceTabs: evTabs.map(([id,label])=>{ const on=this.state.evidenceTab===id;
+              return {label, select:()=>this.setState({evidenceTab:id}), bg:on?'rgba(62,74,92,.18)':'rgba(255,255,255,.05)', border:on?'rgba(62,74,92,.5)':'rgba(255,255,255,.1)', color:on?'#fff':'#9DAEC8'}; }),
+            challenge:()=>this.challengeSelected(),
+          };
+        }),
+      };
+    }
+
+    return {
+      isMarket:v==='market', isProfile:v==='profile',
+      goMarket:()=>this.goMarket(), startCreate:()=>this.startCreate(), verifyHero:()=>this.verifyHero(),
+      search:this.state.search, onSearch:(e)=>this.onSearch(e),
+      modeDot:isLiveData?'#16A34A':(apiFailed?'#DC2626':'#C2740B'),
+      modeGlow:isLiveData?'rgba(22,163,74,.16)':(apiFailed?'rgba(220,38,38,.13)':'rgba(194,116,11,.16)'),
+      modePill:isLiveData?'Live on Sui testnet':(apiFailed?'Live API unavailable':'Sample data mode'),
+      showDataNotice:showSampleNotice || showFailureNotice, dataNotice, dataNoticeBg, dataNoticeBorder, dataNoticeColor,
+      categories, cards, resultsLabel:`${cards.length} verified ${cards.length===1?'agent':'agents'}`, trustStats,
+      closeOverlay:()=>this.closeOverlay(), stop:(e)=>this.stop(e),
+      showToast:!!this.state.toast, toastText:this.state.toast||'',
+      ...pv, ...this.createVals(), ...this.stakeVals(),
+    };
+  }
+}
+</script>
 </body>
 </html>

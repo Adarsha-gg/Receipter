@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TenderBoardConfig } from '../src/live/types.js';
 import {
+  buildAttachStakeCliArgs,
   buildCreateOracleRegistryCliArgs,
   buildIssueChallengeDecisionCliArgs,
   buildOpenStakePositionCliArgs,
@@ -47,6 +48,19 @@ describe('Sui reputation stake executor', () => {
       textToHexBytes('forged Walrus record'),
       '100000',
     ]);
+  });
+
+  it('builds a PTB that attaches more SUI to an existing stake position', () => {
+    const args = buildAttachStakeCliArgs({ positionId: '0xstake', amountMist: '250000' }, sampleConfig());
+
+    expect(args.slice(0, 4)).toEqual(['client', '--client.config', 'client.yaml', 'ptb']);
+    expect(args).toContain('--split-coins');
+    expect(args).toContain('[250000]');
+    expect(args).toContain('--move-call');
+    expect(args).toContain('0xpackage::reputation_stake::add_stake');
+    expect(args).toContain('@0xstake');
+    expect(args).toContain('stake.0');
+    expect(args.at(-1)).toBe('--json');
   });
 
   it('builds oracle registry, decision, and decision-slash calls', () => {

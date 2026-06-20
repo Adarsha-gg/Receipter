@@ -1,4 +1,6 @@
 export type TenderBoardMode = 'sui-dev' | 'sui';
+export type WalrusUploadStrategy = 'raw-walrus' | 'harbor';
+export type SealEncryptionMode = 'disabled' | 'deterministic-test' | 'sdk';
 
 export type LiveRunStatus =
   | 'draft'
@@ -87,6 +89,7 @@ export interface MarketAgentProfile {
   agentId: string;
   role: MarketAgentRole;
   ownerAddress?: string | undefined;
+  agentPassportObjectId?: string | undefined;
   displayName: string;
   responsibilities: string[];
   controls: string[];
@@ -212,6 +215,33 @@ export interface ScoutEvidence {
   evidenceHash: string;
 }
 
+export type WorkerDeliveryIdentityProofType = 'sui-address' | 'did' | 'http-signature';
+
+export interface WorkerDeliveryIdentityProof {
+  proofType: WorkerDeliveryIdentityProofType;
+  subject: string;
+  publicKey: string | undefined;
+  signature: string | undefined;
+  signedPayloadHash: string | undefined;
+  issuedAt: string | undefined;
+}
+
+export interface ExternalWorkerDeliveryPayload {
+  objectType: 'walrusproof.external_worker_delivery.v1';
+  runId: string;
+  workerAgentId: string;
+  deliveryText: string;
+  sourceEvidence: ScoutEvidence;
+  identityProof?: WorkerDeliveryIdentityProof | undefined;
+}
+
+export interface DemoWorkerDeliveryRequest {
+  objectType?: 'walrusproof.demo_worker_delivery_request.v1' | undefined;
+  useDemoWorker: true;
+}
+
+export type WorkerDeliverySubmission = ExternalWorkerDeliveryPayload | DemoWorkerDeliveryRequest;
+
 export interface SelectedBidReference {
   bidId: string;
   workerAgentId: string;
@@ -221,6 +251,85 @@ export interface SelectedBidReference {
 }
 
 export type PaymentKitMode = 'sui_pay_uri_metadata_only';
+
+export type SuiWalletTransactionKind = 'x402_payment' | 'receipt_anchor';
+export type SuiWalletSignerRole = 'hirer' | 'operator';
+export type SuiWalletStandardMethod = 'sui:signAndExecuteTransaction';
+export type SuiWalletTransactionBuilder = 'sui-typescript-sdk-transaction';
+
+export interface SuiPureMoveArgument {
+  kind: 'pure';
+  type: 'vector<u8>' | 'u16' | 'u64';
+  value: string;
+  encoding?: 'utf8' | undefined;
+  bytes?: number[] | undefined;
+  hex?: string | undefined;
+}
+
+export interface SuiObjectMoveArgument {
+  kind: 'object';
+  type: 'object';
+  objectId: string;
+  mutable: boolean;
+}
+
+export type SuiMoveArgument = SuiPureMoveArgument | SuiObjectMoveArgument;
+
+export interface SuiSplitCoinsCommand {
+  kind: 'splitCoins';
+  source: 'gas';
+  amountsMist: string[];
+  assign: string;
+}
+
+export interface SuiTransferObjectsCommand {
+  kind: 'transferObjects';
+  objects: string[];
+  recipient: string;
+}
+
+export interface SuiMoveCallCommand {
+  kind: 'moveCall';
+  target: string;
+  arguments: SuiMoveArgument[];
+}
+
+export type SuiWalletTransactionCommand = SuiSplitCoinsCommand | SuiTransferObjectsCommand | SuiMoveCallCommand;
+
+export interface SuiWalletTransactionRequest {
+  objectType: 'walrusproof.sui_wallet_transaction_request.v1';
+  version: 1;
+  kind: SuiWalletTransactionKind;
+  chain: string;
+  network: string;
+  signerRole: SuiWalletSignerRole;
+  walletStandard: SuiWalletStandardMethod;
+  builder: SuiWalletTransactionBuilder;
+  description: string;
+  gasBudgetMist: string;
+  required: {
+    packageId: string;
+    receiptRegistryId?: string | undefined;
+    receiverAddress?: string | undefined;
+    walrusBlobId?: string | undefined;
+  };
+  commands: SuiWalletTransactionCommand[];
+  metadata: Record<string, string | undefined>;
+}
+
+export interface SuiReceiptAnchorPayload {
+  objectType: 'walrusproof.sui_receipt_anchor_payload.v1';
+  version: 1;
+  network: string;
+  transaction: string;
+  runId: string;
+  receiptRegistryId: string;
+  packageId: string;
+  paymentReference: string;
+  walrusBlobId: string;
+  duplicatePreventionKey: string;
+  workerAgentId: string;
+}
 
 export interface WorkerReputationCard {
   objectType: 'tenderboard.worker_reputation_passport.v1';
@@ -287,10 +396,20 @@ export interface AgentMemoryPassport {
   objectType: 'suiproof.agent_memory_passport.v1';
   workerAgentId: string;
   ownerAddress: string | undefined;
+  passportObjectId: string | undefined;
   ownership: {
     chain: 'sui';
     address: string | undefined;
-    proof: 'agent_profile' | 'unbound';
+    passportObjectId: string | undefined;
+    proof: 'agent_passport_object' | 'owner_address_only' | 'unbound';
+  };
+  chainOwnershipProof: {
+    chain: 'sui';
+    status: 'chain_bound' | 'owner_address_only' | 'unbound';
+    ownerAddress: string | undefined;
+    passportObjectId: string | undefined;
+    proof: 'agent_passport_object' | 'owner_address_only' | 'unbound';
+    detail: string;
   };
   generatedAt: string;
   memoryCount: number;
@@ -298,7 +417,16 @@ export interface AgentMemoryPassport {
   anchoredMemoryCount: number;
   averageClaimSupport: number | undefined;
   latestMemoryId: string | undefined;
+  latestMemoryPointer:
+    | {
+        memoryId: string;
+        memoryHash: string;
+        runId: string;
+        updatedAt: string;
+      }
+    | undefined;
   latestWalrusBlobId: string | undefined;
+  latestSuiAnchorDigest: string | undefined;
   records: AgentMemoryRecord[];
 }
 
@@ -311,7 +439,17 @@ export interface WalrusMemoryIndex {
   suiAnchoredRecords: number;
   averageClaimSupport: number | undefined;
   latestMemoryId: string | undefined;
+  latestMemoryPointer:
+    | {
+        workerAgentId: string;
+        memoryId: string;
+        memoryHash: string;
+        runId: string;
+        updatedAt: string;
+      }
+    | undefined;
   latestWalrusBlobId: string | undefined;
+  latestSuiAnchorDigest: string | undefined;
   passports: AgentMemoryPassport[];
 }
 
@@ -350,6 +488,7 @@ export interface AgentMarketCard {
     averageClaimSupport: number | undefined;
     latestMemoryId: string | undefined;
     latestWalrusBlobId: string | undefined;
+    latestSuiAnchorDigest: string | undefined;
   };
 }
 
@@ -369,6 +508,7 @@ export interface PaymentIntentPlan {
   paymentUri: string;
   paymentKitMode: PaymentKitMode;
   paymentKitCompatibility: 'sui:pay-uri-v1';
+  walletTransactionRequest?: SuiWalletTransactionRequest | undefined;
   expiresAt: string;
   createdAt: string;
 }
@@ -625,9 +765,14 @@ export interface SafeConfig {
   memory: {
     backend: 'walrus' | 'memwal';
     memwalConfigured: boolean;
+    memwalReady?: boolean;
+    missingMemwalSettings?: string[];
     memwalServerConfigured: boolean;
     memwalAccountConfigured: boolean;
     memwalNamespace: string | undefined;
+    sealEncryptionMode?: SealEncryptionMode;
+    sealLiveConfigured?: boolean;
+    sealPolicyConfigured?: boolean;
   };
   sui: {
     network: string;
@@ -642,6 +787,10 @@ export interface SafeConfig {
     readyForSui: boolean;
     missingSuiSettings: string[];
   };
+  walrus?: {
+    uploadStrategy: WalrusUploadStrategy;
+    harborUploadConfigured: boolean;
+  };
 }
 
 export interface TenderBoardConfig {
@@ -655,6 +804,9 @@ export interface TenderBoardConfig {
   memwalAccountId: string | undefined;
   memwalServerUrl: string | undefined;
   memwalNamespace: string | undefined;
+  sealEncryptionMode?: SealEncryptionMode;
+  sealPolicyId?: string | undefined;
+  sealNamespace?: string | undefined;
   suiNetwork: string;
   suiRpcUrl: string | undefined;
   suiPackageId: string | undefined;
@@ -664,6 +816,8 @@ export interface TenderBoardConfig {
   workerAgentAddress?: string | undefined;
   walrusPublisherUrl: string | undefined;
   walrusAggregatorUrl: string | undefined;
+  walrusUploadStrategy?: WalrusUploadStrategy;
+  harborUploadUrl?: string | undefined;
   suiCliPath: string | undefined;
   suiClientConfig: string | undefined;
   missingSuiSettings: string[];

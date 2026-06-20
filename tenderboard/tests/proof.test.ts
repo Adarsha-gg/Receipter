@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildClearingObjects } from '../src/live/clearingObjects.js';
 import { buildMemWalReputationFact, createMemWalClient, MemWalMemoryStore, WalrusMemoryStore, type MemoryStore } from '../src/live/memoryStore.js';
+import { DeterministicSealPrivacyEngine } from '../src/live/privacySeal.js';
 import { renderReceiptProof } from '../src/live/proof.js';
 import { makeEvent } from '../src/live/runStore.js';
-import { buildEvidenceBundle, storeEvidenceOnWalrus } from '../src/live/walrusRuntime.js';
-import type { LiveRunReceipt } from '../src/live/types.js';
+import { buildEvidenceBundle, selectWalrusUploadStrategy, storeEvidenceOnWalrus } from '../src/live/walrusRuntime.js';
+import type { LiveRunReceipt, TenderBoardConfig } from '../src/live/types.js';
 
 describe('renderReceiptProof', () => {
   it('renders a judge-readable Sui proof without private notes', () => {
@@ -174,6 +175,7 @@ describe('renderReceiptProof', () => {
       certifiedEpoch: undefined,
       endEpoch: 436,
       readUrl: 'https://aggregator.walrus-testnet.walrus.space/v1/blobs/walrus_blob_live',
+      uploadStrategy: 'raw-walrus',
     });
   });
 
@@ -250,6 +252,7 @@ describe('renderReceiptProof', () => {
       certifiedEpoch: undefined,
       endEpoch: undefined,
       readUrl: 'https://aggregator.walrus-testnet.walrus.space/v1/blobs/walrus_blob_existing',
+      uploadStrategy: 'raw-walrus',
     });
   });
 
@@ -406,7 +409,158 @@ describe('renderReceiptProof', () => {
     expect(fact).toContain('Walrus blob: walrus_blob_fact.');
     expect(fact).toContain('Claim verification: 0 supported, 0 failed.');
   });
+
+  it('selects the active raw Walrus or Harbor upload path explicitly', () => {
+    expect(selectWalrusUploadStrategy(testWalrusConfig())).toMatchObject({
+      strategy: 'raw-walrus',
+      live: true,
+      configured: true,
+    });
+    expect(
+      selectWalrusUploadStrategy(
+        testWalrusConfig({
+          walrusUploadStrategy: 'harbor',
+          harborUploadUrl: 'https://harbor.example/upload',
+        }),
+      ),
+    ).toMatchObject({
+      strategy: 'harbor',
+      live: false,
+      configured: true,
+    });
+  });
+
+  it('fails loudly if Harbor upload is selected before a Harbor adapter exists', async () => {
+    await expect(
+      storeEvidenceOnWalrus(
+        sampleReceipt(),
+        testWalrusConfig({
+          walrusUploadStrategy: 'harbor',
+          harborUploadUrl: 'https://harbor.example/upload',
+        }),
+      ),
+    ).rejects.toThrow('Harbor upload adapter is not implemented');
+  });
+
+  it('redacts buyer-private memory behind deterministic Seal test encryption in dev uploads', async () => {
+    const privateReceipt = {
+      ...sampleReceipt(),
+      mode: 'sui-dev' as const,
+      privacy: {
+        requestedDataLabel: 'buyer_private' as const,
+        privateNotesProvided: true,
+        workerDataBoundary: 'Buyer-private memory must be encrypted before upload.',
+      },
+      deliveryText: 'buyer private acquisition strategy',
+    };
+
+    const result = await storeEvidenceOnWalrus(
+      privateReceipt,
+      testWalrusConfig({
+        mode: 'sui-dev',
+        sealEncryptionMode: 'deterministic-test',
+      }),
+      fetch,
+      new DeterministicSealPrivacyEngine(),
+    );
+    const bundle = buildEvidenceBundle(privateReceipt, result.privacyEncryption);
+    const bundleText = JSON.stringify(bundle);
+
+    expect(result.uploadStrategy).toBe('walrus-dev');
+    expect(result.privacyEncryption).toMatchObject({
+      provider: 'deterministic-test',
+      live: false,
+      algorithm: 'deterministic-test-seal-v1',
+    });
+    expect(bundle.deliveryText).toBeUndefined();
+    expect(bundle.workerEvidence).toBeUndefined();
+    expect(bundleText).not.toContain('buyer private acquisition strategy');
+  });
+
+  it('refuses buyer-private production uploads without a live Seal SDK integration', async () => {
+    await expect(
+      storeEvidenceOnWalrus(
+        {
+          ...sampleReceipt(),
+          privacy: {
+            requestedDataLabel: 'buyer_private',
+            privateNotesProvided: true,
+            workerDataBoundary: 'Buyer-private memory must be encrypted before upload.',
+          },
+        },
+        testWalrusConfig({ sealEncryptionMode: 'disabled' }),
+      ),
+    ).rejects.toThrow('Seal encryption is required for buyer_private memory in TENDERBOARD_MODE=sui');
+  });
 });
+
+function testWalrusConfig(overrides: Partial<TenderBoardConfig> = {}): TenderBoardConfig {
+  return {
+    mode: 'sui',
+    suiNetwork: 'testnet',
+    suiRpcUrl: 'https://fullnode.testnet.sui.io:443',
+    suiPackageId: '0xpackage',
+    suiReceiptRegistryId: '0xregistry',
+    suiStakeOracleRegistryId: undefined,
+    suiOperatorAddress: '0xoperator',
+    walrusPublisherUrl: 'https://publisher.walrus-testnet.walrus.space',
+    walrusAggregatorUrl: 'https://aggregator.walrus-testnet.walrus.space',
+    walrusUploadStrategy: 'raw-walrus',
+    harborUploadUrl: undefined,
+    suiCliPath: undefined,
+    suiClientConfig: undefined,
+    missingSuiSettings: [],
+    port: 0,
+    maxPaymentSui: '0.050',
+    receiptsDir: 'memory',
+    workerAgentId: 'sui_worker',
+    memoryBackend: 'walrus',
+    memwalDelegateKey: undefined,
+    memwalAccountId: undefined,
+    memwalServerUrl: undefined,
+    memwalNamespace: 'walrusproof',
+    sealEncryptionMode: 'disabled',
+    sealPolicyId: undefined,
+    sealNamespace: 'walrusproof',
+    safe: {
+      mode: 'sui',
+      port: 0,
+      maxPaymentSui: '0.050',
+      receiptsDir: 'memory',
+      workerAgentId: 'sui_worker',
+      memory: {
+        backend: 'walrus',
+        memwalConfigured: false,
+        memwalReady: false,
+        missingMemwalSettings: ['MEMWAL_DELEGATE_KEY', 'MEMWAL_ACCOUNT_ID', 'MEMWAL_SERVER_URL'],
+        memwalServerConfigured: false,
+        memwalAccountConfigured: false,
+        memwalNamespace: 'walrusproof',
+        sealEncryptionMode: 'disabled',
+        sealLiveConfigured: false,
+        sealPolicyConfigured: false,
+      },
+      sui: {
+        network: 'testnet',
+        rpcUrlConfigured: true,
+        packageIdConfigured: true,
+        receiptRegistryIdConfigured: true,
+        stakeOracleRegistryIdConfigured: false,
+        operatorAddressConfigured: true,
+        walrusPublisherConfigured: true,
+        walrusAggregatorConfigured: true,
+        suiCliConfigured: false,
+        readyForSui: true,
+        missingSuiSettings: [],
+      },
+      walrus: {
+        uploadStrategy: 'raw-walrus',
+        harborUploadConfigured: false,
+      },
+    },
+    ...overrides,
+  };
+}
 
 function sampleReceipt(): LiveRunReceipt {
   const receipt: LiveRunReceipt = {

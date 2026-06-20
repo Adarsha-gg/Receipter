@@ -83,9 +83,11 @@ sovereign, not our DB). Per-skill scores (research/code/commerce), volume, avg c
 SUI earned, anchored-job count. **Exists:** `buildAgentMemoryPassport`. Net-new: bind ownership
 to a Sui address + a passport object on-chain that points at the Walrus record set.
 
-**Update:** passport ownership metadata is now implemented at API/SDK level. New passports carry
-`ownerAddress` + `ownership { chain: "sui", address, proof }`, and the oracle can verify a passport
-by owner address. The remaining stretch is a dedicated on-chain passport object.
+**Update:** passport ownership is now implemented on Sui. Package v5 adds
+`tenderboard::agent_passport::AgentPassport`, an owner-held Sui object that stores the agent id,
+Walrus metadata pointer, latest memory hash, latest Walrus blob id, latest Sui anchor digest,
+record counters, challenge/slash counters, and stake position reference. Live object:
+`0x8a136d56df3a6d616498524f537074133d1cb63d24ac556f3a6aa81cd6fbb06e`.
 
 ### Layer 3 — Trust Routing  ✅ have it
 Given a task, rank workers by *verifiable* past performance and gate over-budget/unsafe routes.
@@ -102,7 +104,7 @@ This is the difference between "verifiable" and "trustworthy," and **no competit
 **Update:** the first live primitive is now deployed on Sui testnet in Move module
 `reputation_stake`: open a worker stake position, add SUI stake, challenge a record by evidence
 hash/reason, slash the position, and reward the challenger. Live smoke:
-package `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`,
+package `0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651`,
 stake object `0x48273520a89927db522dd76c45ab333780998ec9ba336dc5d5666db8b44fc859`,
 oracle registry `0x78aeac24fbcde9b26b8d8ed5e9f51defde5258f6045bb91d8f2c4d3982e9dc35`,
 challenge decision `0xf3433158331908788eb465063f519be866f2e6393b4bc90629655af65a8c2f84`,
@@ -166,9 +168,9 @@ escrow → reputation becomes a **yield-bearing economic asset**, not a vanity s
 | Source-claim verification + admission gate | ✅ built | `trustProof.ts`, `clearingObjects.ts` |
 | PoWM record + passport + global index | ✅ built | `agentMemory.ts` |
 | Walrus evidence storage | ✅ live round-trip proven | real blob `lDssvU3Jw6eRyE2N0X0fvCE3b_oCV5peftFj4UkAklw`; `walrusRuntime.ts` |
-| Sui receipt anchor (Move pkg) | ✅ deployed + anchored | package v4 `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`; receipt anchor `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP` |
+| Sui receipt anchor (Move pkg) | ✅ deployed + anchored | package v5 `0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651`; receipt anchor `Hxxuk6jCAMFvUyiif8q6GLjDQ6w6m1BjMAnUb1zNEDLP` |
 | Multi-worker award | ✅ built (this week) | `preferredBidId` |
-| **Passport bound to Sui address** | ✅ API-level built / on-chain object pending | `AgentMemoryPassport.ownerAddress`, owner oracle route; Move `passport` object remains |
+| **Passport bound to Sui address** | ✅ on-chain object live | Move `agent_passport::AgentPassport`; object `0x8a136d56df3a6d616498524f537074133d1cb63d24ac556f3a6aa81cd6fbb06e`; mint tx `D7c7uuvKuxvcMiWWc6DjrE1DoWu6dhTZ21vZnKNw3AbL` |
 | **Stake + slash** | ✅ live primitive + oracle decision object | Move `reputation_stake`; `/api/oracle/records/:runId/challenges/assess`; decision tx `FCsWy75sSrheYpk2ah1B9MFLzbHodx6SHhu2396Lf4Li`, slash tx `GJz9y9nac2sgwMi9xp9PkuYryWU99wcgvbhAMyiYwCzA` |
 | **Reputation Oracle SDK / MCP / LangGraph** | ✅ REST + TS client started | `src/oracle`; MCP/LangGraph remains |
 | **Explorer UI (verify-on-Walrus)** | ✅ built | Agent Passport directory + per-record Verify action |

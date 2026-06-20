@@ -7,6 +7,7 @@ import type {
   ClaimVerificationResult,
   LiveRunReceipt,
   ScoutClaim,
+  ScoutEvidence,
   SourceObservation,
   TenderBoardConfig,
   TrustDecision,
@@ -302,6 +303,72 @@ export function finalizeVerificationManifest(receipt: LiveRunReceipt, deliveryTe
   };
 }
 
+export function validateScoutEvidenceIntegrity(workerEvidence: ScoutEvidence | undefined): string[] {
+  const failures: string[] = [];
+  const sourceReceipt = workerEvidence?.sourceReceipt;
+  const observations = sourceReceipt?.observations ?? [];
+
+  if (!workerEvidence) {
+    return ['Worker delivery must include structured source evidence.'];
+  }
+  if (workerEvidence.schema !== 'tenderboard.scout_evidence.v1') {
+    failures.push('Worker evidence schema is not tenderboard.scout_evidence.v1.');
+  }
+  if (!workerEvidence.evidenceHash?.startsWith('sha256:')) {
+    failures.push('Worker evidence hash is missing or malformed.');
+  }
+  if (!sourceReceipt) {
+    failures.push('Worker evidence must include a source receipt.');
+  } else {
+    if (sourceReceipt.schema !== 'tenderboard.source_receipt.v1') {
+      failures.push('Source receipt schema is not tenderboard.source_receipt.v1.');
+    }
+    if (!sourceReceipt.receiptHash?.startsWith('sha256:')) {
+      failures.push('Source receipt hash is missing or malformed.');
+    }
+
+    const sourceReceiptHash = stableHash({
+      schema: sourceReceipt.schema,
+      generatedAt: sourceReceipt.generatedAt,
+      query: sourceReceipt.query,
+      observations: sourceReceipt.observations,
+      warnings: sourceReceipt.warnings,
+    });
+    if (sourceReceipt.receiptHash !== sourceReceiptHash) {
+      failures.push('Source receipt hash does not match its contents.');
+    }
+  }
+
+  const evidenceHash = stableHash({
+    schema: workerEvidence.schema,
+    generatedAt: workerEvidence.generatedAt,
+    query: workerEvidence.query,
+    sourceReceipt: workerEvidence.sourceReceipt,
+    claims: workerEvidence.claims,
+  });
+  if (workerEvidence.evidenceHash !== evidenceHash) {
+    failures.push('Worker evidence hash does not match its contents.');
+  }
+
+  for (const observation of observations) {
+    const recomputedRecordHash = stableHash(observation.record);
+    if (!observation.recordHash?.startsWith('sha256:')) {
+      failures.push(`Source observation ${observation.observationId} record hash is missing or malformed.`);
+    } else if (observation.recordHash !== recomputedRecordHash) {
+      failures.push(`Source observation ${observation.observationId} record hash does not match its record.`);
+    }
+  }
+
+  const observationIds = new Set(observations.map((observation) => observation.observationId));
+  for (const claim of workerEvidence.claims ?? []) {
+    if (!observationIds.has(claim.sourceObservationId)) {
+      failures.push(`Source claim ${claim.claimId} is not bound to an observation.`);
+    }
+  }
+
+  return failures;
+}
+
 export function buildTrustProof(input: BuildTrustProofInput): {
   trustDecision: TrustDecision;
   verificationManifest: VerificationManifest;
@@ -428,14 +495,14 @@ function sourceEvidenceStatus(receipt: LiveRunReceipt, claimResults: ClaimVerifi
   const sourceReceipt = receipt.workerEvidence?.sourceReceipt;
   const claims = receipt.workerEvidence?.claims ?? [];
   const observations = sourceReceipt?.observations ?? [];
-  if (!receipt.workerEvidence) {
-    return { valid: false, observationCount: 0, claimCount: 0, detail: 'Worker delivery has no structured source evidence receipt.' };
-  }
-  if (receipt.workerEvidence.evidenceHash && !receipt.workerEvidence.evidenceHash.startsWith('sha256:')) {
-    return { valid: false, observationCount: observations.length, claimCount: claims.length, detail: 'Worker evidence hash is malformed.' };
-  }
-  if (!sourceReceipt?.receiptHash?.startsWith('sha256:')) {
-    return { valid: false, observationCount: observations.length, claimCount: claims.length, detail: 'Source receipt hash is missing or malformed.' };
+  const integrityFailures = validateScoutEvidenceIntegrity(receipt.workerEvidence);
+  if (integrityFailures.length > 0) {
+    return {
+      valid: false,
+      observationCount: observations.length,
+      claimCount: claims.length,
+      detail: integrityFailures[0] ?? 'Worker source evidence failed integrity validation.',
+    };
   }
   if (observations.length === 0) {
     return { valid: false, observationCount: 0, claimCount: claims.length, detail: 'Source receipt contains no observations.' };
@@ -507,11 +574,15 @@ function verifyClaimSupport(
     reasons.push('Claim statement is grounded in the source record.');
   }
 
+  const recomputedRecordHash = stableHash(observation.record);
   if (!observation.recordHash?.startsWith('sha256:')) {
     score -= 20;
     reasons.push('Source observation record hash is missing or malformed.');
+  } else if (observation.recordHash !== recomputedRecordHash) {
+    score -= 35;
+    reasons.push('Source observation record hash does not match the source record.');
   } else {
-    reasons.push('Source observation record hash is present.');
+    reasons.push('Source observation record hash matches the source record.');
   }
 
   const stale = isStale(observation.publishedAt, receiptGeneratedAt ?? observation.observedAt);

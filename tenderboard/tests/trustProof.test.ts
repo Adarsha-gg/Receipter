@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildClearingObjects } from '../src/live/clearingObjects.js';
 import { loadTenderBoardConfig } from '../src/live/config.js';
+import { stableHash } from '../src/live/hash.js';
 import { buildTrustProof, finalizeVerificationManifest } from '../src/live/trustProof.js';
 import type { AgentMemoryPassport, LiveRunReceipt, ScoutEvidence, VerificationManifest } from '../src/live/types.js';
 
@@ -208,24 +209,25 @@ describe('trust proof model', () => {
   });
 
   it('requires every source claim to bind to an observation', () => {
+    const workerEvidence = {
+      ...validWorkerEvidence(),
+      claims: [
+        {
+          claimId: 'claim_broken',
+          resultIndex: 0,
+          title: 'Broken claim',
+          url: 'https://example.com/broken',
+          sourceObservationId: 'missing_observation',
+          statement: 'This claim is not bound.',
+        },
+      ],
+    };
     const receipt = {
       ...sampleReceipt(),
       verificationManifest: researchManifest(),
       walrusBlobId: 'walrus_dev_blob_run_trust',
       deliveryText: 'Opportunity Scout Report with broken source claims',
-      workerEvidence: {
-        ...validWorkerEvidence(),
-        claims: [
-          {
-            claimId: 'claim_broken',
-            resultIndex: 0,
-            title: 'Broken claim',
-            url: 'https://example.com/broken',
-            sourceObservationId: 'missing_observation',
-            statement: 'This claim is not bound.',
-          },
-        ],
-      },
+      workerEvidence: rehashWorkerEvidence(workerEvidence),
     };
     const finalized = finalizeVerificationManifest(receipt, receipt.deliveryText);
     const clearing = buildClearingObjects({ ...receipt, verificationManifest: finalized });
@@ -236,7 +238,7 @@ describe('trust proof model', () => {
     });
     expect(finalized.requiredChecks.find((check) => check.id === 'public_sources')).toMatchObject({
       status: 'requires_review',
-      detail: '1 claim(s) failed claim support verification.',
+      detail: 'Source claim claim_broken is not bound to an observation.',
     });
     expect(finalized.summary?.settlementEligible).toBe(false);
     expect(clearing.clearingDecision.verdict).toBe('requires_review');
@@ -277,12 +279,13 @@ describe('trust proof model', () => {
         statement: 'This unsupported claim says something absent from the source.',
       },
     ];
+    const workerEvidence = rehashWorkerEvidence(evidence);
     const receipt = {
       ...sampleReceipt(),
       verificationManifest: researchManifest(),
       walrusBlobId: 'walrus_dev_blob_run_trust',
       deliveryText: 'Opportunity Scout Report with weak source claims',
-      workerEvidence: evidence,
+      workerEvidence,
     };
     const finalized = finalizeVerificationManifest(receipt, receipt.deliveryText);
 
@@ -308,15 +311,39 @@ function researchManifest(): VerificationManifest {
   }).verificationManifest;
 }
 
+function rehashWorkerEvidence(evidence: ScoutEvidence): ScoutEvidence {
+  const body = {
+    schema: evidence.schema,
+    generatedAt: evidence.generatedAt,
+    query: evidence.query,
+    sourceReceipt: evidence.sourceReceipt,
+    claims: evidence.claims,
+  };
+  return {
+    ...evidence,
+    evidenceHash: stableHash(body),
+  };
+}
+
 function sampleMemoryPassport(): AgentMemoryPassport {
   return {
     objectType: 'suiproof.agent_memory_passport.v1',
     workerAgentId: 'sui_worker',
     ownerAddress: '0xworker_owner',
+    passportObjectId: '0xworker_passport',
     ownership: {
       chain: 'sui',
       address: '0xworker_owner',
-      proof: 'agent_profile',
+      passportObjectId: '0xworker_passport',
+      proof: 'agent_passport_object',
+    },
+    chainOwnershipProof: {
+      chain: 'sui',
+      status: 'chain_bound',
+      ownerAddress: '0xworker_owner',
+      passportObjectId: '0xworker_passport',
+      proof: 'agent_passport_object',
+      detail: 'Sui AgentPassport object 0xworker_passport is bound to owner 0xworker_owner.',
     },
     generatedAt: '2026-06-19T18:00:00.000Z',
     memoryCount: 2,
@@ -324,40 +351,51 @@ function sampleMemoryPassport(): AgentMemoryPassport {
     anchoredMemoryCount: 1,
     averageClaimSupport: 94,
     latestMemoryId: 'memory_latest',
+    latestMemoryPointer: {
+      memoryId: 'memory_latest',
+      memoryHash: 'sha256:memory_latest',
+      runId: 'run_latest',
+      updatedAt: '2026-06-19T18:00:00.000Z',
+    },
     latestWalrusBlobId: 'walrus_blob_latest',
+    latestSuiAnchorDigest: '0xanchor_latest',
     records: [],
   };
 }
 
 function validWorkerEvidence(overrides: { publishedAt?: string } = {}): ScoutEvidence {
-  return {
-    schema: 'tenderboard.scout_evidence.v1',
+  const record = { title: 'Sui grant opportunity' };
+  const observation = {
+    observationId: 'obs_1',
+    source: 'github' as const,
+    sourceLabel: 'GitHub',
+    endpoint: 'https://api.github.com/search/repositories',
+    query: 'Sui agent grants',
+    observedAt: '2026-06-19T18:00:00.000Z',
+    title: 'Sui grant opportunity',
+    url: 'https://example.com/sui-grant',
+    score: 100,
+    publishedAt: overrides.publishedAt ?? '2026-06-18T18:00:00.000Z',
+    recordHash: stableHash(record),
+    record,
+  };
+  const sourceReceiptBody = {
+    schema: 'tenderboard.source_receipt.v1' as const,
     generatedAt: '2026-06-19T18:00:00.000Z',
     query: 'Sui agent grants',
-    sourceReceipt: {
-      schema: 'tenderboard.source_receipt.v1',
-      receiptId: 'source_receipt_1',
-      generatedAt: '2026-06-19T18:00:00.000Z',
-      query: 'Sui agent grants',
-      observations: [
-        {
-          observationId: 'obs_1',
-          source: 'github',
-          sourceLabel: 'GitHub',
-          endpoint: 'https://api.github.com/search/repositories',
-          query: 'Sui agent grants',
-          observedAt: '2026-06-19T18:00:00.000Z',
-          title: 'Sui grant opportunity',
-          url: 'https://example.com/sui-grant',
-          score: 100,
-          publishedAt: overrides.publishedAt ?? '2026-06-18T18:00:00.000Z',
-          recordHash: 'sha256:record',
-          record: { title: 'Sui grant opportunity' },
-        },
-      ],
-      warnings: [],
-      receiptHash: 'sha256:source',
-    },
+    observations: [observation],
+    warnings: [],
+  };
+  const sourceReceipt = {
+    ...sourceReceiptBody,
+    receiptId: 'source_receipt_1',
+    receiptHash: stableHash(sourceReceiptBody),
+  };
+  const body = {
+    schema: 'tenderboard.scout_evidence.v1' as const,
+    generatedAt: '2026-06-19T18:00:00.000Z',
+    query: 'Sui agent grants',
+    sourceReceipt,
     claims: [
       {
         claimId: 'claim_1',
@@ -368,7 +406,10 @@ function validWorkerEvidence(overrides: { publishedAt?: string } = {}): ScoutEvi
         statement: 'Sui grant opportunity is supported by source observation obs_1.',
       },
     ],
-    evidenceHash: 'sha256:worker',
+  };
+  return {
+    ...body,
+    evidenceHash: stableHash(body),
   };
 }
 

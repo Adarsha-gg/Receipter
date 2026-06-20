@@ -14,13 +14,14 @@ import { RunEventBus, formatSseEvent } from '../live/eventBus.js';
 import { makeEvent, makeRunId, RunStore } from '../live/runStore.js';
 import { buildWorkerReputationCard, markReputationSignalAnchored } from '../live/reputation.js';
 import { sanitizeTaskForWorker } from '../live/sanitizeTask.js';
-import { buildWorkerDelivery, makeSuiDevDigest, makeSuiDevObjectId } from '../live/suiRuntime.js';
+import { buildDemoWorkerDelivery, makeSuiDevDigest, makeSuiDevObjectId, validateExternalWorkerDelivery } from '../live/suiRuntime.js';
 import { buildTrustProof, finalizeVerificationManifest } from '../live/trustProof.js';
 import { verifyMemoryRecord, verifyPassport } from '../live/memoryVerifier.js';
 import { createMemoryStore, type MemoryStore } from '../live/memoryStore.js';
 import { buildX402SuiPaymentChallenge, buildX402SuiPaymentResponse } from '../live/x402.js';
 import { parseX402PaymentHeader, parseX402PaymentPayload, verifySuiX402Payment } from '../sui/facilitator.js';
 import { executeSuiAnchorReceipt } from '../sui/anchorExecutor.js';
+import { executeSuiX402Payment } from '../sui/paymentExecutor.js';
 import {
   bindAnchorDigest,
   bindPaymentDigest,
@@ -30,10 +31,12 @@ import {
 } from '../sui/paymentPlan.js';
 import type {
   CreateRunRequest,
+  ExternalWorkerDeliveryPayload,
   LiveRunReceipt,
   ScoutEvidence,
   SelectedBidReference,
   TenderBoardConfig,
+  WorkerDeliverySubmission,
   WorkerBid,
   X402SuiPaymentPayload,
 } from '../live/types.js';
@@ -90,7 +93,7 @@ async function route(
     return;
   }
 
-  if (method === 'GET' && (url.pathname === '/app.js' || url.pathname === '/styles.css')) {
+  if (method === 'GET' && (url.pathname === '/app.js' || url.pathname === '/styles.css' || url.pathname === '/support.js')) {
     await sendStatic(res, url.pathname.slice(1));
     return;
   }
@@ -297,8 +300,8 @@ async function route(
 
   const workerDeliveryMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/worker-delivery$/);
   if (method === 'POST' && workerDeliveryMatch) {
-    const body = await readJson<{ deliveryText?: string; workerEvidence?: ScoutEvidence }>(req);
-    const receipt = await submitWorkerDelivery(workerDeliveryMatch[1]!, body, store, bus, scoutFetch);
+    const body = await readJson<WorkerDeliverySubmission>(req);
+    const receipt = await submitWorkerDelivery(workerDeliveryMatch[1]!, body, config, store, bus, scoutFetch);
     sendJson(res, 200, receipt);
     return;
   }
@@ -517,11 +520,29 @@ async function approvePayment(
   store: RunStore,
   bus: RunEventBus,
 ): Promise<LiveRunReceipt> {
-  const suiPaymentDigest = config.mode === 'sui-dev' ? makeSuiDevDigest('payment', runId) : body.suiPaymentDigest?.trim();
+  const receipt = await store.require(runId);
+  let automaticPaymentResult: Awaited<ReturnType<typeof executeSuiX402Payment>> | undefined;
+  const providedPaymentDigest = body.suiPaymentDigest?.trim();
+  const suiPaymentDigest =
+    config.mode === 'sui-dev'
+      ? makeSuiDevDigest('payment', runId)
+      : providedPaymentDigest ?? (config.suiCliPath ? ((automaticPaymentResult = await executeAutomaticSuiPayment(receipt, config)).digest) : undefined);
   if (!suiPaymentDigest) {
-    throw httpError(400, 'Sui mode requires suiPaymentDigest from the payment approval transaction.');
+    throw httpError(400, 'Sui mode requires suiPaymentDigest from the payment approval transaction or SUI_CLI_PATH for automatic payment.');
   }
-  return recordPaymentApproval(runId, suiPaymentDigest, config, store, bus);
+  return recordPaymentApproval(runId, suiPaymentDigest, config, store, bus, automaticPaymentResult
+    ? {
+        appEventType: 'x402_payment_executed',
+        appMessage: 'Sui-native x402 payment was executed from the configured local wallet.',
+        suiEventType: 'sui_x402_payment_settled',
+        suiMessage: 'Sui-native x402 payment transaction executed and bound to the receipt plan.',
+        extraData: {
+          paymentPayload: automaticPaymentResult.payload,
+          commandArgs: automaticPaymentResult.args,
+          automatic: true,
+        },
+      }
+    : {});
 }
 
 async function facilitateX402Payment(
@@ -636,7 +657,8 @@ async function recordPaymentApproval(
 
 async function submitWorkerDelivery(
   runId: string,
-  body: { deliveryText?: string; workerEvidence?: ScoutEvidence },
+  body: WorkerDeliverySubmission,
+  config: TenderBoardConfig,
   store: RunStore,
   bus: RunEventBus,
   scoutFetch: typeof fetch | undefined,
@@ -650,11 +672,7 @@ async function submitWorkerDelivery(
   }
 
   const now = new Date().toISOString();
-  const delivery = body.deliveryText?.trim()
-    ? { deliveryText: body.deliveryText.trim(), workerEvidence: body.workerEvidence }
-    : scoutFetch
-      ? await buildWorkerDelivery(receipt, { fetchImpl: scoutFetch })
-      : await buildWorkerDelivery(receipt);
+  const delivery = await resolveWorkerDeliverySubmission(receipt, body, config, scoutFetch);
 
   await store.update(runId, {
     status: 'delivered',
@@ -674,6 +692,9 @@ async function submitWorkerDelivery(
         workerAgentId: receipt.workerAgentId,
         handoffId: receipt.agentHandoff?.handoffId,
         sourceEvidenceHash: delivery.workerEvidence?.evidenceHash,
+        deliveryPayloadHash: delivery.payloadHash,
+        identityProofType: delivery.identityProof?.proofType,
+        demoWorker: delivery.demoWorker,
       },
     }),
     makeEvent({ at: now, source: 'walrus', type: 'walrus_upload_pending', message: 'Full receipt and evidence should be uploaded to Walrus before Sui anchoring.' }),
@@ -701,6 +722,54 @@ async function submitWorkerDelivery(
   });
 
   return store.require(runId);
+}
+
+async function resolveWorkerDeliverySubmission(
+  receipt: LiveRunReceipt,
+  body: WorkerDeliverySubmission,
+  config: TenderBoardConfig,
+  scoutFetch: typeof fetch | undefined,
+): Promise<{
+  deliveryText: string;
+  workerEvidence: ScoutEvidence;
+  payloadHash: string | undefined;
+  identityProof: ExternalWorkerDeliveryPayload['identityProof'] | undefined;
+  demoWorker: boolean;
+}> {
+  if (isDemoWorkerDeliveryRequest(body)) {
+    if (config.mode !== 'sui-dev') {
+      throw httpError(400, 'Built-in Opportunity Scout delivery is only available as an explicit sui-dev demo fallback.');
+    }
+    const delivery = scoutFetch ? await buildDemoWorkerDelivery(receipt, { fetchImpl: scoutFetch }) : await buildDemoWorkerDelivery(receipt);
+    return {
+      ...delivery,
+      payloadHash: undefined,
+      identityProof: undefined,
+      demoWorker: true,
+    };
+  }
+
+  if (!isExternalWorkerDeliveryPayload(body)) {
+    throw httpError(400, 'Worker delivery requires walrusproof.external_worker_delivery.v1 payload or explicit sui-dev useDemoWorker fallback.');
+  }
+
+  const validation = validateExternalWorkerDelivery(receipt, body);
+  if (!validation.ok || !validation.delivery) {
+    throw httpError(400, `Invalid worker delivery: ${validation.errors.join(' ')}`);
+  }
+
+  return {
+    ...validation.delivery,
+    demoWorker: false,
+  };
+}
+
+function isDemoWorkerDeliveryRequest(body: unknown): body is Extract<WorkerDeliverySubmission, { useDemoWorker: true }> {
+  return isRecord(body) && body.useDemoWorker === true;
+}
+
+function isExternalWorkerDeliveryPayload(body: unknown): body is ExternalWorkerDeliveryPayload {
+  return isRecord(body) && body.objectType === 'walrusproof.external_worker_delivery.v1';
 }
 
 async function storeEvidence(
@@ -1112,11 +1181,23 @@ function sameAddress(left: string | undefined, right: string): boolean {
   return typeof left === 'string' && left.toLowerCase() === right.toLowerCase();
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 async function executeAutomaticSuiAnchor(receipt: LiveRunReceipt, config: TenderBoardConfig): Promise<Awaited<ReturnType<typeof executeSuiAnchorReceipt>>> {
   try {
     return await executeSuiAnchorReceipt(receipt, config);
   } catch (error) {
     throw httpError(502, `Automatic Sui anchoring failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+async function executeAutomaticSuiPayment(receipt: LiveRunReceipt, config: TenderBoardConfig): Promise<Awaited<ReturnType<typeof executeSuiX402Payment>>> {
+  try {
+    return await executeSuiX402Payment(receipt, config);
+  } catch (error) {
+    throw httpError(502, `Automatic Sui payment failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

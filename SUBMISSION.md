@@ -48,7 +48,8 @@ This is why Walrus matters: the memory is persistent, portable, content-addresse
 Sui is used for finality and economic security:
 
 - Sui-denominated work/payment intent
-- Sui package v4: `0x168c0db7d093e00b54562480783480501eee5387f0d71b01f73b12758b2608bc`
+- Sui package v5: `0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651`
+- AgentPassport object: `0x8a136d56df3a6d616498524f537074133d1cb63d24ac556f3a6aa81cd6fbb06e`
 - receipt registry: `0x62b35a579149dcf50127e68f4ad00107e72df975ed57993ab5d825e0400fa1bb`
 - `tenderboard::receipts::anchor_receipt` emits `ReceiptAnchored`
 - `reputation_stake` lets worker reputation be economically backed and slashed through an oracle-issued challenge decision
@@ -64,7 +65,7 @@ Move package and schema names retain some internal `tenderboard` and `suiproof` 
 - safe worker packet preview
 - private-note exclusion and secret-pattern filtering
 - worker bid board and award flow
-- SUI-denominated payment cap and x402-style payment gate
+- SUI-denominated payment cap and x402-style paid HTTP access on Sui, verified by a local Sui facilitator/verifier
 - source-claim verification and settlement gate
 - Walrus evidence storage with readback verification
 - owner-bound Agent Passports

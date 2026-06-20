@@ -989,8 +989,10 @@ class Component extends DCLogic {
   cBack(){ this.setState(s=>({create:{...s.create,step:Math.max(0,s.create.step-1)}})); }
   async cEnsureRun(){
     const c=this.state.create;
-    if(c.apiRun && c.apiRun.paymentIntentPlan) return c.apiRun;
-    const created = c.apiRun && c.apiRun.runId
+    const selectedOnRun=c.apiRun&&c.apiRun.workerBidBoard&&c.apiRun.workerBidBoard.selectedBidId;
+    const needsSelectedBidRun=c.apiRun&&c.apiRun.paymentIntentPlan&&selectedOnRun&&c.selectedBid&&selectedOnRun!==c.selectedBid&&!c.paid&&c.apiRun.status==='awaiting_payment_approval';
+    if(c.apiRun && c.apiRun.paymentIntentPlan && !needsSelectedBidRun) return c.apiRun;
+    const created = c.apiRun && c.apiRun.runId && !needsSelectedBidRun
       ? c.apiRun
       : await this.post('/api/runs', {
           title:c.title,
@@ -1004,6 +1006,7 @@ class Component extends DCLogic {
         });
     const run = await this.api('/api/runs/'+encodeURIComponent(created.runId));
     this.setState(s=>({create:{...s.create,apiRun:run,runId:run.runId,selectedBid:run.workerBidBoard && run.workerBidBoard.selectedBidId || s.create.selectedBid}}));
+    if(needsSelectedBidRun) this.toast('Worker route rebound to selected agent');
     return run;
   }
   async cApprove(){
@@ -1102,7 +1105,9 @@ class Component extends DCLogic {
       await this.loadLiveData();
       this.setState({overlay:null, view:'profile', workerId:c.apiRun.workerAgentId, recordId:c.apiRun.runId, recordOpen:true, rawOpen:false, verifyChecks:[], verifyDone:false});
       window.scrollTo({top:0});
-      this.toast('Passport updated · new anchored record');
+      const anchored=!!(c.apiRun.suiAnchorDigest || c.apiRun.status==='anchored');
+      const review=(c.apiRun.clearingDecision&&c.apiRun.clearingDecision.verdict==='requires_review') || c.apiRun.status==='delivered';
+      this.toast(anchored?'Passport updated · new anchored record':(review?'Record stored · manual review required':'Record saved'));
       return;
     }
     const newRec={ runId:c.runId, title:c.title, status:'anchored', support:0.96, strength:'sui_anchored', amount:c.amount, when:'just now',
@@ -1196,7 +1201,7 @@ class Component extends DCLogic {
     const settlementOk=settlementVerdict==='ready_to_anchor'||settlementVerdict==='anchored'||settlementVerdict==='admissible';
     const canAnchor=c.stored&&settlementVerdict==='ready_to_anchor';
     const busyAction=c.busyAction;
-    const continueDisabled=!!busyAction||(c.step===3&&!c.paid)||(c.step===5&&!c.anchored);
+    const continueDisabled=!!busyAction||(c.step===3&&!c.paid)||(c.step===5&&!c.anchored&&!c.stored);
     let continueLabel='Continue';
     if(c.step===0) continueLabel='Generate safe packet →';
     if(c.step===1) continueLabel='Compare worker bids →';

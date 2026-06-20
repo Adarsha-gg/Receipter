@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./support.js"></script>
 <script type="module" src="./wallet.js"></script>
+<script src="./delivery.js"></script>
 </head>
 <body>
 <x-dc>
@@ -1018,7 +1019,10 @@ class Component extends DCLogic {
     if(c.delivered && c.apiRun && c.apiRun.deliveryText) return c.apiRun;
     const run = await this.cEnsureRun();
     if(!c.paid) return run;
-    const delivered = await this.post('/api/runs/'+encodeURIComponent(run.runId)+'/worker-delivery', {});
+    const body = window.ReceipterDelivery
+      ? await window.ReceipterDelivery.buildExternalWorkerDelivery(run)
+      : {};
+    const delivered = await this.post('/api/runs/'+encodeURIComponent(run.runId)+'/worker-delivery', body);
     this.setState(s=>({create:{...s.create,apiRun:delivered,delivered:true}}));
     return delivered;
   }

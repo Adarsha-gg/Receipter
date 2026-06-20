@@ -108,7 +108,9 @@ el('submitDeliveryBtn').addEventListener('click', async () => {
   if (!currentRunId) return;
   el('submitDeliveryBtn').disabled = true;
   try {
-    await request(`/api/runs/${currentRunId}/worker-delivery`, { method: 'POST', body: {} });
+    const receipt = await request(`/api/runs/${currentRunId}`);
+    const body = window.ReceipterDelivery ? await window.ReceipterDelivery.buildExternalWorkerDelivery(receipt) : {};
+    await request(`/api/runs/${currentRunId}/worker-delivery`, { method: 'POST', body });
     await refreshReceipt();
     await loadMemoryDirectory();
     await loadRunHistory();

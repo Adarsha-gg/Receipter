@@ -130,52 +130,52 @@ async function route(
   }
 
   if (method === 'GET' && url.pathname === '/.well-known/agent-card.json') {
-    sendJson(res, 200, buildAgentMarketCard(config.workerAgentId, config, await loadAllReceipts(store)));
+    sendJson(res, 200, buildAgentMarketCard(config.workerAgentId, config, await loadVisibleReceipts(store, config)));
     return;
   }
 
   if (method === 'GET' && url.pathname === '/api/runs') {
-    sendJson(res, 200, await listRunsWithReputation(store));
+    sendJson(res, 200, await listRunsWithReputation(store, config));
     return;
   }
 
   if (method === 'GET' && url.pathname === '/api/walrus/memory') {
-    sendJson(res, 200, buildWalrusMemoryIndex(await loadAllReceipts(store)));
+    sendJson(res, 200, buildWalrusMemoryIndex(await loadVisibleReceipts(store, config)));
     return;
   }
 
   const walrusMemoryPassportMatch = url.pathname.match(/^\/api\/walrus\/memory\/([^/]+)$/);
   if (method === 'GET' && walrusMemoryPassportMatch) {
     const workerAgentId = decodeURIComponent(walrusMemoryPassportMatch[1]!);
-    sendJson(res, 200, buildAgentMemoryPassport(workerAgentId, await loadAllReceipts(store)));
+    sendJson(res, 200, buildAgentMemoryPassport(workerAgentId, await loadVisibleReceipts(store, config)));
     return;
   }
 
   const agentMemoryMatch = url.pathname.match(/^\/api\/agents\/([^/]+)\/memory$/);
   if (method === 'GET' && agentMemoryMatch) {
     const workerAgentId = decodeURIComponent(agentMemoryMatch[1]!);
-    sendJson(res, 200, buildAgentMemoryPassport(workerAgentId, await loadAllReceipts(store)));
+    sendJson(res, 200, buildAgentMemoryPassport(workerAgentId, await loadVisibleReceipts(store, config)));
     return;
   }
 
   const agentCardMatch = url.pathname.match(/^\/api\/agents\/([^/]+)\/card$/);
   if (method === 'GET' && agentCardMatch) {
     const workerAgentId = decodeURIComponent(agentCardMatch[1]!);
-    sendJson(res, 200, buildAgentMarketCard(workerAgentId, config, await loadAllReceipts(store)));
+    sendJson(res, 200, buildAgentMarketCard(workerAgentId, config, await loadVisibleReceipts(store, config)));
     return;
   }
 
   const oraclePassportMatch = url.pathname.match(/^\/api\/oracle\/passports\/([^/]+)\/verify$/);
   if (method === 'GET' && oraclePassportMatch) {
     const workerAgentId = decodeURIComponent(oraclePassportMatch[1]!);
-    sendJson(res, 200, await verifyPassport(workerAgentId, await loadAllReceipts(store)));
+    sendJson(res, 200, await verifyPassport(workerAgentId, await loadVisibleReceipts(store, config)));
     return;
   }
 
   const oracleOwnerPassportMatch = url.pathname.match(/^\/api\/oracle\/owners\/([^/]+)\/passport\/verify$/);
   if (method === 'GET' && oracleOwnerPassportMatch) {
     const ownerAddress = decodeURIComponent(oracleOwnerPassportMatch[1]!);
-    const receipts = await loadAllReceipts(store);
+    const receipts = await loadVisibleReceipts(store, config);
     const passport = buildWalrusMemoryIndex(receipts).passports.find((candidate) => sameAddress(candidate.ownerAddress, ownerAddress));
     if (!passport) {
       sendJson(res, 404, { error: 'No worker passport is bound to that Sui owner address.' });
@@ -448,7 +448,7 @@ async function createRun(
   const workerBidBoard = buildWorkerBidBoard(body, config);
   const selectedBid = workerBidBoard.bids.find((bid) => bid.bidId === workerBidBoard.selectedBidId);
   const workerAgentId = selectedBid?.workerAgentId ?? config.workerAgentId;
-  const historicalReceipts = await loadAllReceipts(store);
+  const historicalReceipts = await loadVisibleReceipts(store, config);
   const workerMemoryPassport = buildAgentMemoryPassport(workerAgentId, historicalReceipts, now);
   const trustProof = buildTrustProof({
     request: body,
@@ -686,7 +686,7 @@ async function buildPassportUpdateSigningResponse(
   }
 
   const now = new Date().toISOString();
-  const receipts = await loadAllReceipts(store);
+  const receipts = await loadVisibleReceipts(store, config);
   const memoryIndex = buildWalrusMemoryIndex(receipts, now);
   const memoryIndexWalrus = await memoryStore.putMemoryIndex(memoryIndex);
   const passport = buildAgentMemoryPassport(receipt.workerAgentId, receipts, now);
@@ -1221,7 +1221,7 @@ async function anchorReceipt(
     ...latestWithClearing,
     verificationManifest: anchoredVerificationManifest,
   };
-  const receiptsForReputation = (await loadAllReceipts(store)).map((storedReceipt) =>
+  const receiptsForReputation = (await loadVisibleReceipts(store, config)).map((storedReceipt) =>
     storedReceipt.runId === runId ? anchoredReceiptForReputation : storedReceipt,
   );
   const reputationSnapshot = buildWorkerReputationCard(
@@ -1268,19 +1268,44 @@ async function anchorReceipt(
   return store.require(runId);
 }
 
-async function listRunsWithReputation(store: RunStore): Promise<Awaited<ReturnType<RunStore['list']>>> {
+async function listRunsWithReputation(store: RunStore, config: ReceipterConfig): Promise<Awaited<ReturnType<RunStore['list']>>> {
   const summaries = await store.list();
   const receipts = await Promise.all(summaries.map((summary) => store.get(summary.runId)));
-  return summaries.map((summary, index) => ({
-    ...summary,
-    reputationSnapshot: receipts[index]?.reputationSnapshot,
-  }));
+  return summaries.flatMap((summary, index) => {
+    const receipt = receipts[index];
+    if (!receipt || !isReceiptVisibleForConfig(receipt, config)) return [];
+    return [
+      {
+        ...summary,
+        reputationSnapshot: receipt.reputationSnapshot,
+      },
+    ];
+  });
 }
 
 async function loadAllReceipts(store: RunStore): Promise<LiveRunReceipt[]> {
   const summaries = await store.list();
   const receipts = await Promise.all(summaries.map((summary) => store.get(summary.runId)));
   return receipts.filter((receipt): receipt is LiveRunReceipt => Boolean(receipt));
+}
+
+async function loadVisibleReceipts(store: RunStore, config: ReceipterConfig): Promise<LiveRunReceipt[]> {
+  const receipts = await loadAllReceipts(store);
+  return receipts.filter((receipt) => isReceiptVisibleForConfig(receipt, config));
+}
+
+function isReceiptVisibleForConfig(receipt: LiveRunReceipt, config: ReceipterConfig): boolean {
+  if (config.mode !== 'sui') return true;
+  if (receipt.mode !== 'sui') return false;
+  return !hasDevWalrusPointer(receipt);
+}
+
+function hasDevWalrusPointer(receipt: LiveRunReceipt): boolean {
+  return isDevWalrusPointer(receipt.walrusBlobId) || isDevWalrusPointer(receipt.walrusReadUrl);
+}
+
+function isDevWalrusPointer(value: string | undefined): boolean {
+  return Boolean(value?.startsWith('walrus-dev://') || value?.startsWith('walrus_dev_'));
 }
 
 function toSelectedBidReference(bid: WorkerBid): SelectedBidReference {

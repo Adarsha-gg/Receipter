@@ -1265,6 +1265,73 @@ describe('Receipter product server', () => {
     }
   });
 
+  it('hides dev Walrus receipts from live Sui memory and reputation surfaces', async () => {
+    const seededStore = new RunStore(tempDir);
+    await seededStore.create(
+      buildMemoryReceipt({
+        runId: 'run_old_dev',
+        mode: 'sui-dev',
+        status: 'delivered',
+        createdAt: '2026-06-20T10:00:00.000Z',
+        updatedAt: '2026-06-20T10:00:00.000Z',
+        walrusBlobId: 'walrus_dev_blob_old',
+        walrusReadUrl: 'walrus-dev://old',
+        suiAnchorDigest: undefined,
+      }),
+    );
+    await seededStore.create(
+      buildMemoryReceipt({
+        runId: 'run_live_sui',
+        mode: 'sui',
+        status: 'anchored',
+        createdAt: '2026-06-20T11:00:00.000Z',
+        updatedAt: '2026-06-20T11:00:00.000Z',
+        walrusBlobId: 'u2_live_walrus_blob',
+        walrusReadUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/u2_live_walrus_blob',
+        suiAnchorDigest: '0xliveanchor',
+      }),
+    );
+
+    const { baseUrl, close } = await startTestServer({
+      RECEIPTER_MODE: 'sui',
+      RECEIPTER_RECEIPTS_DIR: tempDir,
+      SUI_NETWORK: 'testnet',
+      SUI_OPERATOR_ADDRESS: '0xoperator',
+      SUI_PACKAGE_ID: '0xpackage',
+      SUI_RECEIPT_REGISTRY_ID: '0xregistry',
+      WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
+      WALRUS_AGGREGATOR_URL: 'https://aggregator.walrus.testnet.example',
+      SUI_PRIVATE_KEY: 'suiprivkey',
+    });
+
+    try {
+      const memoryIndex = await (await fetch(`${baseUrl}/api/walrus/memory`)).json();
+      expect(memoryIndex).toMatchObject({
+        totalMemoryRecords: 1,
+        walrusBackedRecords: 1,
+        suiAnchoredRecords: 1,
+        latestWalrusBlobId: 'u2_live_walrus_blob',
+      });
+      expect(JSON.stringify(memoryIndex)).not.toContain('walrus_dev_blob_old');
+      expect(JSON.stringify(memoryIndex)).not.toContain('run_old_dev');
+
+      const passport = await (await fetch(`${baseUrl}/api/walrus/memory/sui_opportunity_scout`)).json();
+      expect(passport.records.map((record: { runId: string }) => record.runId)).toEqual(['run_live_sui']);
+
+      const runs = await (await fetch(`${baseUrl}/api/runs`)).json();
+      expect(runs.map((run: { runId: string }) => run.runId)).toEqual(['run_live_sui']);
+
+      const directDevReceipt = await (await fetch(`${baseUrl}/api/runs/run_old_dev`)).json();
+      expect(directDevReceipt).toMatchObject({
+        runId: 'run_old_dev',
+        mode: 'sui-dev',
+        walrusBlobId: 'walrus_dev_blob_old',
+      });
+    } finally {
+      await close();
+    }
+  });
+
   it('rejects worker delivery without the external source-evidence contract', async () => {
     const { baseUrl, close } = await startTestServer({
       RECEIPTER_MODE: 'sui-dev',
@@ -1558,6 +1625,87 @@ function buildSourceEvidence(runId: string): ScoutEvidence {
     ...body,
     evidenceHash: stableHash(body),
   };
+}
+
+function buildMemoryReceipt(overrides: Partial<LiveRunReceipt> = {}): LiveRunReceipt {
+  const runId = overrides.runId ?? 'run_live_sui';
+  const workerAgentId = overrides.workerAgentId ?? 'sui_opportunity_scout';
+  const createdAt = overrides.createdAt ?? '2026-06-20T11:00:00.000Z';
+  const updatedAt = overrides.updatedAt ?? createdAt;
+  const workerEvidence = buildSourceEvidence(runId);
+  const base: LiveRunReceipt = {
+    runId,
+    mode: 'sui',
+    status: 'anchored',
+    createdAt,
+    updatedAt,
+    taskTitle: 'Find source-backed Sui opportunity',
+    sanitizedTask: 'Find source-backed Sui opportunity',
+    maxPayment: { amount: '0.035', currency: 'SUI' },
+    workerAgent: {
+      objectType: 'receipter.market_agent.v1',
+      agentId: workerAgentId,
+      role: 'worker',
+      ownerAddress: '0xworker_owner',
+      displayName: 'Sui Opportunity Scout',
+      responsibilities: ['Return source-backed public research.'],
+      controls: ['Public sources only.'],
+      budgetSui: undefined,
+      priceSui: '0.035',
+      requestedDataLabel: 'public',
+    },
+    trustDecision: {
+      workerAgentId,
+      score: 92,
+      tier: 'AA',
+      verdict: 'allow',
+      pricedMultiplier: 1,
+      reasons: [],
+      controls: [],
+    },
+    verificationManifest: {
+      specHash: 'sha256:spec',
+      evidenceHash: workerEvidence.evidenceHash,
+      checkerPack: 'research',
+      acceptanceCriteria: ['Use public sources.'],
+      requiredChecks: [],
+      claimResults: [
+        {
+          objectType: 'receipter.claim_verification.v1',
+          claimId: 'claim_signed_anchor',
+          sourceObservationId: 'obs_signed_anchor',
+          verdict: 'supported',
+          supportScore: 100,
+          reasons: [],
+          sourceUrl: 'https://example.com/Receipter-anchor',
+          sourceTitle: 'Receipter signed receipt payloads',
+          observedAt: '2026-06-20T12:00:00.000Z',
+          publishedAt: '2026-06-20T11:00:00.000Z',
+        },
+      ],
+      settlementRule: 'anchor when admissible',
+      reputationWriteback: 'append to passport',
+    },
+    workerAgentId,
+    workOrderId: `sui_work_order_${runId}`,
+    suiNetwork: 'testnet',
+    suiPackageId: '0xpackage',
+    suiReceiptRegistryId: '0xregistry',
+    suiWorkOrderObjectId: `0xwork_${runId}`,
+    suiEscrowObjectId: undefined,
+    suiPaymentDigest: `0xpay_${runId}`,
+    suiAnchorDigest: '0xliveanchor',
+    walrusBlobId: 'u2_live_walrus_blob',
+    walrusBlobObjectId: undefined,
+    walrusCertifiedEpoch: undefined,
+    walrusEndEpoch: undefined,
+    walrusReadUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/u2_live_walrus_blob',
+    deliveryText: 'Delivered with source-backed evidence.',
+    workerEvidence,
+    events: [],
+    error: undefined,
+  };
+  return { ...base, ...overrides };
 }
 
 async function postJson(url: string, body: unknown): Promise<any> {

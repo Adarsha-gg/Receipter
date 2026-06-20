@@ -713,11 +713,29 @@ class Component extends DCLogic {
     const text = await res.text();
     let body = null;
     try { body = text ? JSON.parse(text) : null; } catch(e) { body = text; }
-    if(!res.ok) throw new Error((body && body.error) || ('HTTP '+res.status));
+    if(!res.ok){
+      const error = new Error((body && body.error) || ('HTTP '+res.status));
+      error.status = res.status;
+      error.body = body;
+      throw error;
+    }
     return body;
   }
   post(path, body){
     return this.api(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body || {})});
+  }
+  async postWithRetry(path, body, attempts){
+    let lastError;
+    for(let i=0;i<(attempts || 1);i++){
+      try{ return await this.post(path, body); }
+      catch(e){
+        lastError = e;
+        const retryable = e && (e.status === 402 || e.status === 502 || e.status === 503);
+        if(!retryable || i === (attempts || 1)-1) throw e;
+        await new Promise(resolve => setTimeout(resolve, 900 + i * 700));
+      }
+    }
+    throw lastError;
   }
   walletChain(network){ return 'sui:' + (network || 'testnet'); }
   async refreshWalletStatus(){
@@ -745,11 +763,11 @@ class Component extends DCLogic {
     const execution = await window.ReceipterWallet.signAndExecute(signing.walletTransactionRequest);
     if(signing.paymentPayloadTemplate){
       const payload = {...signing.paymentPayloadTemplate, transaction:execution.digest};
-      return {execution, verified:await this.post(signing.verifyEndpoint, payload)};
+      return {execution, verified:await this.postWithRetry(signing.verifyEndpoint, payload, 6)};
     }
     if(signing.anchorPayloadTemplate){
       const anchorPayload = {...signing.anchorPayloadTemplate, transaction:execution.digest};
-      return {execution, verified:await this.post(signing.verifyEndpoint, {anchorPayload})};
+      return {execution, verified:await this.postWithRetry(signing.verifyEndpoint, {anchorPayload}, 6)};
     }
     throw new Error('Unsupported Receipter signing request.');
   }
@@ -952,17 +970,20 @@ class Component extends DCLogic {
   cBack(){ this.setState(s=>({create:{...s.create,step:Math.max(0,s.create.step-1)}})); }
   async cEnsureRun(){
     const c=this.state.create;
-    if(c.apiRun) return c.apiRun;
-    const run = await this.post('/api/runs', {
-      title:c.title,
-      instructions:c.instructions,
-      privateNotes:c.privateNotes,
-      acceptanceCriteria:c.criteria.split('\n').map(x=>x.trim()).filter(Boolean),
-      checkerPack:c.checkerPack,
-      requestedDataLabel:c.dataLabel,
-      maxPayment:{amount:c.amount,currency:'SUI'},
-      preferredBidId:c.selectedBid,
-    });
+    if(c.apiRun && c.apiRun.paymentIntentPlan) return c.apiRun;
+    const created = c.apiRun && c.apiRun.runId
+      ? c.apiRun
+      : await this.post('/api/runs', {
+          title:c.title,
+          instructions:c.instructions,
+          privateNotes:c.privateNotes,
+          acceptanceCriteria:c.criteria.split('\n').map(x=>x.trim()).filter(Boolean),
+          checkerPack:c.checkerPack,
+          requestedDataLabel:c.dataLabel,
+          maxPayment:{amount:c.amount,currency:'SUI'},
+          preferredBidId:c.selectedBid,
+        });
+    const run = await this.api('/api/runs/'+encodeURIComponent(created.runId));
     this.setState(s=>({create:{...s.create,apiRun:run,runId:run.runId,selectedBid:run.workerBidBoard && run.workerBidBoard.selectedBidId || s.create.selectedBid}}));
     return run;
   }
@@ -986,7 +1007,7 @@ class Component extends DCLogic {
         const signing = await this.api('/api/runs/'+encodeURIComponent(run.runId)+'/payment-transaction');
         try{ await navigator.clipboard.writeText(JSON.stringify(signing,null,2)); }catch(copyError){}
         this.setState(s=>({create:{...s.create,paymentSigningRequest:signing}}));
-        this.toast('Wallet payment transaction request ready');
+        this.toast(e.message || 'Wallet payment verification failed');
       } catch(nextError){
         this.toast(nextError.message || e.message || String(nextError || e));
       }
@@ -1074,6 +1095,13 @@ class Component extends DCLogic {
     const scoutOwner=this.getWorker('sui_opportunity_scout').owner;
     const bids=this.cBids();
     const sel=bids.find(b=>b.bidId===c.selectedBid)||bids[0];
+    const paymentPlan=(c.apiRun&&c.apiRun.paymentIntentPlan)||(c.apiRun&&c.apiRun.receiptPlan);
+    const paymentAmount=paymentPlan&&paymentPlan.amountSui || sel.price || c.amount;
+    const paymentMist=paymentPlan&&paymentPlan.amountMist || String(Math.round((parseFloat(paymentAmount)||0)*1e9));
+    const paymentReceiver=paymentPlan&&paymentPlan.receiverAddress || scoutOwner;
+    const paymentNonce=paymentPlan&&paymentPlan.paymentNonce || ('pn_'+c.runId.slice(-6)+'a91');
+    const settlementNonce=paymentPlan&&paymentPlan.settlementNonce || ('sn_'+c.runId.slice(-6)+'c47');
+    const paymentNetwork='sui:'+(paymentPlan&&paymentPlan.expectedNetwork || 'testnet');
     const continueDisabled=(c.step===3&&!c.paid)||(c.step===5&&!c.anchored);
     let continueLabel='Continue';
     if(c.step===0) continueLabel='Generate safe packet →';
@@ -1102,10 +1130,10 @@ class Component extends DCLogic {
           opacity:ok?'1':'.72', select:ok?(()=>this.cField('selectedBid',b.bidId)):(()=>{})}; }),
       cTrustScore:String(sel.trust), cTrustTier:sel.tier, cSelWorker:sel.worker,
       cPayRows:[
-        {label:'Amount (SUI)', val:c.amount},{label:'Amount (MIST)', val:mist},
-        {label:'Pay-to address', val:this.short(scoutOwner,12,8)},{label:'Worker id', val:sel.worker},
-        {label:'Run id', val:c.runId},{label:'Payment nonce', val:'pn_'+c.runId.slice(-6)+'a91'},
-        {label:'Settlement nonce', val:'sn_'+c.runId.slice(-6)+'c47'},{label:'Network', val:'sui:testnet'},
+        {label:'Selected bid (SUI)', val:paymentAmount},{label:'Amount (MIST)', val:paymentMist},
+        {label:'Pay-to address', val:this.short(paymentReceiver,12,8)},{label:'Worker id', val:sel.worker},
+        {label:'Run id', val:c.runId},{label:'Payment nonce', val:paymentNonce},
+        {label:'Settlement nonce', val:settlementNonce},{label:'Network', val:paymentNetwork},
         ...(c.paymentSigningRequest?[{label:'Wallet request', val:c.paymentSigningRequest.walletTransactionRequest.kind}]:[]),
       ],
       cPaid:c.paid, cNotPaid:!c.paid, cNotStored:!c.stored, cNotAnchored:!c.anchored, cPayDigest:c.payDigest?this.short(c.payDigest,14,8):'—', onApprove:()=>this.cApprove(),

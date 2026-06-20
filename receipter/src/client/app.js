@@ -717,8 +717,28 @@ async function request(url, options = {}) {
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   const json = await response.json();
-  if (!response.ok) throw new Error(json.error || `Request failed: ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(json.error || `Request failed: ${response.status}`);
+    error.status = response.status;
+    error.body = json;
+    throw error;
+  }
   return json;
+}
+
+async function postWithRetry(url, body, attempts = 1) {
+  let lastError;
+  for (let index = 0; index < attempts; index += 1) {
+    try {
+      return await request(url, { method: 'POST', body });
+    } catch (error) {
+      lastError = error;
+      const retryable = error.status === 402 || error.status === 502 || error.status === 503;
+      if (!retryable || index === attempts - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 900 + index * 700));
+    }
+  }
+  throw lastError;
 }
 
 async function awaitRefreshWalletStatus() {
@@ -737,11 +757,11 @@ async function executeWalletSigning(signing) {
   walletStatus = { connected: true, walletName: execution.walletName, address: execution.address, chain: execution.chain };
   if (signing.paymentPayloadTemplate) {
     const payload = { ...signing.paymentPayloadTemplate, transaction: execution.digest };
-    return { execution, verified: await request(signing.verifyEndpoint, { method: 'POST', body: payload }) };
+    return { execution, verified: await postWithRetry(signing.verifyEndpoint, payload, 6) };
   }
   if (signing.anchorPayloadTemplate) {
     const anchorPayload = { ...signing.anchorPayloadTemplate, transaction: execution.digest };
-    return { execution, verified: await request(signing.verifyEndpoint, { method: 'POST', body: { anchorPayload } }) };
+    return { execution, verified: await postWithRetry(signing.verifyEndpoint, { anchorPayload }, 6) };
   }
   throw new Error('Unsupported Receipter signing request.');
 }

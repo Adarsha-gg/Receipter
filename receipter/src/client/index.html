@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./support.js"></script>
+<script type="module" src="./wallet.js"></script>
 </head>
 <body>
 <x-dc>
@@ -51,6 +52,7 @@
 
       <div style="flex:1;"></div>
       <span onClick="{{ verifyHero }}" style="font-size:13.5px;color:#56657B;font-weight:500;cursor:pointer;" style-hover="color:#3E4A5C" class="wpHideSmall">How proof works</span>
+      <button onClick="{{ connectWallet }}" style="flex:none;background:#fff;color:#16243B;border:1px solid #DCE4F1;font-weight:600;font-size:13.5px;padding:9px 14px;border-radius:10px;transition:transform .15s" style-hover="transform:translateY(-1px)">{{ walletButtonLabel }}</button>
       <button onClick="{{ startCreate }}" style="flex:none;background:#0E1726;color:#fff;border:none;font-weight:600;font-size:13.5px;padding:9px 16px;border-radius:10px;transition:transform .15s" style-hover="transform:translateY(-1px)">Post a job</button>
     </div>
   </header>
@@ -540,6 +542,9 @@ class Component extends DCLogic {
     toast: null,
     dataMode: 'sample',
     apiError: null,
+    walletAddress: null,
+    walletName: null,
+    walletError: null,
   };
 
   PKG = '0x57efddeb8888ff788487deb2e21042fe6ead4ee10dadd8d8386ecad8df17e651';
@@ -696,7 +701,7 @@ class Component extends DCLogic {
     },
   ];
 
-  componentDidMount(){ this._verifyTimers=[]; this._slashTimers=[]; this.loadLiveData(); }
+  componentDidMount(){ this._verifyTimers=[]; this._slashTimers=[]; this.loadLiveData(); this.refreshWalletStatus(); }
 
   // ---- helpers ----
   isJudgingMode(){
@@ -713,6 +718,40 @@ class Component extends DCLogic {
   }
   post(path, body){
     return this.api(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body || {})});
+  }
+  walletChain(network){ return 'sui:' + (network || 'testnet'); }
+  async refreshWalletStatus(){
+    if(!window.ReceipterWallet) return;
+    try{
+      const status = await window.ReceipterWallet.status(this.walletChain('testnet'));
+      this.setState({walletAddress:status.address || null, walletName:status.walletName || null, walletError:null});
+    } catch(e){
+      this.setState({walletError:e.message || String(e)});
+    }
+  }
+  async connectWallet(){
+    if(!window.ReceipterWallet){ this.toast('Wallet adapter still loading'); return; }
+    try{
+      const status = await window.ReceipterWallet.connect({chain:this.walletChain('testnet')});
+      this.setState({walletAddress:status.address, walletName:status.walletName, walletError:null});
+      this.toast('Wallet connected');
+    } catch(e){
+      this.setState({walletError:e.message || String(e)});
+      this.toast(e.message || String(e));
+    }
+  }
+  async executeWalletSigning(signing){
+    if(!window.ReceipterWallet) throw new Error('Wallet adapter still loading.');
+    const execution = await window.ReceipterWallet.signAndExecute(signing.walletTransactionRequest);
+    if(signing.paymentPayloadTemplate){
+      const payload = {...signing.paymentPayloadTemplate, transaction:execution.digest};
+      return {execution, verified:await this.post(signing.verifyEndpoint, payload)};
+    }
+    if(signing.anchorPayloadTemplate){
+      const anchorPayload = {...signing.anchorPayloadTemplate, transaction:execution.digest};
+      return {execution, verified:await this.post(signing.verifyEndpoint, {anchorPayload})};
+    }
+    throw new Error('Unsupported Receipter signing request.');
   }
   async loadLiveData(){
     try{
@@ -930,8 +969,17 @@ class Component extends DCLogic {
   async cApprove(){
     try{
       const run = await this.cEnsureRun();
-      const paid = await this.post('/api/runs/'+encodeURIComponent(run.runId)+'/approve-payment', {});
+      let paid;
+      if(run.status === 'awaiting_payment_approval'){
+        const signing = await this.api('/api/runs/'+encodeURIComponent(run.runId)+'/payment-transaction');
+        const result = await this.executeWalletSigning(signing);
+        paid = result.verified.receipt || result.verified;
+        this.setState({walletAddress:result.execution.address, walletName:result.execution.walletName, walletError:null});
+      } else {
+        paid = await this.post('/api/runs/'+encodeURIComponent(run.runId)+'/approve-payment', {});
+      }
       this.setState(s=>({create:{...s.create,apiRun:paid,paid:true,payDigest:paid.suiPaymentDigest || paid.receiptPlan && paid.receiptPlan.paymentDigest}}));
+      this.toast('Sui payment verified');
     } catch(e){
       try{
         const run = await this.cEnsureRun();
@@ -964,8 +1012,12 @@ class Component extends DCLogic {
     try{
       const c=this.state.create;
       const run = c.apiRun || await this.cEnsureRun();
-      const anchored = await this.post('/api/runs/'+encodeURIComponent(run.runId)+'/anchor-receipt', {});
+      const signing = await this.api('/api/runs/'+encodeURIComponent(run.runId)+'/anchor-transaction');
+      const result = await this.executeWalletSigning(signing);
+      const anchored = result.verified.receipt || result.verified;
+      this.setState({walletAddress:result.execution.address, walletName:result.execution.walletName, walletError:null});
       this.setState(s=>({create:{...s.create,apiRun:anchored,anchored:true,anchor:anchored.suiAnchorDigest}}));
+      this.toast('Sui receipt anchored');
     } catch(e){
       try{
         const c=this.state.create;
@@ -1258,7 +1310,8 @@ class Component extends DCLogic {
 
     return {
       isMarket:v==='market', isProfile:v==='profile',
-      goMarket:()=>this.goMarket(), startCreate:()=>this.startCreate(), verifyHero:()=>this.verifyHero(),
+      goMarket:()=>this.goMarket(), startCreate:()=>this.startCreate(), verifyHero:()=>this.verifyHero(), connectWallet:()=>this.connectWallet(),
+      walletButtonLabel:this.state.walletAddress ? this.short(this.state.walletAddress,6,4) : 'Connect wallet',
       search:this.state.search, onSearch:(e)=>this.onSearch(e),
       modeDot:isLiveData?'#16A34A':(apiFailed?'#DC2626':'#C2740B'),
       modeGlow:isLiveData?'rgba(22,163,74,.16)':(apiFailed?'rgba(220,38,38,.13)':'rgba(194,116,11,.16)'),

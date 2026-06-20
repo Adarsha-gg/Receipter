@@ -118,7 +118,7 @@ async function route(
     return;
   }
 
-  if (method === 'GET' && (url.pathname === '/app.js' || url.pathname === '/styles.css' || url.pathname === '/support.js')) {
+  if (method === 'GET' && (url.pathname === '/app.js' || url.pathname === '/styles.css' || url.pathname === '/support.js' || url.pathname === '/wallet.js')) {
     await sendStatic(res, url.pathname.slice(1));
     return;
   }

@@ -23,6 +23,29 @@ afterEach(async () => {
 });
 
 describe('Receipter product server', () => {
+  it('serves the browser wallet adapter for Sui Wallet Standard signing', async () => {
+    const { baseUrl, close } = await startTestServer({
+      RECEIPTER_MODE: 'sui-dev',
+      RECEIPTER_RECEIPTS_DIR: tempDir,
+    });
+
+    try {
+      const home = await fetch(`${baseUrl}/`);
+      const wallet = await fetch(`${baseUrl}/wallet.js`);
+      const homeText = await home.text();
+      const walletText = await wallet.text();
+
+      expect(home.status).toBe(200);
+      expect(homeText).toContain('./wallet.js');
+      expect(homeText).toContain('Connect wallet');
+      expect(wallet.status).toBe(200);
+      expect(walletText).toContain('ReceipterWallet');
+      expect(walletText).toContain('sui:signAndExecuteTransaction');
+    } finally {
+      await close();
+    }
+  });
+
   it('serves Sui readiness without exposing private env values', async () => {
     const { baseUrl, close } = await startTestServer({
       RECEIPTER_MODE: 'sui',

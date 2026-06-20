@@ -3,6 +3,7 @@ let eventSource = null;
 let timelineEvents = 0;
 let currentConfig = null;
 let selectedPassportWorkerId = null;
+let walletStatus = null;
 
 const el = (id) => document.getElementById(id);
 
@@ -21,6 +22,7 @@ function renderConfig(config) {
   badge.className = `badge ${config.mode}`;
   el('paymentCap').textContent = `${config.maxPaymentSui} SUI`;
   renderSuiConfig(config.sui);
+  awaitRefreshWalletStatus();
 
   if (config.mode === 'sui') {
     el('liveReadiness').textContent = config.sui.readyForSui ? 'ready' : 'blocked';
@@ -83,9 +85,13 @@ el('approveBtn').addEventListener('click', async () => {
   try {
     const body = {};
     if (currentConfig?.mode === 'sui') {
-      const digest = window.prompt('Paste the Sui payment approval transaction digest');
-      if (!digest) return;
-      body.suiPaymentDigest = digest;
+      const signing = await request(`/api/runs/${currentRunId}/payment-transaction`);
+      const { verified } = await executeWalletSigning(signing);
+      renderWalletStatus();
+      renderReceipt(verified.receipt || verified);
+      await loadMemoryDirectory();
+      await loadRunHistory();
+      return;
     }
     await request(`/api/runs/${currentRunId}/approve-payment`, { method: 'POST', body });
     await refreshReceipt();
@@ -134,9 +140,13 @@ el('anchorReceiptBtn').addEventListener('click', async () => {
   try {
     const body = {};
     if (currentConfig?.mode === 'sui') {
-      const digest = window.prompt('Paste the Sui receipt-registry transaction digest');
-      if (!digest) return;
-      body.suiAnchorDigest = digest;
+      const signing = await request(`/api/runs/${currentRunId}/anchor-transaction`);
+      const { verified } = await executeWalletSigning(signing);
+      renderWalletStatus();
+      renderReceipt(verified.receipt || verified);
+      await loadMemoryDirectory();
+      await loadRunHistory();
+      return;
     }
     await request(`/api/runs/${currentRunId}/anchor-receipt`, { method: 'POST', body });
     await refreshReceipt();
@@ -709,6 +719,37 @@ async function request(url, options = {}) {
   const json = await response.json();
   if (!response.ok) throw new Error(json.error || `Request failed: ${response.status}`);
   return json;
+}
+
+async function awaitRefreshWalletStatus() {
+  if (!window.ReceipterWallet) return;
+  try {
+    walletStatus = await window.ReceipterWallet.status('sui:testnet');
+    renderWalletStatus();
+  } catch {
+    walletStatus = null;
+  }
+}
+
+async function executeWalletSigning(signing) {
+  if (!window.ReceipterWallet) throw new Error('Wallet adapter still loading.');
+  const execution = await window.ReceipterWallet.signAndExecute(signing.walletTransactionRequest);
+  walletStatus = { connected: true, walletName: execution.walletName, address: execution.address, chain: execution.chain };
+  if (signing.paymentPayloadTemplate) {
+    const payload = { ...signing.paymentPayloadTemplate, transaction: execution.digest };
+    return { execution, verified: await request(signing.verifyEndpoint, { method: 'POST', body: payload }) };
+  }
+  if (signing.anchorPayloadTemplate) {
+    const anchorPayload = { ...signing.anchorPayloadTemplate, transaction: execution.digest };
+    return { execution, verified: await request(signing.verifyEndpoint, { method: 'POST', body: { anchorPayload } }) };
+  }
+  throw new Error('Unsupported Receipter signing request.');
+}
+
+function renderWalletStatus() {
+  const target = el('walletStatus');
+  if (!target || !walletStatus?.address) return;
+  target.textContent = `${walletStatus.walletName || 'Sui wallet'} / ${formatReceiptValue(walletStatus.address)}`;
 }
 
 function formatReceiptValue(value) {

@@ -1,9 +1,6 @@
-import { createRequire } from 'node:module';
 import { buildEvidenceBundle } from './walrusRuntime.js';
 import type { LiveRunReceipt, ReceipterConfig, WalrusMemoryIndex } from './types.js';
 import { storeEvidenceOnWalrus, storeJsonObjectOnWalrus, type WalrusStoreResult } from './walrusRuntime.js';
-
-const requireOptional = createRequire(import.meta.url);
 
 export type MemoryStoreBackend = 'walrus' | 'memwal';
 
@@ -35,6 +32,7 @@ export interface MemWalSdkModule {
     }): MemWalClient;
   };
 }
+type MemWalSdkModuleLoader = () => MemWalSdkModule | Promise<MemWalSdkModule>;
 
 export interface MemWalReadiness {
   ready: boolean;
@@ -93,7 +91,7 @@ export function createMemoryStore(config: ReceipterConfig, fetchImpl?: typeof fe
   return new MemWalMemoryStore(walrusStore, createMemWalClient(config), config.memwalNamespace);
 }
 
-export function createMemWalClient(config: ReceipterConfig, moduleLoader: () => MemWalSdkModule = loadMemWalSdk): MemWalClient {
+export function createMemWalClient(config: ReceipterConfig, moduleLoader?: MemWalSdkModuleLoader): MemWalClient {
   assertMemWalReady(config);
   const options = {
     key: config.memwalDelegateKey as string,
@@ -101,7 +99,14 @@ export function createMemWalClient(config: ReceipterConfig, moduleLoader: () => 
     serverUrl: config.memwalServerUrl as string,
     ...(config.memwalNamespace ? { namespace: config.memwalNamespace } : {}),
   };
-  return moduleLoader().MemWal.create(options);
+  if (moduleLoader) {
+    const loaded = moduleLoader();
+    if (isPromiseLike(loaded)) {
+      return createLazyMemWalClient(async () => (await loaded).MemWal.create(options));
+    }
+    return loaded.MemWal.create(options);
+  }
+  return createLazyMemWalClient(async () => (await loadMemWalSdk()).MemWal.create(options));
 }
 
 export function getMemWalReadiness(config: Pick<ReceipterConfig, 'memwalDelegateKey' | 'memwalAccountId' | 'memwalServerUrl'>): MemWalReadiness {
@@ -143,9 +148,28 @@ export function buildMemWalReputationFact(receipt: LiveRunReceipt, walrus: Walru
   ].join(' ');
 }
 
-function loadMemWalSdk(): MemWalSdkModule {
+function createLazyMemWalClient(loadClient: () => Promise<MemWalClient>): MemWalClient {
+  let clientPromise: Promise<MemWalClient> | undefined;
+  const getClient = () => {
+    clientPromise ??= loadClient();
+    return clientPromise;
+  };
+  return {
+    remember: async (text, namespace) => (await getClient()).remember(text, namespace),
+    waitForRememberJob: async (jobId) => {
+      const client = await getClient();
+      return client.waitForRememberJob?.(jobId);
+    },
+  };
+}
+
+function isPromiseLike(value: unknown): value is Promise<MemWalSdkModule> {
+  return typeof value === 'object' && value !== null && 'then' in value && typeof (value as { then?: unknown }).then === 'function';
+}
+
+async function loadMemWalSdk(): Promise<MemWalSdkModule> {
   try {
-    return requireOptional('@mysten-incubation/memwal') as MemWalSdkModule;
+    return (await import('@mysten-incubation/memwal')) as MemWalSdkModule;
   } catch (error) {
     throw new Error(
       `MEMORY_BACKEND=memwal requires the optional @mysten-incubation/memwal package. Install it and its peer dependencies first. ${

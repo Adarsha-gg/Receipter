@@ -12,6 +12,7 @@ import { loadTenderBoardConfig } from '../live/config.js';
 import { loadDotEnvFile } from '../live/dotenv.js';
 import { RunEventBus, formatSseEvent } from '../live/eventBus.js';
 import { makeEvent, makeRunId, RunStore } from '../live/runStore.js';
+import { PaymentReplayLedger } from '../live/replayLedger.js';
 import { buildWorkerReputationCard, markReputationSignalAnchored } from '../live/reputation.js';
 import { sanitizeTaskForWorker } from '../live/sanitizeTask.js';
 import { buildDemoWorkerDelivery, makeSuiDevDigest, makeSuiDevObjectId, validateExternalWorkerDelivery } from '../live/suiRuntime.js';
@@ -72,6 +73,7 @@ export interface TenderBoardServerOptions {
   scoutFetch?: typeof fetch;
   suiRpcFetch?: typeof fetch;
   memoryStore?: MemoryStore;
+  replayLedger?: PaymentReplayLedger;
 }
 
 export function createTenderBoardServer(options: TenderBoardServerOptions = {}) {
@@ -81,10 +83,11 @@ export function createTenderBoardServer(options: TenderBoardServerOptions = {}) 
   const scoutFetch = options.scoutFetch;
   const suiRpcFetch = options.suiRpcFetch;
   const memoryStore = options.memoryStore ?? createMemoryStore(config);
+  const replayLedger = options.replayLedger ?? new PaymentReplayLedger(config.receiptsDir);
 
   return createServer(async (req, res) => {
     try {
-      await route(req, res, config, store, bus, scoutFetch, suiRpcFetch, memoryStore);
+      await route(req, res, config, store, bus, scoutFetch, suiRpcFetch, memoryStore, replayLedger);
     } catch (error) {
       if (isHttpError(error)) {
         sendJson(res, error.status, { error: error.message });
@@ -105,6 +108,7 @@ async function route(
   scoutFetch: typeof fetch | undefined,
   suiRpcFetch: typeof fetch | undefined,
   memoryStore: MemoryStore,
+  replayLedger: PaymentReplayLedger,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
   const method = req.method ?? 'GET';
@@ -245,7 +249,7 @@ async function route(
 
   if (method === 'POST' && url.pathname === '/api/x402/verify') {
     const payload = parseX402PaymentHeader(req.headers['x-payment'] ?? req.headers['payment-signature']) ?? parseX402PaymentPayload(await readJson<unknown>(req));
-    const result = await facilitateX402Payment(payload, payload.resource, config, store, bus, suiRpcFetch);
+    const result = await facilitateX402Payment(payload, payload.resource, config, store, bus, suiRpcFetch, replayLedger);
     sendJson(
       res,
       200,
@@ -326,7 +330,7 @@ async function route(
     if (!receipt.suiPaymentDigest) {
       const paymentPayload = parseX402PaymentHeader(req.headers['x-payment'] ?? req.headers['payment-signature']);
       if (paymentPayload) {
-        const result = await facilitateX402Payment(paymentPayload, url.pathname, config, store, bus, suiRpcFetch);
+        const result = await facilitateX402Payment(paymentPayload, url.pathname, config, store, bus, suiRpcFetch, replayLedger);
         receipt = result.receipt;
         sendWorkerTaskJson(res, receipt, result.paymentResponse ? { paymentResponse: result.paymentResponse } : {});
         return;
@@ -783,6 +787,7 @@ async function facilitateX402Payment(
   store: RunStore,
   bus: RunEventBus,
   suiRpcFetch: typeof fetch | undefined,
+  replayLedger: PaymentReplayLedger,
 ): Promise<{ verification: Awaited<ReturnType<typeof verifySuiX402Payment>>; paymentResponse: ReturnType<typeof buildX402SuiPaymentResponse>; receipt: LiveRunReceipt }> {
   const receipt = await store.get(payload.runId);
   if (!receipt) {
@@ -796,6 +801,7 @@ async function facilitateX402Payment(
     config,
     ...(suiRpcFetch ? { fetchImpl: suiRpcFetch } : {}),
   });
+  await replayLedger.recordPayment(payload, verification.verifiedAt);
   const updated = await recordPaymentApproval(payload.runId, verification.transaction, config, store, bus, {
     appEventType: 'x402_payment_verified',
     appMessage: 'Sui-native x402 facilitator verified payment for this work order.',

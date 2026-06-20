@@ -86,5 +86,7 @@ This file tracks the places where WalrusProof still uses local CLI, demo, metada
 - [ ] Add zkLogin onboarding for non-crypto users.
 - [ ] Add sponsored gas for first-time buyers.
 - [ ] Add a production operator key policy instead of `.env` local key paths.
-- [ ] Add replay-protection persistence outside local JSON files.
+- [x] Add replay-protection persistence outside local JSON files.
+  - Completed: x402 payment verification writes nonce and transaction digest records to `x402-replay-ledger.json` under the receipts directory before unlocking the run.
+  - Files: `tenderboard/src/live/replayLedger.ts`, `tenderboard/src/server/httpServer.ts`.
 - [ ] Add hosted deployment docs that do not depend on a local CLI.

@@ -41,7 +41,7 @@ export class RunStore {
 
     const receipts = await Promise.all(
       files
-        .filter((file) => file.endsWith('.json'))
+        .filter((file) => file.endsWith('.json') && file !== 'x402-replay-ledger.json')
         .map(async (file) => JSON.parse(await readFile(path.join(this.receiptsDir, file), 'utf8')) as LiveRunReceipt),
     );
 

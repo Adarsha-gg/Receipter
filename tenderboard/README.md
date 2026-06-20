@@ -239,7 +239,7 @@ GET  /api/runs/:id/passport-update-transaction get signer-ready AgentPassport me
 POST /api/runs/:id/passport-update     verify signed AgentPassportMemoryUpdated tx
 ```
 
-CLI/dev-only today: explicit backend Sui CLI fallback for payment and receipt anchoring; the built-in Opportunity Scout delivery helper; `sui-dev` deterministic local smoke mode; and credentialed MemWal smoke unless MemWal env vars are configured. Live AgentPassport updates, stake, challenge, and slash routes produce signer-ready transaction requests and verify the signed Sui transaction through RPC events. In production, an external worker agent should submit its own delivery and source evidence.
+CLI/dev-only today: explicit backend Sui CLI fallback for payment and receipt anchoring; the built-in Opportunity Scout delivery helper; `sui-dev` deterministic local smoke mode; and credentialed MemWal smoke unless MemWal env vars are configured. Live AgentPassport updates, stake, challenge, and slash routes produce signer-ready transaction requests and verify the signed Sui transaction through RPC events. x402 nonce and digest replay protection is persisted in `x402-replay-ledger.json` under the receipts directory. In production, an external worker agent should submit its own delivery and source evidence.
 
 ## Important Files
 

@@ -72,3 +72,11 @@ Remaining process blocker:
   - `GET /api/runs/:id/passport-update-transaction`
   - `POST /api/runs/:id/passport-update`
 - The update flow stores the current memory index on Walrus, builds an owner-signed `agent_passport::update_memory_pointer` transaction request, and verifies the signed transaction through Sui RPC by checking `AgentPassportMemoryUpdated`.
+
+## Replay Ledger Follow-Up
+
+- Started branch `codex/replay-ledger`.
+- Added file-backed x402 replay ledger:
+  - records nonce tuple and Sui transaction digest in `x402-replay-ledger.json`
+  - rejects duplicate nonce tuples and duplicate transaction digests across process restarts
+  - wires the ledger into `/api/x402/verify` and x402 worker-task header settlement

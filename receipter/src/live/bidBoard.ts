@@ -154,7 +154,9 @@ function formatSui(value: number): string {
   return value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-function publicSourceResearchBlocker(request: CreateRunRequest): string | undefined {
+export function publicSourceResearchBlocker(
+  request: Pick<CreateRunRequest, 'title' | 'instructions' | 'acceptanceCriteria'>,
+): string | undefined {
   const text = `${request.title}\n${request.instructions}\n${request.acceptanceCriteria?.join('\n') ?? ''}`.toLowerCase();
   if (/\b(restaurants?|restruants?|food places?|coffee shops?|cafes?|bars?|hotels?|apartments?)\b/.test(text)) {
     return 'Receipter workers only accept verifiable public-source research over developer, ecosystem, GitHub, Hacker News, protocol, funding, competitor, and market-intel sources.';

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { buildAgentPair, handoffStatusForRun } from '../live/agentPair.js';
 import { buildAgentMarketCard } from '../live/agentMarketCard.js';
 import { buildAgentMemoryPassport, buildAgentMemoryRecord, buildWalrusMemoryIndex } from '../live/agentMemory.js';
-import { buildPrivacyLabeledTask, buildWorkerBidBoard, availableWorkerBids } from '../live/bidBoard.js';
+import { buildPrivacyLabeledTask, buildWorkerBidBoard, availableWorkerBids, publicSourceResearchBlocker } from '../live/bidBoard.js';
 import { buildClearingObjects } from '../live/clearingObjects.js';
 import { assessStakeChallenge, type StakeChallengeRequest } from '../live/challengeOracle.js';
 import { loadReceipterConfig } from '../live/config.js';
@@ -1297,7 +1297,18 @@ async function loadVisibleReceipts(store: RunStore, config: ReceipterConfig): Pr
 function isReceiptVisibleForConfig(receipt: LiveRunReceipt, config: ReceipterConfig): boolean {
   if (config.mode !== 'sui') return true;
   if (receipt.mode !== 'sui') return false;
+  if (isLegacyOutOfScopeReceipt(receipt)) return false;
   return !hasDevWalrusPointer(receipt);
+}
+
+function isLegacyOutOfScopeReceipt(receipt: LiveRunReceipt): boolean {
+  return Boolean(
+    publicSourceResearchBlocker({
+      title: receipt.taskTitle,
+      instructions: receipt.sanitizedTask,
+      acceptanceCriteria: receipt.verificationManifest.acceptanceCriteria,
+    }),
+  );
 }
 
 function hasDevWalrusPointer(receipt: LiveRunReceipt): boolean {

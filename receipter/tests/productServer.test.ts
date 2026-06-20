@@ -1317,6 +1317,20 @@ describe('Receipter product server', () => {
         suiAnchorDigest: '0xliveanchor',
       }),
     );
+    await seededStore.create(
+      buildMemoryReceipt({
+        runId: 'run_live_food_places',
+        mode: 'sui',
+        status: 'delivered',
+        taskTitle: 'food places',
+        sanitizedTask: 'Task: food places\n\nInstructions:\nfood in nyc',
+        createdAt: '2026-06-20T12:00:00.000Z',
+        updatedAt: '2026-06-20T12:00:00.000Z',
+        walrusBlobId: 'u2_food_places_blob',
+        walrusReadUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/u2_food_places_blob',
+        suiAnchorDigest: undefined,
+      }),
+    );
 
     const { baseUrl, close } = await startTestServer({
       RECEIPTER_MODE: 'sui',
@@ -1340,6 +1354,7 @@ describe('Receipter product server', () => {
       });
       expect(JSON.stringify(memoryIndex)).not.toContain('walrus_dev_blob_old');
       expect(JSON.stringify(memoryIndex)).not.toContain('run_old_dev');
+      expect(JSON.stringify(memoryIndex)).not.toContain('run_live_food_places');
 
       const passport = await (await fetch(`${baseUrl}/api/walrus/memory/sui_opportunity_scout`)).json();
       expect(passport.records.map((record: { runId: string }) => record.runId)).toEqual(['run_live_sui']);
@@ -1352,6 +1367,12 @@ describe('Receipter product server', () => {
         runId: 'run_old_dev',
         mode: 'sui-dev',
         walrusBlobId: 'walrus_dev_blob_old',
+      });
+      const directUnsupportedReceipt = await (await fetch(`${baseUrl}/api/runs/run_live_food_places`)).json();
+      expect(directUnsupportedReceipt).toMatchObject({
+        runId: 'run_live_food_places',
+        mode: 'sui',
+        walrusBlobId: 'u2_food_places_blob',
       });
     } finally {
       await close();

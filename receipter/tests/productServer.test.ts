@@ -1298,6 +1298,35 @@ describe('Receipter product server', () => {
     }
   });
 
+  it('runs the task-aware Receipter worker instead of a hardcoded browser delivery', async () => {
+    const { baseUrl, close } = await startTestServer({
+      RECEIPTER_MODE: 'sui-dev',
+      RECEIPTER_RECEIPTS_DIR: tempDir,
+    });
+
+    try {
+      const created = await postJson(`${baseUrl}/api/runs`, {
+        title: 'Find cooking classes in Boston',
+        instructions: 'Use public sources only and return links that match cooking classes.',
+        maxPayment: { amount: '0.050', currency: 'SUI' },
+      });
+
+      await postJson(`${baseUrl}/api/runs/${created.runId}/approve-payment`, {});
+      const delivered = await postJson(`${baseUrl}/api/runs/${created.runId}/worker-delivery`, {
+        objectType: 'receipter.worker_agent_delivery_request.v1',
+        useReceipterWorker: true,
+      });
+
+      expect(delivered.status).toBe('delivered');
+      expect(delivered.deliveryText).toContain('Find cooking classes in Boston');
+      expect(delivered.deliveryText).toContain('Search: cooking classes boston');
+      expect(delivered.deliveryText).not.toContain('Sui Overflow 2026 Handbook');
+      expect(delivered.workerEvidence.query).toContain('cooking classes boston');
+    } finally {
+      await close();
+    }
+  });
+
   it('keeps the built-in Opportunity Scout delivery as a sui-dev demo fallback only', async () => {
     let currentPaymentMarker: Record<string, string> = {};
     const { baseUrl, close } = await startTestServer(
@@ -1370,7 +1399,7 @@ describe('Receipter product server', () => {
       const body = await response.json();
 
       expect(response.status).toBe(400);
-      expect(body.error).toContain('only available as an explicit sui-dev demo fallback');
+      expect(body.error).toContain('Demo worker delivery is only available as an explicit sui-dev fallback');
     } finally {
       await close();
     }

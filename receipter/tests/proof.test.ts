@@ -334,9 +334,8 @@ describe('renderReceiptProof', () => {
     });
   });
 
-  it('writes a distilled reputation fact to MemWal after storing the full Walrus bundle', async () => {
+  it('starts MemWal indexing after Walrus storage without blocking the receipt flow', async () => {
     const remembered: string[] = [];
-    const waited: string[] = [];
     const walrusStore: MemoryStore = {
       backend: 'walrus',
       putEvidenceBundle: async () => ({
@@ -357,22 +356,23 @@ describe('renderReceiptProof', () => {
     const store = new MemWalMemoryStore(
       walrusStore,
       {
-        remember: async (text, namespace) => {
+        remember: (text, namespace) => {
           remembered.push(`${namespace}:${text}`);
-          return { job_id: 'job_1', blob_id: 'memwal_blob_1' };
-        },
-        waitForRememberJob: async (jobId) => {
-          waited.push(jobId);
+          return new Promise(() => undefined);
         },
       },
       'worker:sui_worker',
     );
 
-    await expect(store.putEvidenceBundle(sampleReceipt())).resolves.toMatchObject({
+    const result = await Promise.race([
+      store.putEvidenceBundle(sampleReceipt()),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('MemWal indexing blocked Walrus response')), 25)),
+    ]);
+
+    expect(result).toMatchObject({
       blobId: 'walrus_blob_for_memwal',
       readUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/walrus_blob_for_memwal',
     });
-    expect(waited).toEqual(['job_1']);
     expect(remembered[0]).toContain('worker:sui_worker:Receipter verified work memory for agent sui_worker.');
     expect(remembered[0]).toContain('Walrus blob: walrus_blob_for_memwal.');
     expect(remembered[0]).toContain('Sui payment digest: 0xsui.');

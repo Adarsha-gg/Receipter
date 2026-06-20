@@ -287,7 +287,7 @@
                     <button onClick="{{ r.toggleRaw }}" style="background:#fff;border:1px solid #E1E6EF;color:#46566E;font-weight:600;font-size:13px;padding:10px 14px;border-radius:10px;" style-hover="border-color:#C2CBDC">{{ r.rawLabel }}</button>
                     <a href="{{ r.walrusUrl }}" target="_blank" style="text-decoration:none;color:#3E4A5C;font-size:13px;font-weight:600;">Walrus blob ↗</a>
                     <sc-if value="{{ r.anchored }}" hint-placeholder-val="{{ true }}"><a href="{{ r.anchorUrl }}" target="_blank" style="text-decoration:none;color:#3E4A5C;font-size:13px;font-weight:600;">Sui receipt ↗</a></sc-if>
-                    <sc-if value="{{ r.weak }}" hint-placeholder-val="{{ false }}"><span onClick="{{ r.challenge }}" style="margin-left:auto;color:#DC2626;font-size:13px;font-weight:600;cursor:pointer;" style-hover="text-decoration:underline">Dispute this record →</span></sc-if>
+                    <sc-if value="{{ r.canDispute }}" hint-placeholder-val="{{ false }}"><span onClick="{{ r.challenge }}" style="margin-left:auto;color:#DC2626;font-size:13px;font-weight:600;cursor:pointer;" style-hover="text-decoration:underline">Dispute this record →</span></sc-if>
                   </div>
                 </div>
                 </sc-if>
@@ -456,12 +456,12 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
             <div style="background:#fff;border:1px solid #EAEEF5;border-radius:18px;padding:22px;">
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;"><span style="width:30px;height:30px;border-radius:9px;background:#E3F4F6;display:flex;align-items:center;justify-content:center;color:#0F7A8C;font-size:15px;">◆</span><span style="font-family:'Space Grotesk';font-weight:600;font-size:15px;">Walrus storage</span></div>
-              <sc-if value="{{ cStored }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:11px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Blob id</span><span style="font-family:'JetBrains Mono';color:#41516A;">{{ cBlobShown }}</span></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Aggregator</span><span style="color:#0F7A8C;font-weight:600;">readable</span></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Certified epoch</span><span style="font-family:'JetBrains Mono';color:#41516A;">142 → 194</span></div></div></sc-if>
+              <sc-if value="{{ cStored }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:11px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Blob id</span><a href="{{ cBlobUrl }}" target="_blank" style="font-family:'JetBrains Mono';color:#0F7A8C;text-decoration:none;font-weight:600;">{{ cBlobShown }} ↗</a></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Aggregator</span><span style="color:#0F7A8C;font-weight:600;">readable</span></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Certified epoch</span><span style="font-family:'JetBrains Mono';color:#41516A;">142 → 194</span></div></div></sc-if>
               <sc-if value="{{ cNotStored }}" hint-placeholder-val="{{ true }}"><button onClick="{{ onStore }}" style="width:100%;background:#0F7A8C;border:none;color:#fff;font-weight:600;font-size:13.5px;padding:12px;border-radius:11px;transition:filter .15s;opacity:{{ cStoreOpacity }};pointer-events:{{ cStorePointer }};" style-hover="filter:brightness(1.08)">{{ cStoreLabel }}</button></sc-if>
             </div>
             <div style="background:#fff;border:1px solid #EAEEF5;border-radius:18px;padding:22px;">
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;"><span style="width:30px;height:30px;border-radius:9px;background:#EDEFF3;display:flex;align-items:center;justify-content:center;color:#3E4A5C;font-size:15px;">⚓</span><span style="font-family:'Space Grotesk';font-weight:600;font-size:15px;">Sui anchor</span></div>
-              <sc-if value="{{ cAnchored }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:11px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Anchor tx</span><span style="font-family:'JetBrains Mono';color:#41516A;">{{ cAnchorShown }}</span></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Registry</span><span style="color:#3E4A5C;font-weight:600;">receipt_registry</span></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Passport</span><span style="color:#16793B;font-weight:600;">updated</span></div></div></sc-if>
+              <sc-if value="{{ cAnchored }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:11px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Anchor tx</span><a href="{{ cAnchorUrl }}" target="_blank" style="font-family:'JetBrains Mono';color:#3E4A5C;text-decoration:none;font-weight:600;">{{ cAnchorShown }} ↗</a></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Registry</span><span style="color:#3E4A5C;font-weight:600;">receipt_registry</span></div><div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#8A99AD;">Passport</span><span style="color:#16793B;font-weight:600;">updated</span></div></div></sc-if>
               <sc-if value="{{ cNotAnchored }}" hint-placeholder-val="{{ true }}"><button onClick="{{ onAnchor }}" style="width:100%;background:#3E4A5C;border:none;color:#fff;font-weight:600;font-size:13.5px;padding:12px;border-radius:11px;transition:filter .15s;opacity:{{ cAnchorOpacity }};pointer-events:{{ cAnchorPointer }};" style-hover="filter:brightness(1.08)">{{ cAnchorLabel }}</button></sc-if>
             </div>
           </div>
@@ -1045,9 +1045,7 @@ class Component extends DCLogic {
     if(c.delivered && c.apiRun && c.apiRun.deliveryText) return c.apiRun;
     const run = await this.cEnsureRun();
     if(!c.paid) return run;
-    const body = window.ReceipterDelivery
-      ? await window.ReceipterDelivery.buildExternalWorkerDelivery(run)
-      : {};
+    const body = {objectType:'receipter.worker_agent_delivery_request.v1', useReceipterWorker:true};
     const delivered = await this.post('/api/runs/'+encodeURIComponent(run.runId)+'/worker-delivery', body);
     this.setState(s=>({create:{...s.create,apiRun:delivered,delivered:true}}));
     return delivered;
@@ -1216,7 +1214,7 @@ class Component extends DCLogic {
       cStoreOpacity:busyAction?'.55':'1', cStorePointer:busyAction?'none':'auto',
       cContinuePointer:continueDisabled?'none':'auto',
       cAnchorPointer:(busyAction||!c.stored)?'none':'auto',
-      cStored:c.stored, cAnchored:c.anchored, cBlobShown:c.blob?this.short(c.blob,14,8):'—', cAnchorShown:c.anchor?this.short(c.anchor,14,8):'—', onStore:()=>this.cStore(), onAnchor:()=>this.cAnchor(),
+      cStored:c.stored, cAnchored:c.anchored, cBlobShown:c.blob?this.short(c.blob,14,8):'—', cBlobUrl:c.blob?this.AGG+c.blob:'#', cAnchorShown:c.anchor?this.short(c.anchor,14,8):'—', cAnchorUrl:c.anchor?this.SCAN+c.anchor:'#', onStore:()=>this.cStore(), onAnchor:()=>this.cAnchor(),
       cContinueLabel:continueLabel, cContinueOpacity:continueDisabled?'.4':'1', cAnchorOpacity:busyAction?'.55':(c.stored?'1':'.5'),
       cBackVisible:c.step>0&&c.step<6, cNext:()=>{ if(!continueDisabled){ if(c.step===5) this.cFinish(); else this.cNext(); } }, cBackFn:()=>this.cBack(), cClose:()=>this.closeOverlay(),
     };
@@ -1382,7 +1380,7 @@ class Component extends DCLogic {
             claimsLabel:`${r.supported}/${r.claims} claims · ${r.obs} sources`,
             cardBorder:expanded?'#DCE4F1':'#ECEFF4', expanded, chevRotate:expanded?'rotate(180deg)':'rotate(0deg)',
             toggle:()=>this.toggleRecord(r.runId),
-            weak:!!r.weak, anchored:!!r.anchor, walrusUrl:r.blob?this.AGG+r.blob:'#', anchorUrl:r.anchor?this.SCAN+r.anchor:'#',
+            weak:!!r.weak, anchored:!!r.anchor, canDispute:!!r.anchor, walrusUrl:r.blob?this.AGG+r.blob:'#', anchorUrl:r.anchor?this.SCAN+r.anchor:'#',
             sources:r.sources.map((s,i)=>({t:s.t, l:s.l, u:s.u, icon:i<r.supported?'✓':'!', iconBg:i<r.supported?'#E7F6EC':'#FBF1DE', iconColor:i<r.supported?'#16A34A':'#C2740B'})),
             hashes:[
               {label:'Walrus blob', short:this.short(r.blob,12,6), copy:()=>this.copy(r.blob)},

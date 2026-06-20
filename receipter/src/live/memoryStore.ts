@@ -68,16 +68,24 @@ export class MemWalMemoryStore implements MemoryStore {
   async putEvidenceBundle(receipt: LiveRunReceipt): Promise<WalrusStoreResult> {
     const walrus = await this.walrusStore.putEvidenceBundle(receipt);
     const fact = buildMemWalReputationFact(receipt, walrus);
-    const job = await this.memwalClient.remember(fact, this.namespace);
-    const jobId = job.job_id ?? job.jobId;
-    if (jobId && this.memwalClient.waitForRememberJob) {
-      await this.memwalClient.waitForRememberJob(jobId);
-    }
+    void this.indexMemWalFact(fact);
     return walrus;
   }
 
   putMemoryIndex(index: WalrusMemoryIndex): Promise<WalrusStoreResult> {
     return this.walrusStore.putMemoryIndex(index);
+  }
+
+  private async indexMemWalFact(fact: string): Promise<void> {
+    try {
+      const job = await this.memwalClient.remember(fact, this.namespace);
+      const jobId = job.job_id ?? job.jobId;
+      if (jobId && this.memwalClient.waitForRememberJob) {
+        await this.memwalClient.waitForRememberJob(jobId);
+      }
+    } catch (error) {
+      console.warn(`MemWal indexing failed after Walrus storage: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }
 

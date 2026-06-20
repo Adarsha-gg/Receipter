@@ -240,7 +240,12 @@ export interface DemoWorkerDeliveryRequest {
   useDemoWorker: true;
 }
 
-export type WorkerDeliverySubmission = ExternalWorkerDeliveryPayload | DemoWorkerDeliveryRequest;
+export interface ReceipterWorkerDeliveryRequest {
+  objectType: 'receipter.worker_agent_delivery_request.v1';
+  useReceipterWorker: true;
+}
+
+export type WorkerDeliverySubmission = ExternalWorkerDeliveryPayload | DemoWorkerDeliveryRequest | ReceipterWorkerDeliveryRequest;
 
 export interface SelectedBidReference {
   bidId: string;

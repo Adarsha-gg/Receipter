@@ -11,6 +11,7 @@ import { assessStakeChallenge, type StakeChallengeRequest } from '../live/challe
 import { loadReceipterConfig } from '../live/config.js';
 import { loadDotEnvFile } from '../live/dotenv.js';
 import { RunEventBus, formatSseEvent } from '../live/eventBus.js';
+import { stableHash } from '../live/hash.js';
 import { makeEvent, makeRunId, RunStore } from '../live/runStore.js';
 import { PaymentReplayLedger } from '../live/replayLedger.js';
 import { buildWorkerReputationCard, markReputationSignalAnchored } from '../live/reputation.js';
@@ -975,7 +976,7 @@ async function resolveWorkerDeliverySubmission(
 }> {
   if (isDemoWorkerDeliveryRequest(body)) {
     if (config.mode !== 'sui-dev') {
-      throw httpError(400, 'Built-in Opportunity Scout delivery is only available as an explicit sui-dev demo fallback.');
+      throw httpError(400, 'Demo worker delivery is only available as an explicit sui-dev fallback. Use receipter.worker_agent_delivery_request.v1 for the live task-aware worker.');
     }
     const delivery = scoutFetch ? await buildDemoWorkerDelivery(receipt, { fetchImpl: scoutFetch }) : await buildDemoWorkerDelivery(receipt);
     return {
@@ -986,8 +987,30 @@ async function resolveWorkerDeliverySubmission(
     };
   }
 
+  if (isReceipterWorkerDeliveryRequest(body)) {
+    const delivery = scoutFetch ? await buildDemoWorkerDelivery(receipt, { fetchImpl: scoutFetch }) : await buildDemoWorkerDelivery(receipt);
+    return {
+      ...delivery,
+      payloadHash: stableHash({
+        objectType: body.objectType,
+        runId: receipt.runId,
+        workerAgentId: receipt.workerAgentId,
+        evidenceHash: delivery.workerEvidence.evidenceHash,
+      }),
+      identityProof: {
+        proofType: 'sui-address',
+        subject: config.suiOperatorAddress ?? receipt.workerAgentId,
+        publicKey: undefined,
+        signature: undefined,
+        signedPayloadHash: undefined,
+        issuedAt: new Date().toISOString(),
+      },
+      demoWorker: false,
+    };
+  }
+
   if (!isExternalWorkerDeliveryPayload(body)) {
-    throw httpError(400, 'Worker delivery requires receipter.external_worker_delivery.v1 payload or explicit sui-dev useDemoWorker fallback.');
+    throw httpError(400, 'Worker delivery requires receipter.external_worker_delivery.v1 payload, receipter.worker_agent_delivery_request.v1, or explicit sui-dev useDemoWorker fallback.');
   }
 
   const validation = validateExternalWorkerDelivery(receipt, body);
@@ -1003,6 +1026,10 @@ async function resolveWorkerDeliverySubmission(
 
 function isDemoWorkerDeliveryRequest(body: unknown): body is Extract<WorkerDeliverySubmission, { useDemoWorker: true }> {
   return isRecord(body) && body.useDemoWorker === true;
+}
+
+function isReceipterWorkerDeliveryRequest(body: unknown): body is Extract<WorkerDeliverySubmission, { useReceipterWorker: true }> {
+  return isRecord(body) && body.objectType === 'receipter.worker_agent_delivery_request.v1' && body.useReceipterWorker === true;
 }
 
 function isExternalWorkerDeliveryPayload(body: unknown): body is ExternalWorkerDeliveryPayload {

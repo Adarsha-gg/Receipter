@@ -259,8 +259,10 @@ function hasMatchingPaymentIntentMarker(
 
 function isPaymentIntentEventType(type: string, packageId: string | undefined): boolean {
   if (!type.endsWith('::receipts::PaymentIntentRecorded')) return false;
+  // Upgraded Sui packages can surface events under the package's original id
+  // even when the PTB calls the latest published package id.
   if (!packageId) return true;
-  return type.toLowerCase().startsWith(`${packageId.toLowerCase()}::`);
+  return type.includes('::receipts::PaymentIntentRecorded');
 }
 
 function eventString(value: Record<string, unknown>, snakeField: string, camelField?: string): string | undefined {

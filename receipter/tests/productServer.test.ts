@@ -481,7 +481,7 @@ describe('Receipter product server', () => {
                 ],
                 events: [
                   {
-                    type: '0xpackage::receipts::PaymentIntentRecorded',
+                    type: '0xoriginal::receipts::PaymentIntentRecorded',
                     parsedJson: currentPaymentMarker,
                   },
                 ],

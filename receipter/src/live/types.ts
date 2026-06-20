@@ -170,7 +170,7 @@ export interface VerificationManifest {
   reputationWriteback: string;
 }
 
-export type ScoutSourceKind = 'hacker_news' | 'github';
+export type ScoutSourceKind = 'hacker_news' | 'github' | 'openstreetmap';
 
 export interface SourceObservation {
   observationId: string;

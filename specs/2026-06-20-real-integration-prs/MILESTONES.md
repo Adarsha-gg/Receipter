@@ -80,3 +80,8 @@ Remaining process blocker:
   - records nonce tuple and Sui transaction digest in `x402-replay-ledger.json`
   - rejects duplicate nonce tuples and duplicate transaction digests across process restarts
   - wires the ledger into `/api/x402/verify` and x402 worker-task header settlement
+
+## Hosted Deployment Docs Follow-Up
+
+- Started branch `codex/hosted-deployment-docs`.
+- Added `DEPLOYMENT.md` with the no-local-CLI hosted path, required Sui/Walrus env vars, persistent storage requirements, live signer endpoints, and deployment checklist.

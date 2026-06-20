@@ -566,6 +566,96 @@ describe('WalrusProof product server', () => {
     }
   });
 
+  it('builds and verifies signer-controlled stake transactions', async () => {
+    const rpcCalls: Array<{ input: RequestInfo | URL; init: RequestInit | undefined }> = [];
+    const { baseUrl, close } = await startTestServer(
+      {
+        TENDERBOARD_MODE: 'sui',
+        TENDERBOARD_RECEIPTS_DIR: tempDir,
+        SUI_NETWORK: 'testnet',
+        SUI_RPC_URL: 'https://sui-rpc.test',
+        SUI_OPERATOR_ADDRESS: '0xoperator',
+        SUI_PACKAGE_ID: '0x1234',
+        SUI_RECEIPT_REGISTRY_ID: '0xregistry',
+        WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
+        WALRUS_AGGREGATOR_URL: 'https://aggregator.walrus.testnet.example',
+      },
+      {
+        suiRpcFetch: async (input, init) => {
+          rpcCalls.push({ input, init });
+          const request = JSON.parse(String(init?.body));
+          return new Response(
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id: request.id,
+              result: {
+                digest: request.params[0],
+                effects: { status: { status: 'success' } },
+                events: [
+                  {
+                    type: '0x1234::reputation_stake::StakeOpened',
+                    parsedJson: {
+                      worker_agent_id: 'sui_opportunity_scout',
+                      amount_mist: '1000000000',
+                    },
+                  },
+                ],
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        },
+      },
+    );
+
+    try {
+      const signingRequest = await postJson(`${baseUrl}/api/stake/open-transaction`, {
+        workerAgentId: 'sui_opportunity_scout',
+        amountMist: '1000000000',
+      });
+
+      expect(signingRequest).toMatchObject({
+        objectType: 'walrusproof.stake_signing_request.v1',
+        verifyEndpoint: '/api/stake/verify',
+        walletTransactionRequest: {
+          objectType: 'walrusproof.sui_stake_wallet_transaction_request.v1',
+          kind: 'open_stake',
+          function: 'open_position',
+          expected: {
+            events: ['StakeOpened'],
+            digestRequired: true,
+          },
+        },
+        executionPayloadTemplate: {
+          objectType: 'walrusproof.sui_stake_execution_payload.v1',
+          transaction: '<SIGNED_SUI_TRANSACTION_DIGEST>',
+        },
+      });
+
+      const verification = await postJson(`${baseUrl}/api/stake/verify`, {
+        ...signingRequest.executionPayloadTemplate,
+        transaction: '0xstake_digest',
+      });
+
+      expect(verification).toMatchObject({
+        objectType: 'walrusproof.sui_stake_execution_verification.v1',
+        ok: true,
+        kind: 'open_stake',
+        transaction: '0xstake_digest',
+        checks: {
+          requestBound: true,
+          transactionSuccessful: true,
+          expectedEventsObserved: true,
+        },
+      });
+      expect(rpcCalls.length).toBe(1);
+      expect(String(rpcCalls[0]!.init?.body)).toContain('sui_getTransactionBlock');
+      expect(String(rpcCalls[0]!.init?.body)).toContain('0xstake_digest');
+    } finally {
+      await close();
+    }
+  });
+
   it('requires approval, stores Walrus evidence, and anchors a Sui dev receipt', async () => {
     const { baseUrl, close } = await startTestServer({
       TENDERBOARD_MODE: 'sui-dev',

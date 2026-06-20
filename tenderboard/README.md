@@ -223,6 +223,13 @@ GET  /api/walrus/memory/:id            read the worker's Walrus memory passport
 GET  /api/runs/:id/memory              read a run's Walrus memory record
 GET  /api/agents/:id/memory            read the worker's Walrus/Sui memory passport
 GET  /api/oracle/owners/:address/passport/verify verify a passport by Sui owner address
+GET  /api/stake/oracle-registry-transaction get signer-ready stake oracle registry tx
+POST /api/stake/open-transaction       get signer-ready SUI stake-open transaction
+POST /api/stake/attach-transaction     get signer-ready add-stake transaction
+POST /api/stake/challenge-transaction  get signer-ready challenge-decision transaction
+POST /api/stake/resolve-challenge-transaction get signer-ready slash-with-decision tx
+POST /api/stake/slash-transaction      get signer-ready direct challenge-and-slash tx
+POST /api/stake/verify                 verify signed stake/challenge/slash tx through Sui RPC
 GET  /api/runs/:id/worker-task         worker agent gets 402 until Sui payment is recorded
 POST /api/runs/:id/worker-delivery     worker agent submits delivery evidence
 POST /api/runs/:id/store-evidence      operator stores the memory bundle on Walrus
@@ -230,7 +237,7 @@ GET  /api/runs/:id/anchor-transaction  operator gets signer-ready Sui anchor tra
 POST /api/runs/:id/anchor-receipt      operator submits verified anchorPayload from signed Sui tx
 ```
 
-CLI/dev-only today: explicit backend Sui CLI fallback for payment and receipt anchoring, backend Sui CLI execution for stake, challenge, and slash; the built-in Opportunity Scout delivery helper; `sui-dev` deterministic local smoke mode; and credentialed MemWal smoke unless MemWal env vars are configured. In production, an external worker agent should submit its own delivery and source evidence.
+CLI/dev-only today: explicit backend Sui CLI fallback for payment and receipt anchoring; the built-in Opportunity Scout delivery helper; `sui-dev` deterministic local smoke mode; and credentialed MemWal smoke unless MemWal env vars are configured. Live stake, challenge, and slash routes produce signer-ready transaction requests and verify the signed Sui transaction through RPC events. In production, an external worker agent should submit its own delivery and source evidence.
 
 ## Important Files
 

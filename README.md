@@ -138,7 +138,7 @@ Current testnet deployment:
 
 To run live mode locally, set `SUI_OPERATOR_ADDRESS`, `SUI_PACKAGE_ID`, `SUI_RECEIPT_REGISTRY_ID`, `SUI_STAKE_ORACLE_REGISTRY_ID`, `SUI_RPC_URL`, `WALRUS_PUBLISHER_URL`, and `WALRUS_AGGREGATOR_URL`. `SUI_CLI_PATH` and `SUI_CLIENT_CONFIG` are optional explicit test fallbacks, not the production path.
 
-CLI/dev-only today: explicit backend Sui CLI fallback for payment and receipt anchoring, backend Sui CLI execution for stake, challenge, and slash; the built-in worker delivery helper; `sui-dev` deterministic local smoke mode; and credentialed MemWal smoke unless MemWal credentials are configured. Live payment and receipt anchoring now use signer-ready wallet transaction requests plus Sui JSON-RPC verification.
+CLI/dev-only today: explicit backend Sui CLI fallback for payment and receipt anchoring; the built-in worker delivery helper; `sui-dev` deterministic local smoke mode; and credentialed MemWal smoke unless MemWal credentials are configured. Live payment, receipt anchoring, and stake/challenge/slash flows now use signer-ready wallet transaction requests plus Sui JSON-RPC verification.
 
 ## Memory Backend
 

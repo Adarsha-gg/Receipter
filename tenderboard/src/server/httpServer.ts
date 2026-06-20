@@ -26,6 +26,21 @@ import { buildSuiAnchorPlan } from '../sui/anchorPlan.js';
 import { buildSuiReceiptAnchorPayload, buildSuiReceiptAnchorTransactionRequest } from '../sui/anchorTransactionBuilder.js';
 import { parseSuiReceiptAnchorPayload, verifySuiReceiptAnchor } from '../sui/anchorVerifier.js';
 import {
+  buildAttachStakeWalletRequest,
+  buildCreateOracleRegistryWalletRequest,
+  buildOpenStakePositionWalletRequest,
+  buildRaiseChallengeWalletRequest,
+  buildResolveChallengeWalletRequest,
+  buildSlashStakeWalletRequest,
+  type AttachStakeInput,
+  type IssueChallengeDecisionInput,
+  type OpenStakePositionInput,
+  type SlashStakeInput,
+  type SlashStakeWithDecisionInput,
+  type SuiStakeWalletTransactionRequest,
+} from '../sui/stakeExecutor.js';
+import { parseSuiStakeExecutionPayload, verifySuiStakeExecution } from '../sui/stakeVerifier.js';
+import {
   bindAnchorDigest,
   bindPaymentDigest,
   bindWalrusEvidence,
@@ -239,6 +254,45 @@ async function route(
           }
         : { 'X-Payment-Protocol': 'x402' },
     );
+    return;
+  }
+
+  if (method === 'GET' && url.pathname === '/api/stake/oracle-registry-transaction') {
+    sendJson(res, 200, buildStakeSigningResponse(buildCreateOracleRegistryWalletRequest(config)));
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/stake/open-transaction') {
+    sendJson(res, 200, buildStakeSigningResponse(buildOpenStakePositionWalletRequest(await readJson<OpenStakePositionInput>(req), config)));
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/stake/attach-transaction') {
+    sendJson(res, 200, buildStakeSigningResponse(buildAttachStakeWalletRequest(await readJson<AttachStakeInput>(req), config)));
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/stake/challenge-transaction') {
+    sendJson(res, 200, buildStakeSigningResponse(buildRaiseChallengeWalletRequest(await readJson<IssueChallengeDecisionInput>(req), config)));
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/stake/resolve-challenge-transaction') {
+    sendJson(res, 200, buildStakeSigningResponse(buildResolveChallengeWalletRequest(await readJson<SlashStakeWithDecisionInput>(req), config)));
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/stake/slash-transaction') {
+    sendJson(res, 200, buildStakeSigningResponse(buildSlashStakeWalletRequest(await readJson<SlashStakeInput>(req), config)));
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/stake/verify') {
+    sendJson(res, 200, await verifySuiStakeExecution({
+      payload: parseSuiStakeExecutionPayload(await readJson<unknown>(req)),
+      config,
+      ...(suiRpcFetch ? { fetchImpl: suiRpcFetch } : {}),
+    }));
     return;
   }
 
@@ -575,6 +629,20 @@ function buildAnchorSigningResponse(receipt: LiveRunReceipt, config: TenderBoard
     anchorPlan: plan,
     walletTransactionRequest: buildSuiReceiptAnchorTransactionRequest(plan),
     anchorPayloadTemplate: buildSuiReceiptAnchorPayload(plan, '<SIGNED_SUI_TRANSACTION_DIGEST>'),
+  };
+}
+
+function buildStakeSigningResponse(walletTransactionRequest: SuiStakeWalletTransactionRequest) {
+  return {
+    objectType: 'walrusproof.stake_signing_request.v1',
+    verifyEndpoint: '/api/stake/verify',
+    walletTransactionRequest,
+    executionPayloadTemplate: {
+      objectType: 'walrusproof.sui_stake_execution_payload.v1',
+      version: 1,
+      transaction: '<SIGNED_SUI_TRANSACTION_DIGEST>',
+      walletTransactionRequest,
+    },
   };
 }
 

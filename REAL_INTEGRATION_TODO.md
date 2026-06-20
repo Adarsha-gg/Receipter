@@ -16,9 +16,9 @@ This file tracks the places where WalrusProof still uses local CLI, demo, metada
   - Files: `tenderboard/src/server/httpServer.ts`, `tenderboard/src/sui/anchorExecutor.ts`.
   - Real version: app builds the anchor transaction, user/operator signs, backend verifies emitted receipt-registry event and stores the digest.
 
-- [ ] Replace backend Sui CLI stake / challenge / slash execution with real signer flows.
-  - Current: stake operations require `SUI_CLI_PATH`.
-  - File: `tenderboard/src/sui/stakeExecutor.ts`.
+- [x] Replace backend Sui CLI stake / challenge / slash execution with real signer flows.
+  - Completed: live Sui mode exposes signer-ready stake transaction requests for opening stake, attaching stake, creating the oracle registry, raising challenges, resolving challenge decisions, and direct slash flows. `/api/stake/verify` checks the signed transaction through Sui JSON-RPC events before accepting it.
+  - Files: `tenderboard/src/sui/stakePlan.ts`, `tenderboard/src/sui/stakeVerifier.ts`, `tenderboard/src/server/httpServer.ts`.
   - Real version: signer-controlled PTBs for opening stake, challenging, resolving, and slashing, with event verification after execution.
 
 - [x] Remove the unverified manual digest bypass from payment approval.

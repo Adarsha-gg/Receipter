@@ -50,3 +50,16 @@ Remaining process blocker:
 - Validation:
   - `npm.cmd run typecheck` passed.
   - `npm.cmd test` passed: 22 files, 93 tests.
+
+## Stake Signer Flow Follow-Up
+
+- Started branch `codex/stake-signer-flow`.
+- Added live-mode stake signing endpoints:
+  - `GET /api/stake/oracle-registry-transaction`
+  - `POST /api/stake/open-transaction`
+  - `POST /api/stake/attach-transaction`
+  - `POST /api/stake/challenge-transaction`
+  - `POST /api/stake/resolve-challenge-transaction`
+  - `POST /api/stake/slash-transaction`
+  - `POST /api/stake/verify`
+- Added Sui RPC verification for successful stake/challenge/slash transactions and expected `reputation_stake` events.

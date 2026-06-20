@@ -48,22 +48,6 @@ interface GitHubSearchResponse {
   items?: GitHubRepoItem[];
 }
 
-interface OsmElement {
-  type?: string;
-  id?: number;
-  lat?: number;
-  lon?: number;
-  center?: {
-    lat?: number;
-    lon?: number;
-  };
-  tags?: Record<string, string | undefined>;
-}
-
-interface OverpassResponse {
-  elements?: OsmElement[];
-}
-
 interface ScoutCandidate {
   result: ScoutResult;
   observation: SourceObservation;
@@ -80,27 +64,18 @@ export async function scoutOpportunities(
   const generatedAt = now.toISOString();
   const warnings: string[] = [];
   const candidates: ScoutCandidate[] = [];
-  const localDiscoveryTask = isLocalDiscoveryTask(taskText);
 
-  if (localDiscoveryTask) {
-    const osmResults = await fetchOpenStreetMapPlaces(taskText, query, generatedAt, fetchImpl).catch((error) => {
-      warnings.push(`OpenStreetMap place search failed: ${error instanceof Error ? error.message : String(error)}`);
-      return [];
-    });
-    candidates.push(...osmResults);
-  } else {
-    const hnResults = await fetchHackerNews(query, generatedAt, fetchImpl).catch((error) => {
-      warnings.push(`Hacker News search failed: ${error instanceof Error ? error.message : String(error)}`);
-      return [];
-    });
-    candidates.push(...hnResults);
+  const hnResults = await fetchHackerNews(query, generatedAt, fetchImpl).catch((error) => {
+    warnings.push(`Hacker News search failed: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  });
+  candidates.push(...hnResults);
 
-    const githubResults = await fetchGitHubRepos(query, generatedAt, fetchImpl).catch((error) => {
-      warnings.push(`GitHub search failed: ${error instanceof Error ? error.message : String(error)}`);
-      return [];
-    });
-    candidates.push(...githubResults);
-  }
+  const githubResults = await fetchGitHubRepos(query, generatedAt, fetchImpl).catch((error) => {
+    warnings.push(`GitHub search failed: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  });
+  candidates.push(...githubResults);
 
   const deduped = dedupeResults(candidates).slice(0, limit);
   if (deduped.length === 0) {
@@ -257,91 +232,6 @@ async function fetchGitHubRepos(query: string, observedAt: string, fetchImpl: Fe
     .filter((candidate): candidate is ScoutCandidate => Boolean(candidate));
 }
 
-async function fetchOpenStreetMapPlaces(
-  taskText: string,
-  query: string,
-  observedAt: string,
-  fetchImpl: FetchLike,
-): Promise<ScoutCandidate[]> {
-  const location = normalizeLocationName(extractLocation(taskText) ?? 'Manhattan');
-  const amenity = inferPlaceAmenity(taskText);
-  const overpassQuery = [
-    '[out:json][timeout:12];',
-    `area["name"="${escapeOverpassString(location)}"]["boundary"="administrative"]->.searchArea;`,
-    '(',
-    `  node["amenity"="${amenity}"](area.searchArea);`,
-    `  way["amenity"="${amenity}"](area.searchArea);`,
-    `  relation["amenity"="${amenity}"](area.searchArea);`,
-    ');',
-    'out center tags 12;',
-  ].join('\n');
-  const url = 'https://overpass-api.de/api/interpreter';
-  const response = await fetchImpl(url, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
-      'User-Agent': 'Receipter/0.1 source-backed local search',
-    },
-    body: new URLSearchParams({ data: overpassQuery }).toString(),
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const data = (await response.json()) as OverpassResponse;
-
-  return (data.elements ?? [])
-    .map((element): ScoutCandidate | undefined => {
-      const tags = element.tags ?? {};
-      const name = tags.name?.trim();
-      if (!name || !element.type || element.id === undefined) return undefined;
-      const lat = element.lat ?? element.center?.lat;
-      const lon = element.lon ?? element.center?.lon;
-      const osmUrl = `https://www.openstreetmap.org/${element.type}/${element.id}`;
-      const cuisine = tags.cuisine ? ` · ${tags.cuisine}` : '';
-      const street = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean).join(' ');
-      const address = street ? ` · ${street}` : '';
-      const title = `${name}${cuisine}${address}`;
-      const record = toRecord({
-        id: element.id,
-        type: element.type,
-        name,
-        amenity,
-        cuisine: tags.cuisine,
-        address: street || undefined,
-        website: tags.website,
-        phone: tags.phone,
-        lat,
-        lon,
-        query,
-        location,
-      });
-      const observation = buildSourceObservation({
-        source: 'openstreetmap',
-        sourceLabel: 'OpenStreetMap',
-        endpoint: url,
-        query,
-        observedAt,
-        title,
-        url: osmUrl,
-        score: undefined,
-        publishedAt: undefined,
-        record,
-      });
-      return {
-        observation,
-        result: {
-          title,
-          url: osmUrl,
-          source: 'OpenStreetMap',
-          sourceObservationId: observation.observationId,
-          points: undefined,
-          createdAt: undefined,
-          reason: `Public OpenStreetMap ${amenity} record in ${location}.`,
-        },
-      };
-    })
-    .filter((candidate): candidate is ScoutCandidate => Boolean(candidate));
-}
-
 function buildSourceObservation(input: Omit<SourceObservation, 'observationId' | 'recordHash'>): SourceObservation {
   const recordHash = stableHash(input.record);
   const observationHash = stableHash({
@@ -419,33 +309,6 @@ function dedupeResults(candidates: ScoutCandidate[]): ScoutCandidate[] {
     deduped.push(candidate);
   }
   return deduped;
-}
-
-function isLocalDiscoveryTask(taskText: string): boolean {
-  return /\b(restaurants?|restruants?|food|places?|cafes?|coffee|bars?)\b/i.test(taskText);
-}
-
-function inferPlaceAmenity(taskText: string): string {
-  if (/\b(cafes?|coffee)\b/i.test(taskText)) return 'cafe';
-  if (/\bbars?\b/i.test(taskText)) return 'bar';
-  return 'restaurant';
-}
-
-function extractLocation(taskText: string): string | undefined {
-  const normalized = taskText.replace(/\s+/g, ' ').trim();
-  const match = normalized.match(/\b(?:in|near|around)\s+([a-zA-Z][a-zA-Z\s.-]{1,48}?)(?:$|[.;,\n]|\s+(?:with|for|under|that|and|but)\b)/i);
-  return match?.[1]?.trim();
-}
-
-function normalizeLocationName(value: string): string {
-  return value
-    .split(/\s+/)
-    .map((part) => (part.length === 0 ? part : `${part[0]!.toUpperCase()}${part.slice(1).toLowerCase()}`))
-    .join(' ');
-}
-
-function escapeOverpassString(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 const STOP_WORDS = new Set([

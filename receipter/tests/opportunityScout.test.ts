@@ -73,63 +73,6 @@ Do not request buyer-private material.`;
     expect(rendered).toContain('https://github.com/agent/project');
   });
 
-  it('uses OpenStreetMap source observations for local restaurant discovery', async () => {
-    const seenUrls: string[] = [];
-    const seenBodies: string[] = [];
-    const fetchImpl = async (url: string | URL | Request, init?: RequestInit) => {
-      const text = String(url);
-      seenUrls.push(text);
-      seenBodies.push(String(init?.body ?? ''));
-      expect(text).toContain('overpass-api.de');
-      return jsonResponse({
-        elements: [
-          {
-            type: 'node',
-            id: 123,
-            lat: 40.7301,
-            lon: -73.9996,
-            tags: {
-              name: 'Example Noodle Bar',
-              amenity: 'restaurant',
-              cuisine: 'ramen',
-              'addr:housenumber': '10',
-              'addr:street': 'Example Street',
-            },
-          },
-        ],
-      });
-    };
-
-    const report = await scoutOpportunities('find me restruants in manhattan', {
-      fetchImpl: fetchImpl as typeof fetch,
-      now: new Date('2026-06-18T20:30:00.000Z'),
-    });
-
-    expect(seenUrls).toHaveLength(1);
-    expect(seenBodies[0]).toContain('data=');
-    expect(decodeURIComponent(seenBodies[0]!)).toContain('area["name"="Manhattan"]');
-    expect(report.results).toHaveLength(1);
-    expect(report.sourceReceipt.observations[0]).toMatchObject({
-      source: 'openstreetmap',
-      sourceLabel: 'OpenStreetMap',
-      title: 'Example Noodle Bar · ramen · 10 Example Street',
-      url: 'https://www.openstreetmap.org/node/123',
-    });
-    expect(report.claims[0]).toMatchObject({
-      url: 'https://www.openstreetmap.org/node/123',
-      sourceObservationId: report.sourceReceipt.observations[0]?.observationId,
-    });
-    expect(report.evidence.evidenceHash).toBe(
-      stableHash({
-        schema: report.evidence.schema,
-        generatedAt: report.evidence.generatedAt,
-        query: report.evidence.query,
-        sourceReceipt: report.evidence.sourceReceipt,
-        claims: report.evidence.claims,
-      }),
-    );
-  });
-
   it('hashes canonical JSON independent of object key order', () => {
     expect(stableHash({ b: 2, a: { d: 4, c: 3 } })).toBe(stableHash({ a: { c: 3, d: 4 }, b: 2 }));
   });

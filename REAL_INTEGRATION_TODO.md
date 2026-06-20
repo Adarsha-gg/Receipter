@@ -53,9 +53,10 @@ This file tracks the places where WalrusProof still uses local CLI, demo, metada
   - Files: `tenderboard/src/live/agentMemory.ts`, `tenderboard/src/client/index.html`.
   - Real version: every worker profile displays owner address, passport object ID, latest memory pointer, latest Walrus blob, and latest Sui anchor from chain-backed state.
 
-- [ ] Update the Sui `AgentPassport` object automatically after every new accepted run.
-  - Current: the object was minted/updated in live smoke work, but the normal UI create flow must reliably update it after anchor.
-  - Real version: anchor success triggers passport memory pointer update and event verification.
+- [x] Update the Sui `AgentPassport` object after every new accepted run.
+  - Completed: anchored runs expose `/api/runs/:id/passport-update-transaction`, which uploads the current memory index to Walrus, builds an owner-signed `agent_passport::update_memory_pointer` transaction request, and verifies the resulting `AgentPassportMemoryUpdated` event through `/api/runs/:id/passport-update`.
+  - Files: `tenderboard/src/sui/agentPassportTransaction.ts`, `tenderboard/src/sui/agentPassportVerifier.ts`, `tenderboard/src/server/httpServer.ts`.
+  - Product note: because the Move object is owner-gated, the update is signer-controlled rather than a silent backend write.
 
 ## Product / Demo Honesty
 

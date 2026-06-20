@@ -814,6 +814,7 @@ export interface TenderBoardConfig {
   suiStakeOracleRegistryId: string | undefined;
   suiOperatorAddress: string | undefined;
   workerAgentAddress?: string | undefined;
+  workerAgentPassportObjectId?: string | undefined;
   walrusPublisherUrl: string | undefined;
   walrusAggregatorUrl: string | undefined;
   walrusUploadStrategy?: WalrusUploadStrategy;

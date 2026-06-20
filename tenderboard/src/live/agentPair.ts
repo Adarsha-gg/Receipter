@@ -9,6 +9,7 @@ export interface BuildAgentPairInput {
   paymentIntentId: string | undefined;
   hirerOwnerAddress?: string | undefined;
   workerOwnerAddress?: string | undefined;
+  workerAgentPassportObjectId?: string | undefined;
 }
 
 export function buildAgentPair(input: BuildAgentPairInput): {
@@ -43,6 +44,7 @@ export function buildAgentPair(input: BuildAgentPairInput): {
     agentId: input.selectedBid?.workerAgentId ?? 'unassigned_worker',
     role: 'worker',
     ownerAddress: input.workerOwnerAddress,
+    agentPassportObjectId: input.workerAgentPassportObjectId,
     displayName: 'Opportunity Scout Worker',
     responsibilities: [
       'Bid on the sanitized task packet.',

@@ -415,6 +415,7 @@ describe('WalrusProof product server', () => {
     let currentPaymentMarker: Record<string, string> = {};
     let currentAnchorMarker: Record<string, string> = {};
     let currentReputationMarker: Record<string, string> = {};
+    let currentPassportMarker: Record<string, string> = {};
     const rpcCalls: Array<{ input: RequestInfo | URL; init: RequestInit | undefined }> = [];
     const { baseUrl, close } = await startTestServer(
       {
@@ -425,6 +426,8 @@ describe('WalrusProof product server', () => {
         SUI_OPERATOR_ADDRESS: '0xoperator',
         SUI_PACKAGE_ID: '0xpackage',
         SUI_RECEIPT_REGISTRY_ID: '0xregistry',
+        TENDERBOARD_WORKER_AGENT_ADDRESS: '0xworker_owner',
+        TENDERBOARD_WORKER_AGENT_PASSPORT_OBJECT_ID: '0xpassport',
         WALRUS_PUBLISHER_URL: 'https://publisher.walrus.testnet.example',
         WALRUS_AGGREGATOR_URL: 'https://aggregator.walrus.testnet.example',
       },
@@ -454,6 +457,13 @@ describe('WalrusProof product server', () => {
                           parsedJson: currentPaymentMarker,
                         },
                       ]
+                    : request.params[0] === '0xpassport_digest'
+                      ? [
+                          {
+                            type: '0xpackage::agent_passport::AgentPassportMemoryUpdated',
+                            parsedJson: currentPassportMarker,
+                          },
+                        ]
                     : [
                         {
                           type: '0xpackage::receipts::ReceiptAnchored',
@@ -478,6 +488,15 @@ describe('WalrusProof product server', () => {
               certifiedEpoch: 1,
               endEpoch: 53,
               readUrl: `https://aggregator.walrus.testnet.example/v1/blobs/test_blob_${receipt.runId}`,
+            };
+          },
+          async putMemoryIndex() {
+            return {
+              blobId: 'test_memory_index_blob',
+              blobObjectId: '0xmemoryindex',
+              certifiedEpoch: 1,
+              endEpoch: 53,
+              readUrl: 'https://aggregator.walrus.testnet.example/v1/blobs/test_memory_index_blob',
             };
           },
         },
@@ -561,6 +580,55 @@ describe('WalrusProof product server', () => {
       expect(anchored.receiptPlan.anchorDigest).toBe('0xanchor_digest');
       expect(JSON.stringify(anchored.events)).toContain('walrusproof.sui_anchor_verification.v1');
       expect(rpcCalls.some((call) => String(call.init?.body).includes('0xanchor_digest'))).toBe(true);
+
+      const passportSigningRequest = await (await fetch(`${baseUrl}/api/runs/${created.runId}/passport-update-transaction`)).json();
+      expect(passportSigningRequest).toMatchObject({
+        objectType: 'walrusproof.agent_passport_update_signing_request.v1',
+        runId: created.runId,
+        verifyEndpoint: `/api/runs/${created.runId}/passport-update`,
+        passport: {
+          workerAgentId: stored.workerAgentId,
+          ownerAddress: '0xworker_owner',
+          passportObjectId: '0xpassport',
+        },
+        memoryIndexWalrus: {
+          blobId: 'test_memory_index_blob',
+        },
+        walletTransactionRequest: {
+          objectType: 'walrusproof.sui_agent_passport_update_wallet_request.v1',
+          kind: 'update_memory_pointer',
+          expected: {
+            event: 'AgentPassportMemoryUpdated',
+            passportObjectId: '0xpassport',
+            memoryIndexBlobId: 'test_memory_index_blob',
+            latestWalrusBlobId: stored.walrusBlobId,
+            latestSuiAnchorDigest: '0xanchor_digest',
+          },
+        },
+        passportUpdatePayloadTemplate: {
+          objectType: 'walrusproof.sui_agent_passport_update_payload.v1',
+          transaction: '<SIGNED_SUI_TRANSACTION_DIGEST>',
+        },
+      });
+      currentPassportMarker = {
+        memory_index_blob_id: passportSigningRequest.walletTransactionRequest.expected.memoryIndexBlobId,
+        latest_record_hash: passportSigningRequest.walletTransactionRequest.expected.latestRecordHash,
+        latest_walrus_blob_id: passportSigningRequest.walletTransactionRequest.expected.latestWalrusBlobId,
+        latest_sui_anchor_digest: passportSigningRequest.walletTransactionRequest.expected.latestSuiAnchorDigest,
+      };
+
+      const passportUpdated = await postJson(`${baseUrl}/api/runs/${created.runId}/passport-update`, {
+        ...passportSigningRequest.passportUpdatePayloadTemplate,
+        transaction: '0xpassport_digest',
+      });
+
+      expect(passportUpdated.verification).toMatchObject({
+        objectType: 'walrusproof.sui_agent_passport_update_verification.v1',
+        ok: true,
+        transaction: '0xpassport_digest',
+      });
+      expect(JSON.stringify(passportUpdated.receipt.events)).toContain('agent_passport_memory_updated');
+      expect(rpcCalls.some((call) => String(call.init?.body).includes('0xpassport_digest'))).toBe(true);
     } finally {
       await close();
     }

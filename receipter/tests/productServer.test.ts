@@ -259,6 +259,32 @@ describe('Receipter product server', () => {
     }
   });
 
+  it('blocks consumer local-search tasks outside the public-source research worker scope', async () => {
+    const { baseUrl, close } = await startTestServer({
+      RECEIPTER_MODE: 'sui-dev',
+      RECEIPTER_RECEIPTS_DIR: tempDir,
+    });
+
+    try {
+      const response = await fetch(`${baseUrl}/api/runs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'find me restruants in manhattan',
+          instructions: 'Return good food spots.',
+          maxPayment: { amount: '0.050', currency: 'SUI' },
+        }),
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body.error).toContain('No safe worker bid is available');
+      expect(body.error).toContain('only accept verifiable public-source research');
+    } finally {
+      await close();
+    }
+  });
+
   it('verifies Sui dev x402 payment payloads and blocks mismatches and replay', async () => {
     const { baseUrl, close } = await startTestServer({
       RECEIPTER_MODE: 'sui-dev',

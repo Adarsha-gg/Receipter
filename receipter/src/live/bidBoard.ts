@@ -71,7 +71,8 @@ export function buildPrivacyLabeledTask(request: CreateRunRequest): {
 export function buildWorkerBidBoard(request: CreateRunRequest, config: ReceipterConfig): WorkerBidBoard {
   const requestedDataLabel = normalizeTaskDataLabel(request.requestedDataLabel);
   const maxPayment = Number(request.maxPayment.amount);
-  const bids = BID_TEMPLATES.map((template) => evaluateBid(template, requestedDataLabel, maxPayment, config));
+  const taskFitBlocker = publicSourceResearchBlocker(request);
+  const bids = BID_TEMPLATES.map((template) => evaluateBid(template, requestedDataLabel, maxPayment, config, taskFitBlocker));
   const preferred = request.preferredBidId
     ? bids.find((bid) => bid.bidId === request.preferredBidId && bid.verdict === 'available')
     : undefined;
@@ -94,6 +95,7 @@ function evaluateBid(
   requestedDataLabel: TaskDataLabel,
   maxPayment: number,
   config: ReceipterConfig,
+  taskFitBlocker: string | undefined,
 ): WorkerBid {
   const price = Number(template.priceSui);
   const riskFlags = [...template.baseRiskFlags];
@@ -114,6 +116,11 @@ function evaluateBid(
   if (requestedDataLabel !== 'public') {
     riskFlags.push('buyer_labeled_sensitive');
     blockers.push(`Task is labeled ${humanDataLabel(requestedDataLabel)} and needs buyer review before worker sourcing.`);
+  }
+
+  if (taskFitBlocker) {
+    riskFlags.push('unsupported_task_fit');
+    blockers.push(taskFitBlocker);
   }
 
   const verdict = blockers.length > 0 ? 'blocked' : 'available';
@@ -145,4 +152,15 @@ function humanDataLabel(value: TaskDataLabel): string {
 
 function formatSui(value: number): string {
   return value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function publicSourceResearchBlocker(request: CreateRunRequest): string | undefined {
+  const text = `${request.title}\n${request.instructions}\n${request.acceptanceCriteria?.join('\n') ?? ''}`.toLowerCase();
+  if (/\b(restaurants?|restruants?|food places?|coffee shops?|cafes?|bars?|hotels?|apartments?)\b/.test(text)) {
+    return 'Receipter workers only accept verifiable public-source research over developer, ecosystem, GitHub, Hacker News, protocol, funding, competitor, and market-intel sources.';
+  }
+  if (/\b(find me (a )?(wife|husband|girlfriend|boyfriend|date)|dating|matchmaking)\b/.test(text)) {
+    return 'Receipter workers do not handle personal matchmaking requests; use public-source research tasks with externally verifiable links.';
+  }
+  return undefined;
 }

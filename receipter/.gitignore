@@ -1,4 +1,5 @@
 node_modules/
+.vercel/
 dist/
 coverage/
 /outputs/
@@ -9,3 +10,4 @@ sui/build/
 .env.*
 !.env.example
 .DS_Store
+.vercel

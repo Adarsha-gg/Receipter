@@ -1,0 +1,590 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background: #f4f3ef;
+  color: #17181c;
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 15px 30px;
+  background: rgba(244,243,239,.82);
+  border-bottom: 1px solid #e7e5df;
+  backdrop-filter: blur(14px);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-family: "Archivo Black", sans-serif;
+  font-size: 15px;
+  letter-spacing: -1px;
+}
+.logoMark { position: relative; width: 28px; height: 28px; display: inline-block; }
+.logoMark i { position: absolute; width: 20px; height: 12px; border-radius: 4px; transform: skewX(-18deg); }
+.logoMark i:nth-child(1) { left: 2px; top: 9px; background: #b6831c; }
+.logoMark i:nth-child(2) { left: 4px; top: 5px; background: #2f6bff; }
+.logoMark i:nth-child(3) { left: 6px; top: 1px; background: #17181c; }
+nav { display: flex; gap: 22px; margin-left: auto; }
+nav a { color: #5c6470; font-weight: 700; font-size: 14px; text-decoration: none; }
+nav a.active, nav a:hover { color: #17181c; }
+.shell { max-width: 1240px; margin: 0 auto; padding: 42px 30px 70px; }
+.hero { margin-bottom: 26px; }
+.eyebrow {
+  margin: 0 0 9px;
+  color: #0e9c95;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 900;
+  font-size: 12px;
+}
+h1, h2 { font-family: "Archivo Black", sans-serif; letter-spacing: -.7px; margin: 0; }
+h1 { max-width: 720px; font-size: 40px; line-height: 1.05; }
+.hero p:not(.eyebrow) { max-width: 640px; color: #6e7178; font-size: 17px; line-height: 1.55; }
+.walrusUse {
+  display: grid;
+  grid-template-columns: 1.25fr repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+  margin: 0 0 22px;
+}
+.walrusUse > div,
+.walrusUse article {
+  border: 1px solid #eceae3;
+  border-radius: 18px;
+  background: #fff;
+  padding: 18px;
+}
+.walrusUse h2 { font-size: 22px; line-height: 1.1; }
+.walrusUse strong { display: block; font-family: "Archivo Black", sans-serif; font-size: 13px; letter-spacing: -.2px; }
+.walrusUse span { display: block; margin-top: 8px; color: #6e7178; font-size: 13px; line-height: 1.45; }
+.stats, .passportStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+.stat {
+  padding: 15px 16px;
+  border: 1px solid #eceae3;
+  border-radius: 16px;
+  background: #fff;
+}
+.stat strong { display: block; font-family: "Archivo Black", sans-serif; font-size: 22px; }
+.stat span { color: #8c8a82; font-size: 12px; font-weight: 700; }
+.grid {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.panel {
+  border: 1px solid #eceae3;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 46px -36px rgba(23,24,28,.5);
+}
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 18px 12px;
+}
+.panelHead strong { font-family: "Archivo Black", sans-serif; }
+button {
+  border: 1px solid #e0ddd4;
+  border-radius: 10px;
+  background: #fff;
+  color: #17181c;
+  padding: 8px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+input {
+  width: calc(100% - 36px);
+  margin: 0 18px 14px;
+  border: 1px solid #e3e0d8;
+  border-radius: 12px;
+  padding: 11px 13px;
+  font: inherit;
+}
+.ownerVerify {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 0 18px 14px;
+}
+.ownerVerify input {
+  width: 100%;
+  margin: 0;
+}
+.ownerResult {
+  margin: 0 18px 14px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #f1f0eb;
+  color: #5c6470;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ownerResult.good { background: #e4f4ea; color: #16793b; }
+.ownerResult.bad { background: #fbecec; color: #b23b3b; }
+.ownerResult strong,
+.ownerResult span {
+  display: block;
+}
+.ownerResult span { margin-top: 3px; }
+.agentList { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 14px; }
+.agentCard {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #f0eee8;
+  border-radius: 14px;
+  background: #fcfcfa;
+  padding: 14px;
+}
+.agentCard.active { border-color: #17181c; background: #fff; }
+.agentCard strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agentCard span { display: block; color: #8c8a82; font-size: 12px; margin-top: 4px; }
+.detail { min-height: 520px; padding: 24px; }
+.empty { color: #8c8a82; padding: 80px 20px; text-align: center; }
+.passportHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  border-bottom: 1px solid #f1efe9;
+  padding-bottom: 18px;
+}
+.passportHead h2 { font-size: 25px; }
+.passportHead span { color: #8c8a82; font-family: "JetBrains Mono", monospace; font-size: 12px; }
+.scoreBadge {
+  min-width: 86px;
+  border-radius: 16px;
+  padding: 14px;
+  background: #e4f4ea;
+  color: #16793b;
+  font-family: "Archivo Black", sans-serif;
+  text-align: center;
+}
+.passportActions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.passportActions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 37px;
+  border: 1px solid #e0ddd4;
+  border-radius: 10px;
+  background: #fff;
+  color: #17181c;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.passportVerifyResult {
+  margin-top: 14px;
+  border-radius: 14px;
+  padding: 13px 14px;
+  background: #f1f0eb;
+  color: #5c6470;
+  font-size: 13px;
+  font-weight: 700;
+}
+.passportVerifyResult.good { background: #e4f4ea; color: #16793b; }
+.passportVerifyResult.bad { background: #fbecec; color: #b23b3b; }
+.passportVerifyResult strong,
+.passportVerifyResult span {
+  display: block;
+}
+.passportVerifyResult span {
+  margin-top: 4px;
+  line-height: 1.45;
+}
+.passportVerifyResult pre {
+  max-height: 280px;
+  overflow: auto;
+  border-radius: 10px;
+  background: #17181c;
+  color: #f4f3ef;
+  padding: 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  white-space: pre-wrap;
+}
+.passportFailureList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.passportFailureList div {
+  min-width: 0;
+  border: 1px solid rgba(178,59,59,.16);
+  border-radius: 10px;
+  background: rgba(255,255,255,.62);
+  padding: 9px;
+}
+.passportFailureList b,
+.passportFailureList span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.passportFailureList span {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.taskHint {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #f1efe9;
+  border-radius: 12px;
+  background: #fcfcfa;
+  color: #6e7178;
+  font-size: 13px;
+  font-weight: 700;
+}
+.receiptList { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+.receipt {
+  border: 1px solid #eceae3;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fcfcfa;
+}
+.receipt.open { background: #fff; border-color: #d8d4c8; }
+.receiptTop {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  text-align: left;
+}
+.receiptTop:hover { background: #fff; }
+.taskTitle { min-width: 0; }
+.receipt h3 { margin: 0; font-size: 16px; }
+.receipt small { color: #8c8a82; }
+.taskMeta {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.support {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #e2f4f2;
+  color: #0e7772;
+  font-size: 11px;
+  font-weight: 900;
+}
+.chevron {
+  display: inline-flex;
+  min-width: 54px;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #17181c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+}
+.pill {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #f6ecd6;
+  color: #8a5a00;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.pill.good { background: #e4f4ea; color: #16793b; }
+.receiptDrawer {
+  padding: 0 16px 16px;
+  border-top: 1px solid #f1efe9;
+}
+.proofSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.proofSummary div {
+  border: 1px solid #f1efe9;
+  border-radius: 12px;
+  background: #fcfcfa;
+  padding: 12px;
+}
+.proofSummary strong { display: block; font-size: 12px; }
+.proofSummary span { display: block; margin-top: 4px; color: #6e7178; font-size: 12px; line-height: 1.4; }
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+.fact {
+  min-width: 0;
+  border: 1px solid #f1efe9;
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: #fff;
+}
+.fact span { display: block; color: #9a9890; font-size: 11px; font-weight: 800; }
+.fact b, .fact a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #41434a;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  text-decoration: none;
+}
+.receiptActions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.stakeBuilder {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, .9fr) auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #f0d9d9;
+  border-radius: 12px;
+  background: #fffafa;
+}
+.stakeBuilder label {
+  min-width: 0;
+}
+.stakeBuilder label span {
+  display: block;
+  margin-bottom: 5px;
+  color: #9a4a4a;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.stakeBuilder input {
+  width: 100%;
+  margin: 0;
+  border-color: #efd2d2;
+  background: #fff;
+}
+.stakeBuilder button,
+.challengeResult button {
+  border-color: #b23b3b;
+  background: #b23b3b;
+  color: #fff;
+}
+.actionLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 35px;
+  border: 1px solid #e0ddd4;
+  border-radius: 10px;
+  background: #fff;
+  color: #17181c;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.verifyResult {
+  margin-top: 12px;
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: #f1f0eb;
+  color: #5c6470;
+  font-size: 12px;
+  font-weight: 700;
+}
+.challengeResult {
+  margin-top: 10px;
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: #f1f0eb;
+  color: #5c6470;
+  font-size: 12px;
+  font-weight: 700;
+}
+.challengeResult.good { background: #e4f4ea; color: #16793b; }
+.challengeResult.bad { background: #fbecec; color: #b23b3b; }
+.challengeResult strong,
+.challengeResult > span {
+  display: block;
+}
+.challengeResult > span {
+  margin-top: 4px;
+  line-height: 1.45;
+}
+.challengeFacts {
+  display: grid;
+  grid-template-columns: .7fr .7fr minmax(0, 2fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+.slashNotice {
+  margin-top: 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.72);
+  padding: 10px;
+  line-height: 1.4;
+}
+.challengeResult pre {
+  max-height: 260px;
+  overflow: auto;
+  border-radius: 10px;
+  background: #17181c;
+  color: #f4f3ef;
+  padding: 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  white-space: pre-wrap;
+}
+.challengeFacts div {
+  min-width: 0;
+  border: 1px solid rgba(23,24,28,.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,.62);
+  padding: 9px;
+}
+.challengeFacts b,
+.challengeFacts span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.challengeFacts span {
+  margin-top: 3px;
+  color: inherit;
+  opacity: .76;
+}
+.verifyResult strong { display: block; margin-bottom: 4px; }
+.verifyResult > span { display: block; color: inherit; opacity: .86; }
+.verifyResult.good { background: #e4f4ea; color: #16793b; }
+.verifyResult.bad { background: #fbecec; color: #b23b3b; }
+.plainVerdict {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.72);
+}
+.plainVerdict b,
+.plainVerdict span,
+.plainVerdict em {
+  display: block;
+}
+.plainVerdict span {
+  margin-top: 4px;
+  line-height: 1.45;
+}
+.plainVerdict em {
+  margin-top: 8px;
+  color: #7a3b0b;
+  font-style: normal;
+}
+.failedExplain {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.failedExplain div {
+  border: 1px solid rgba(178,59,59,.16);
+  border-radius: 10px;
+  background: rgba(255,255,255,.62);
+  padding: 10px;
+}
+.failedExplain b,
+.failedExplain span {
+  display: block;
+}
+.failedExplain span {
+  margin-top: 4px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+.rawChecks {
+  margin-top: 10px;
+}
+.rawChecks summary {
+  cursor: pointer;
+  color: #5c6470;
+  font-size: 12px;
+  font-weight: 900;
+}
+.checkGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.checkGrid div {
+  min-width: 0;
+  border: 1px solid rgba(23,24,28,.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,.65);
+  padding: 8px;
+}
+.checkGrid div.passed { border-color: rgba(31,157,87,.25); }
+.checkGrid div.failed { border-color: rgba(178,59,59,.25); }
+.checkGrid div.skipped { border-color: rgba(182,131,28,.25); }
+.checkGrid b {
+  display: block;
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.checkGrid span {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.checkGrid code {
+  display: block;
+  margin-top: 5px;
+  color: #8c8a82;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+}
+@media (max-width: 900px) {
+  .grid, .stats, .passportStats, .walrusUse, .proofSummary, .checkGrid, .failedExplain, .challengeFacts, .ownerVerify, .stakeBuilder, .passportFailureList { grid-template-columns: 1fr; }
+  nav { display: none; }
+  .shell { padding: 28px 18px 46px; }
+  .receiptTop { align-items: flex-start; flex-direction: column; }
+  .taskMeta { justify-content: flex-start; }
+  .passportActions { justify-content: flex-start; }
+}

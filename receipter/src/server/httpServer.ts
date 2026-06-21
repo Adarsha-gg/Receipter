@@ -119,7 +119,27 @@ async function route(
     return;
   }
 
-  if (method === 'GET' && (url.pathname === '/app.js' || url.pathname === '/styles.css' || url.pathname === '/support.js' || url.pathname === '/wallet.js' || url.pathname === '/delivery.js')) {
+  if (method === 'GET' && url.pathname === '/hire') {
+    await sendStatic(res, 'hire.html');
+    return;
+  }
+
+  if (method === 'GET' && url.pathname === '/explorer') {
+    await sendStatic(res, 'explorer.html');
+    return;
+  }
+
+  if (method === 'GET' && url.pathname === '/developers') {
+    await sendStatic(res, 'developers.html');
+    return;
+  }
+
+  if (method === 'GET' && (url.pathname === '/app.js' || url.pathname === '/styles.css' || url.pathname === '/support.js' || url.pathname === '/wallet.js' || url.pathname === '/delivery.js' || url.pathname === '/hire.html' || url.pathname === '/hire.css' || url.pathname === '/hire.js' || url.pathname === '/explorer.html' || url.pathname === '/explorer.css' || url.pathname === '/explorer.js' || url.pathname === '/developers.html' || url.pathname === '/developers.css' || url.pathname === '/developers.js')) {
+    await sendStatic(res, url.pathname.slice(1));
+    return;
+  }
+
+  if (method === 'GET' && url.pathname.startsWith('/assets/')) {
     await sendStatic(res, url.pathname.slice(1));
     return;
   }
@@ -1418,7 +1438,10 @@ async function readJson<T>(req: IncomingMessage): Promise<T> {
 }
 
 async function sendStatic(res: ServerResponse, fileName: string): Promise<void> {
-  const filePath = path.join(clientDir, fileName);
+  const filePath = path.resolve(clientDir, fileName);
+  if (!filePath.startsWith(`${clientDir}${path.sep}`)) {
+    throw httpError(404, 'Static file not found.');
+  }
   const body = await readFile(filePath);
   res.writeHead(200, { 'Content-Type': contentType(fileName) });
   res.end(body);
@@ -1428,6 +1451,8 @@ function contentType(fileName: string): string {
   if (fileName.endsWith('.html')) return 'text/html; charset=utf-8';
   if (fileName.endsWith('.js')) return 'text/javascript; charset=utf-8';
   if (fileName.endsWith('.css')) return 'text/css; charset=utf-8';
+  if (fileName.endsWith('.png')) return 'image/png';
+  if (fileName.endsWith('.webp')) return 'image/webp';
   return 'application/octet-stream';
 }
 

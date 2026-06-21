@@ -1,15 +1,15 @@
-# Receipter - Walrus-Native Agent Memory Market
+# Receipter - Walrus-Backed Agent Receipt Layer
 
-Receipter is a Walrus-native operator console for hiring worker agents safely. It exists to make agent work durable and reusable: every task becomes a paid work order, every delivery must produce source-backed evidence, every completed run becomes a portable Walrus memory record, and Sui owns the agent passport, payment/finality rail, receipt anchor, and stake/slash accountability layer.
+Receipter is a Walrus-backed verification and receipt layer for AI agent work. Every task becomes a paid work order, every delivery must produce source-backed evidence, every completed run becomes a durable Walrus receipt artifact, and Sui owns the agent passport, payment/finality rail, receipt anchor, and stake/slash accountability layer.
 
-The core product is the Walrus memory layer plus a Sui-native agent identity object. Walrus stores the full evidence and memory; Sui owns the `AgentPassport`, gates access with SUI-denominated x402-style paid HTTP access, anchors compact proof hashes, and attaches slashable stake to the passport.
+The core product is the Walrus evidence layer plus a Sui-native agent identity object. Walrus stores the full delivery artifact, source observations, verifier output, and proof material; Sui owns the `AgentPassport`, gates access with SUI-denominated x402-style paid HTTP access, anchors compact proof hashes, and attaches slashable stake to the passport.
 
 ## Core Product Loop
 
 1. Buyer writes task, private notes, acceptance criteria, checker pack, and max SUI payment.
 2. Receipter strips private notes and secret-looking lines.
 3. Receipter creates a worker-facing safe packet.
-4. Receipter scores the worker route against prior Walrus memory before execution.
+4. Receipter scores the worker route against prior Walrus-backed receipts before execution.
 5. Receipter creates a verification manifest, memory scope, and Sui work order id.
 6. Worker task access is guarded by an x402-style HTTP 402 challenge.
 7. The challenge carries signer-ready Sui wallet transaction metadata for that exact work order, with a `sui:pay` URI retained as a compatibility fallback.
@@ -17,28 +17,28 @@ The core product is the Walrus memory layer plus a Sui-native agent identity obj
 9. The local Sui facilitator/verifier for the x402-style flow verifies run, resource, nonce, amount, receiver, worker, and Sui settlement.
 10. Worker agent receives the paid task packet and delivers source-backed evidence.
 11. The verification layer checks claim-to-source binding, evidence strength, Walrus readiness, and settlement blockers.
-12. Full receipt/evidence is stored as a Walrus memory bundle only after delivery.
-13. The Walrus bundle becomes the worker's portable agent memory record.
+12. Full receipt/evidence is stored as a Walrus artifact only after delivery.
+13. The Walrus artifact becomes the worker's portable proof record.
 14. Compact proof fields are committed to the Sui receipt registry only when verification is admissible.
 15. The worker reputation passport updates only after the Sui receipt anchor is recorded.
 16. The Sui `AgentPassport` object points at the latest Walrus blob, latest memory hash, latest Sui anchor digest, and stake position.
-17. Future work orders use the worker's Walrus memory passport in the pre-run trust gate.
+17. Future work orders use the worker's Walrus-backed receipt history in the pre-run trust gate.
 
-## Walrus Memory Layer
+## Walrus Evidence Layer
 
-Walrus is the durable memory substrate, not a side upload. Every delivered run produces a `receipter.agent_memory_record.v1` with task summary, claim counts, average claim support, evidence strength, settlement action, Walrus blob id, Sui anchor digest, and a stable memory hash. Records roll up into a `receipter.agent_memory_passport.v1` per worker and into a global `receipter.memory_index.v1`.
+Walrus is the durable evidence substrate, not a side upload. Every delivered run produces a `receipter.agent_memory_record.v1` protocol record with task summary, claim counts, average claim support, evidence strength, settlement action, Walrus blob id, Sui anchor digest, and a stable artifact hash. Records roll up into a `receipter.agent_memory_passport.v1` per worker and into a global `receipter.memory_index.v1`.
 
 The backend writes memory through an injectable `MemoryStore` interface. The default `WalrusMemoryStore` wraps the raw Walrus HTTP publisher/aggregator path used in live testnet runs, while keeping the server ready for a future `MemWalMemoryStore` without changing the product API.
 
 Passports are now Sui-native at the contract layer: `receipter::agent_passport::AgentPassport` is an owner-held Sui object with agent id, Walrus metadata pointer, latest memory hash, latest Walrus blob id, latest Sui anchor digest, record counts, challenge/slash counters, and a stake position reference. The API passport still exposes `ownerAddress` and `ownership` for app-level verification.
 
-The memory layer gives the app its loop:
+The Walrus evidence layer gives the app its loop:
 
-- workers remember across jobs through portable Walrus records
-- buyers can inspect the exact memory that influenced routing
+- workers build history through portable Walrus receipt artifacts
+- buyers can inspect the exact evidence that influenced routing
 - future trust decisions include prior Walrus-backed performance
 - weak prior claim support lowers the trust score before dispatch
-- Sui anchors are compact finality signals for the larger Walrus memory bundle
+- Sui anchors are compact finality signals for the larger Walrus receipt artifact
 
 Memory API:
 
@@ -154,17 +154,17 @@ For research work, source-backed claims must be bound to observations in the wor
 
 ## Competitive Positioning
 
-Agent memory is an active category. The leading products prove the need, but most focus on app-local context retrieval rather than verifiable, portable work memory.
+Agent memory is an active category. The leading products prove the need, but most focus on app-local context retrieval rather than verifiable, portable receipt artifacts.
 
 | Product | What they have | What they do not have that Receipter adds |
 | --- | --- | --- |
-| Mem0 | Drop-in persistent memory for agents and apps, SDK integrations, memory compression, governance, audit logs, and enterprise controls. | No Walrus-backed portable memory bundle, no Sui payment-gated work order, no source-claim admission gate, no on-chain finality for compact memory proofs. |
+| Mem0 | Drop-in persistent memory for agents and apps, SDK integrations, memory compression, governance, audit logs, and enterprise controls. | No Walrus-backed portable receipt artifact, no Sui payment-gated work order, no source-claim admission gate, no on-chain finality for compact proof receipts. |
 | Zep / Graphiti | Enterprise agent memory with temporal context graphs, business/user/work memory, and benchmarked graph retrieval. | No decentralized blob memory layer, no paid agent-work marketplace, no Sui receipt registry anchor, no settlement blocker model before memory admission. |
 | Letta | Stateful agents with memory blocks, shared memory, archival memory, long-running executions, and multi-agent patterns. | No Walrus-native storage target by default, no worker reputation passport derived from stored evidence, no x402-style Sui payment unlock, no proof object tying memory to payment and source evidence. |
 | LangGraph memory | Short-term thread checkpoints and long-term memory stores for semantic/profile/episodic/procedural memory. | Framework primitives rather than a product loop; no durable Walrus memory ledger, no payment-bound agent marketplace, no automatic source-claim clearing, no Sui finality rail. |
 | Plain RAG/vector DBs | Fast retrieval, embeddings, and app-specific context search. | Retrieval is not memory governance: no source-backed admission, no worker performance passport, no portable blob proof, no payment/finality coupling. |
 
-Receipter does not try to beat these products at generic personalization memory. It focuses on a narrower wedge: **verifiable agent work memory**. A worker does a paid job, the system checks the evidence, Walrus stores the full memory artifact, Sui anchors the compact proof, and the next buyer can route work using that prior memory.
+Receipter does not try to beat these products at generic personalization memory. It focuses on a narrower wedge: **verifiable agent receipts**. A worker does a paid job, the system checks the evidence, Walrus stores the full receipt artifact, Sui anchors the compact proof, and the next buyer can route work using that prior verified receipt history.
 
 Sources used for this positioning:
 
@@ -188,6 +188,62 @@ Open:
 http://127.0.0.1:4174
 ```
 
+Product surfaces:
+
+```text
+http://127.0.0.1:4174/           judge-facing landing page
+http://127.0.0.1:4174/hire       hirer flow: scope -> route -> pay -> receipt
+http://127.0.0.1:4174/explorer   agent passport and receipt explorer
+http://127.0.0.1:4174/developers API, agent-card, and terminal integration surface
+```
+
+Agents or developer tools can create a work order from the terminal:
+
+```bash
+npm run hire:agent -- \
+  --title "Find Sui AI grants" \
+  --instructions "Find public Sui or Walrus grants for AI agents. Include links and dates." \
+  --amount 0.05
+```
+
+The command returns a selected worker, run id, payment transaction endpoint, worker-task endpoint, receipt URL, and memory-passport URL.
+
+Receipter also exposes a real stdio MCP server for agent hosts:
+
+```bash
+npm run mcp
+```
+
+Example MCP config:
+
+```json
+{
+  "mcpServers": {
+    "receipter": {
+      "command": "npm",
+      "args": ["run", "mcp"],
+      "cwd": "C:\\Users\\adars\\Coding\\hackathon\\receipter",
+      "env": {
+        "RECEIPTER_BASE_URL": "http://127.0.0.1:4174"
+      }
+    }
+  }
+}
+```
+
+MCP tools: `list_agents`, `get_agent_passport`, `create_work_order`, `get_work_order`, `get_payment_transaction`, `submit_signed_payment`, `get_worker_task`, `submit_worker_delivery`, `store_evidence`, `get_anchor_transaction`, `submit_signed_anchor`, `get_passport_update_transaction`, `submit_signed_passport_update`, and `verify_receipt`.
+
+MCP payment flow is non-custodial:
+
+1. `create_work_order` binds task, worker, amount, resource path, and replay-protection nonces.
+2. `get_payment_transaction` returns a signer-ready `receipter.sui_wallet_transaction_request.v1`.
+3. The agent signs that request with its own Sui signer, wallet bridge, zkLogin session, or a human wallet approval.
+4. `submit_signed_payment` sends only the returned transaction digest to Receipter.
+5. Receipter verifies the digest on Sui: amount, receiver, run id, resource, worker id, package event, nonces, and replay protection.
+6. Only after verification does `get_worker_task` unlock the worker-facing packet.
+
+Receipter does not custody the agent wallet. If an autonomous agent should pay without a human click, give that agent a scoped Sui signer with a capped balance/policy, then let it call `submit_signed_payment` with the digest it produced.
+
 For the live judging/demo path, use `RECEIPTER_MODE=sui` with the Sui and Walrus testnet env vars above, then open:
 
 ```text
@@ -201,6 +257,7 @@ With `?live=1`, `?judging=1`, or `?mode=judging`, the downloaded UI fails loudly
 ```bash
 npm test
 npm run typecheck
+npm run mcp
 npm run proof:latest
 npm run sui:anchor-plan
 npm run sui:x402-pay -- <run-id>
@@ -232,7 +289,7 @@ POST /api/stake/slash-transaction      get signer-ready direct challenge-and-sla
 POST /api/stake/verify                 verify signed stake/challenge/slash tx through Sui RPC
 GET  /api/runs/:id/worker-task         worker agent gets 402 until Sui payment is recorded
 POST /api/runs/:id/worker-delivery     worker agent submits delivery evidence
-POST /api/runs/:id/store-evidence      operator stores the memory bundle on Walrus
+POST /api/runs/:id/store-evidence      operator stores the receipt artifact on Walrus
 GET  /api/runs/:id/anchor-transaction  operator gets signer-ready Sui anchor transaction data
 POST /api/runs/:id/anchor-receipt      operator submits verified anchorPayload from signed Sui tx
 GET  /api/runs/:id/passport-update-transaction get signer-ready AgentPassport memory update tx

@@ -33,7 +33,7 @@ function renderConfig(config) {
   }
 
   el('liveReadiness').textContent = 'sui-dev';
-  el('configText').textContent = 'Sui-dev mode creates deterministic Walrus memory ids and Sui finality digests for local demos.';
+  el('configText').textContent = 'Sui-dev mode creates deterministic Walrus receipt ids and Sui finality digests for local demos.';
 }
 
 function renderSuiConfig(sui) {
@@ -45,7 +45,7 @@ function renderSuiConfig(sui) {
 
   el('suiReadiness').textContent = sui.readyForSui ? 'ready' : 'blocked';
   el('suiConfigText').textContent = sui.readyForSui
-    ? `${sui.network} Walrus memory storage and Sui receipt finality are configured.`
+    ? `${sui.network} Walrus receipt storage and Sui receipt finality are configured.`
     : `Missing: ${sui.missingSuiSettings.join(', ')}`;
 }
 
@@ -272,7 +272,7 @@ async function loadMemoryDirectory() {
   if (nextWorkerId) {
     await openPassport(nextWorkerId);
   } else {
-    el('passportInspector').textContent = 'No memory records yet. Create and anchor a run to populate worker passports.';
+    el('passportInspector').textContent = 'No receipt artifacts yet. Create and anchor a run to populate worker passports.';
   }
 }
 
@@ -349,7 +349,7 @@ function renderPassportRecord(record) {
     </div>
     <div class="passportRecordActions">
       ${walrusLink}
-      <a href="/api/runs/${encodeURIComponent(record.runId)}/memory">Memory JSON</a>
+      <a href="/api/runs/${encodeURIComponent(record.runId)}/memory">Receipt artifact JSON</a>
       <button class="secondary compact" type="button" data-verify-run="${escapeHtml(record.runId)}">Verify</button>
     </div>
     <div id="verify-${escapeHtml(record.runId)}" class="recordVerification">Not verified in this browser session.</div>
@@ -547,7 +547,7 @@ function renderSuiRail(receipt) {
       detail: receipt.suiPaymentDigest || 'waiting for operator approval',
     },
     {
-      label: 'Walrus memory blob',
+      label: 'Walrus receipt blob',
       done: Boolean(receipt.walrusBlobId),
       detail: receipt.walrusBlobId || 'waiting for memory storage',
     },
@@ -604,7 +604,7 @@ function renderReputationPassport(receipt) {
     <div class="passportHero">
       <div>
         <strong>${escapeHtml(snapshot.workerAgentId)}</strong>
-        <small>${escapeHtml(snapshot.memoryCount ?? 0)} memory record${snapshot.memoryCount === 1 ? '' : 's'} / ${escapeHtml(snapshot.anchoredRunCount)} Sui anchored</small>
+        <small>${escapeHtml(snapshot.memoryCount ?? 0)} receipt artifact${snapshot.memoryCount === 1 ? '' : 's'} / ${escapeHtml(snapshot.anchoredRunCount)} Sui anchored</small>
       </div>
       <div>
         <strong>${escapeHtml(snapshot.averageTrustScore ?? 'none')}</strong>

@@ -8,7 +8,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "start": "tsx src/server/httpServer.ts",
+    "mcp": "tsx src/mcp/server.ts",
     "proof:latest": "tsx src/cli/exportProof.ts",
+    "hire:agent": "tsx src/cli/hireAgent.ts",
     "seed:memory": "tsx src/cli/seedMemory.ts",
     "sui:anchor-plan": "tsx src/cli/exportSuiAnchorPlan.ts",
     "sui:x402-pay": "tsx src/cli/paySuiX402.ts",
@@ -24,6 +26,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@mysten-incubation/memwal": "^0.0.7"
   }
 }

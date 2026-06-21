@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Receipter Hire Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/hire.css">
+  <script type="module" src="/wallet.js"></script>
+  <script defer src="/delivery.js"></script>
+  <script defer src="/hire.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Receipter home">
+      <span class="logoMark"><i></i><i></i><i></i></span>
+      <span>Receipter</span>
+    </a>
+    <nav class="progress" aria-label="Hire progress">
+      <span class="progressPill active" data-progress="brief"><b>1</b>Define</span>
+      <span class="arrow">-&gt;</span>
+      <span class="progressPill" data-progress="approve"><b>2</b>Approve</span>
+      <span class="arrow">-&gt;</span>
+      <span class="progressPill" data-progress="receipt"><b>3</b>Receipt</span>
+    </nav>
+    <button class="iconButton" id="closeBtn" type="button" aria-label="Close">x</button>
+  </header>
+
+  <main class="layout">
+    <section class="mainPane">
+      <div class="phase visible" id="phaseBrief">
+        <p class="eyebrow">Decision 1</p>
+        <h1>Tell the agent what you need</h1>
+        <p class="lede">As you type, Receipter builds the exact worker packet. Private notes stay out of the worker request.</p>
+
+        <form class="card formCard" id="briefForm">
+          <label>
+            <span>Task title</span>
+            <input id="title" value="Find AI agent hackathons and builder programs">
+          </label>
+          <label>
+            <span>What do you need?</span>
+            <textarea id="instructions" rows="4">Find active hackathons, grants, and builder programs for teams shipping AI agents this quarter. Public sources only. Include dates and links.</textarea>
+          </label>
+          <div class="twoCols">
+            <label>
+              <span>Budget max SUI</span>
+              <input id="amount" value="0.05" inputmode="decimal">
+            </label>
+            <label>
+              <span>Delivery</span>
+              <input value="public sources, verified receipt" disabled>
+            </label>
+          </div>
+          <button class="textButton" id="advancedToggle" type="button">Acceptance criteria, private notes and checks</button>
+          <div class="advanced" id="advancedPanel" hidden>
+            <label>
+              <span>Acceptance criteria</span>
+              <textarea id="criteria" rows="3">At least 4 distinct programs, each with an organizer, a date window, and a working source link.</textarea>
+            </label>
+            <label>
+              <span>Private notes, never sent to the worker</span>
+              <textarea id="privateNotes" rows="3">Internal: our launch is Aug 12. Do not reveal. Real budget ceiling is 0.20.</textarea>
+            </label>
+            <div class="twoCols">
+              <label>
+                <span>Checker pack</span>
+                <select id="checkerPack">
+                  <option value="research">research</option>
+                  <option value="code">code</option>
+                  <option value="commerce">commerce</option>
+                </select>
+              </label>
+              <label>
+                <span>Data label</span>
+                <select id="dataLabel">
+                  <option value="public">public</option>
+                  <option value="buyer_private">buyer private</option>
+                  <option value="secret">secret</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="primary" type="submit">Looks right: find a worker</button>
+            <span>Nothing is paid yet.</span>
+          </div>
+        </form>
+      </div>
+
+      <div class="phase" id="phaseRouting">
+        <p class="eyebrow">Routing</p>
+        <h1>Matching against verified history</h1>
+        <p class="lede">Receipter asks the registry for eligible bids, blocks unsafe routes, and awards the best in-budget worker.</p>
+        <div class="bidList" id="bidList"></div>
+      </div>
+
+      <div class="phase" id="phaseApprove">
+        <p class="eyebrow">Decision 2</p>
+        <h1>Approve a bounded payment</h1>
+        <p class="lede">This is a scoped x402/Sui payment intent for one run. It does not become reputation unless Walrus storage, readback, evidence hashes, and receipt checks line up.</p>
+        <section class="card walrusProofCard">
+          <div class="proofHead">
+            <div>
+              <strong>Prior Walrus receipts used for routing</strong>
+              <span>This is the worker history Receipter checks before you pay.</span>
+            </div>
+            <a href="/explorer" target="_blank" rel="noreferrer">Open inspector</a>
+          </div>
+          <div class="priorReceiptList" id="priorReceiptList"></div>
+        </section>
+        <section class="card paymentCard">
+          <div class="workerAward">
+            <div class="avatar" id="workerInitials">OS</div>
+            <div>
+              <strong id="workerName">sui_opportunity_scout</strong>
+              <span id="workerMeta">verified route</span>
+            </div>
+            <b>awarded</b>
+          </div>
+          <div class="factGrid" id="paymentFacts"></div>
+          <p class="notice">Funds are bound to this run. A final wallet signature may be requested to anchor the compact receipt on Sui after Walrus storage passes.</p>
+        </section>
+        <div class="actions">
+          <button class="primary" id="approveBtn" type="button">Approve and hire</button>
+          <button class="secondary" id="editBtn" type="button">Edit the brief</button>
+        </div>
+      </div>
+
+      <div class="phase" id="phaseRunning">
+        <p class="eyebrow live">Receipter is working</p>
+        <h1>Building your receipt</h1>
+        <p class="lede">Worker delivery, source verification, Walrus storage, and Sui anchoring run as one visible proof pipeline.</p>
+        <div class="card logCard" id="logList"></div>
+      </div>
+
+      <div class="phase" id="phaseDone">
+        <p class="eyebrow" id="doneBadge">Receipt result</p>
+        <h1 id="doneTitle">Done</h1>
+        <p class="lede" id="doneBody">The receipt is complete.</p>
+        <section class="card receiptCard">
+          <div class="receiptHeader">
+            <div>
+              <strong id="receiptTitle">Task</strong>
+              <span id="receiptMeta">run pending</span>
+            </div>
+            <b id="receiptStatus">status</b>
+          </div>
+          <div class="factGrid proofGrid" id="proofFacts"></div>
+        </section>
+        <div class="actions">
+          <button class="primary" id="restartBtn" type="button">Hire another agent</button>
+          <a class="secondary linkButton" id="passportLink" href="/api/walrus/memory" target="_blank" rel="noreferrer">View evidence passport</a>
+        </div>
+      </div>
+
+      <p class="error" id="errorBox" hidden></p>
+    </section>
+
+    <aside class="sidePane">
+      <section class="credential">
+        <div class="credentialHead">
+          <strong>The credential</strong>
+          <span id="credentialStatus">drafting</span>
+        </div>
+        <p>Each layer is built and sealed, then stays independently checkable.</p>
+        <div class="layerList" id="layerList"></div>
+      </section>
+      <section class="credential eventStreamCard">
+        <div class="credentialHead">
+          <strong>Live backend events</strong>
+          <span id="eventStatus">idle</span>
+        </div>
+        <p>Streaming from <code>/api/runs/:id/events</code>.</p>
+        <div class="eventList" id="eventList"></div>
+      </section>
+      <p class="footNote" id="footNote">Private content never leaves your browser unsanitized.</p>
+    </aside>
+  </main>
+</body>
+</html>

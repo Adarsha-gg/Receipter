@@ -94,7 +94,7 @@ async function signAndExecute(request, options = {}) {
 }
 
 async function buildTransaction(request) {
-  if (!request || request.objectType !== 'receipter.sui_wallet_transaction_request.v1') {
+  if (!isSupportedRequest(request)) {
     throw new Error('Unsupported Receipter wallet transaction request.');
   }
   const { Transaction } = await loadSuiSdk();
@@ -102,11 +102,13 @@ async function buildTransaction(request) {
   if (request.gasBudgetMist) tx.setGasBudget(Number(request.gasBudgetMist));
 
   const assigned = new Map();
-  for (const command of request.commands || []) {
+  const commands = normalizedCommands(request);
+  for (const command of commands) {
     if (command.kind === 'splitCoins') {
+      const source = command.source || command.coin;
       const coins = tx.splitCoins(
-        command.source === 'gas' ? tx.gas : resolveAssigned(command.source, assigned),
-        command.amountsMist.map((amount) => pure(tx, { kind: 'pure', type: 'u64', value: amount })),
+        source === 'gas' ? tx.gas : resolveAssigned(source, assigned),
+        (command.amountsMist || command.amounts || []).map((amount) => pure(tx, { kind: 'pure', type: 'u64', value: amount })),
       );
       assigned.set(command.assign, Array.isArray(coins) ? coins : [coins]);
       continue;
@@ -121,7 +123,7 @@ async function buildTransaction(request) {
     if (command.kind === 'moveCall') {
       tx.moveCall({
         target: command.target,
-        arguments: command.arguments.map((argument) => moveArgument(tx, argument)),
+        arguments: command.arguments.map((argument) => moveArgument(tx, argument, assigned)),
       });
       continue;
     }
@@ -131,8 +133,49 @@ async function buildTransaction(request) {
   return tx;
 }
 
-function moveArgument(tx, argument) {
+function isSupportedRequest(request) {
+  return Boolean(request && [
+    'receipter.sui_wallet_transaction_request.v1',
+    'receipter.sui_agent_passport_update_wallet_request.v1',
+    'receipter.sui_stake_wallet_transaction_request.v1',
+  ].includes(request.objectType));
+}
+
+function normalizedCommands(request) {
+  if (Array.isArray(request.commands) && request.commands.length) {
+    return request.commands.map((command) => {
+      if (command.kind !== 'moveCall') return command;
+      return {
+        ...command,
+        arguments: normalizeArguments(command.arguments || []),
+      };
+    });
+  }
+  if (request.moveCall?.target) {
+    return [{
+      kind: 'moveCall',
+      target: request.moveCall.target,
+      arguments: normalizeArguments(request.moveCall.arguments || []),
+    }];
+  }
+  return [];
+}
+
+function normalizeArguments(args) {
+  return args.map((argument) => {
+    if (argument.kind !== 'pure') return argument;
+    if (argument.type) return argument;
+    return {
+      ...argument,
+      type: argument.valueType,
+      bytes: argument.valueType === 'vector<u8>' && argument.hex ? hexToBytes(argument.hex) : argument.bytes,
+    };
+  });
+}
+
+function moveArgument(tx, argument, assigned = new Map()) {
   if (argument.kind === 'object') return tx.object(argument.objectId);
+  if (argument.kind === 'result') return resolveAssigned(`${argument.assign}.${argument.index || 0}`, assigned);
   return pure(tx, argument);
 }
 
@@ -148,6 +191,15 @@ function pure(tx, argument) {
     return typeof tx.pure.vector === 'function' ? tx.pure.vector('u8', bytes) : tx.pure(Uint8Array.from(bytes));
   }
   throw new Error(`Unsupported Sui pure argument type: ${argument.type}`);
+}
+
+function hexToBytes(hex) {
+  const clean = String(hex || '').replace(/^0x/, '');
+  const bytes = [];
+  for (let index = 0; index < clean.length; index += 2) {
+    bytes.push(Number.parseInt(clean.slice(index, index + 2), 16));
+  }
+  return bytes;
 }
 
 function resolveAssigned(name, assigned) {

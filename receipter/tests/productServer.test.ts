@@ -31,16 +31,20 @@ describe('Receipter product server', () => {
 
     try {
       const home = await fetch(`${baseUrl}/`);
+      const hire = await fetch(`${baseUrl}/hire`);
       const wallet = await fetch(`${baseUrl}/wallet.js`);
       const delivery = await fetch(`${baseUrl}/delivery.js`);
       const homeText = await home.text();
+      const hireText = await hire.text();
       const walletText = await wallet.text();
       const deliveryText = await delivery.text();
 
       expect(home.status).toBe(200);
-      expect(homeText).toContain('./wallet.js');
-      expect(homeText).toContain('./delivery.js');
-      expect(homeText).toContain('Connect wallet');
+      expect(homeText).toContain('/hire');
+      expect(homeText).toContain('Open the app');
+      expect(hire.status).toBe(200);
+      expect(hireText).toContain('/wallet.js');
+      expect(hireText).toContain('/delivery.js');
       expect(wallet.status).toBe(200);
       expect(walletText).toContain('ReceipterWallet');
       expect(walletText).toContain('sui:signAndExecuteTransaction');

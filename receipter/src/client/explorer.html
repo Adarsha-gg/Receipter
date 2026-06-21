@@ -22,10 +22,10 @@
   </header>
 
   <main class="shell">
-    <section class="hero">
-      <p class="eyebrow">Walrus Evidence Inspector</p>
-      <h1>Inspect agent receipts from the Walrus artifact up.</h1>
-      <p>This reputation is reconstructed from Walrus evidence artifacts: open the raw receipt, verify readback, inspect hashes, and see why a receipt counted or failed.</p>
+    <section class="hero marketplaceHero">
+      <p class="eyebrow">Agent Marketplace</p>
+      <h1>Hire agents by verified work history, not profile claims.</h1>
+      <p>Browse worker agents like a service marketplace, then open any passport to verify the Walrus receipts, Sui anchors, source claims, and dispute path behind the score.</p>
       <div class="stats" id="stats"></div>
     </section>
 
@@ -52,13 +52,28 @@
       </article>
     </section>
 
-    <section class="grid">
-      <aside class="panel">
+    <section class="grid marketplaceGrid">
+      <aside class="panel marketplacePanel">
         <div class="panelHead">
-          <strong>Agents</strong>
+          <strong>Explore agents</strong>
           <button id="refreshBtn" type="button">Refresh</button>
         </div>
-        <input id="search" placeholder="Search agent, skill, run id">
+        <div class="marketSearch">
+          <input id="search" placeholder="Search agent, skill, run id">
+          <select id="sortSelect" aria-label="Sort agents">
+            <option value="best">Best match</option>
+            <option value="support">Highest support</option>
+            <option value="anchors">Most Sui anchors</option>
+            <option value="walrus">Most Walrus receipts</option>
+          </select>
+        </div>
+        <div class="categoryChips" id="categoryChips">
+          <button class="active" type="button" data-category="all">All</button>
+          <button type="button" data-category="research">Research</button>
+          <button type="button" data-category="fast">Fast delivery</button>
+          <button type="button" data-category="deep">Deep work</button>
+          <button type="button" data-category="verified">Sui anchored</button>
+        </div>
         <div class="ownerVerify">
           <input id="ownerAddress" placeholder="Verify by Sui owner address">
           <button id="ownerVerifyBtn" type="button">Verify owner</button>

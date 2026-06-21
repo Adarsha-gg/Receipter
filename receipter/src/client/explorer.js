@@ -6,6 +6,8 @@ const state = {
   runs: new Map(),
   selected: null,
   query: '',
+  category: 'all',
+  sort: 'best',
   openRecords: new Set(),
   stakeSigningRequests: new Map(),
 };
@@ -77,21 +79,105 @@ function renderStats() {
 function renderAgents() {
   const query = state.query.toLowerCase();
   const filtered = state.passports.filter((passport) => {
+    const offer = agentOffer(passport);
     const haystack = [
       passport.workerAgentId,
       passport.ownerAddress,
+      offer.title,
+      offer.category,
       ...(passport.records || []).flatMap((record) => [record.runId, record.taskTitle, record.status]),
     ].join(' ').toLowerCase();
-    return !query || haystack.includes(query);
-  });
+    const matchesQuery = !query || haystack.includes(query);
+    const matchesCategory = state.category === 'all'
+      || offer.category === state.category
+      || (state.category === 'verified' && (passport.anchoredMemoryCount || 0) > 0);
+    return matchesQuery && matchesCategory;
+  }).sort(sortPassports);
   $('agentList').innerHTML = filtered.map((passport) => {
+    const offer = agentOffer(passport);
     const active = passport.workerAgentId === state.selected;
     const records = passport.records || [];
+    const initials = offer.name.split(/[_.\s-]+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+    const support = passport.averageClaimSupport ?? 0;
+    const anchors = passport.anchoredMemoryCount || 0;
+    const walrus = passport.walrusMemoryCount || 0;
     return `<button class="agentCard ${active ? 'active' : ''}" type="button" data-worker="${escapeHtml(passport.workerAgentId)}">
-      <strong>${escapeHtml(passport.workerAgentId)}</strong>
-      <span>${records.length} receipts / ${passport.walrusMemoryCount || 0} Walrus artifacts / ${passport.anchoredMemoryCount || 0} Sui anchors / ${passport.averageClaimSupport ?? 0}% support</span>
+      <span class="sellerTop">
+        <i class="avatar">${escapeHtml(initials || 'RA')}</i>
+        <span><b>${escapeHtml(offer.name)}</b><em>${escapeHtml(offer.level)}</em></span>
+      </span>
+      <strong>${escapeHtml(offer.title)}</strong>
+      <span class="sellerMeta">
+        <b>${escapeHtml(support)}% support</b>
+        <span>${escapeHtml(records.length)} jobs</span>
+        <span>${escapeHtml(walrus)} Walrus</span>
+        <span>${escapeHtml(anchors)} Sui</span>
+      </span>
+      <span class="sellerBottom">
+        <em>${escapeHtml(offer.delivery)}</em>
+        <b>From ${escapeHtml(offer.price)} SUI</b>
+      </span>
     </button>`;
   }).join('') || '<div class="empty">No matching agents.</div>';
+}
+
+function sortPassports(a, b) {
+  if (state.sort === 'support') return (b.averageClaimSupport || 0) - (a.averageClaimSupport || 0);
+  if (state.sort === 'anchors') return (b.anchoredMemoryCount || 0) - (a.anchoredMemoryCount || 0);
+  if (state.sort === 'walrus') return (b.walrusMemoryCount || 0) - (a.walrusMemoryCount || 0);
+  return scorePassport(b) - scorePassport(a);
+}
+
+function agentOffer(passport) {
+  const id = passport.workerAgentId || 'receipter.agent';
+  const lower = id.toLowerCase();
+  const records = passport.records || [];
+  const latestTitle = records[0]?.taskTitle || 'public-source research task';
+  if (lower.includes('deep')) {
+    return {
+      name: readableAgentName(id),
+      title: `I will produce deep source-backed research with Walrus proof receipts`,
+      category: 'deep',
+      level: 'L3 verified specialist',
+      delivery: '48h delivery',
+      price: '0.045',
+    };
+  }
+  if (lower.includes('expedited') || lower.includes('fast')) {
+    return {
+      name: readableAgentName(id),
+      title: `I will run fast public-source research with receipt-grade evidence`,
+      category: 'fast',
+      level: 'Fast-response worker',
+      delivery: '4h delivery',
+      price: '0.075',
+    };
+  }
+  if (lower.includes('lite')) {
+    return {
+      name: readableAgentName(id),
+      title: `I will scout lightweight public sources and return verifiable links`,
+      category: 'research',
+      level: 'Budget verified worker',
+      delivery: '36h delivery',
+      price: '0.020',
+    };
+  }
+  return {
+    name: readableAgentName(id),
+    title: `I will complete public-source agent research with Walrus-backed receipts`,
+    category: 'research',
+    level: (passport.anchoredMemoryCount || 0) > 0 ? 'Sui-anchored worker' : 'Walrus-backed worker',
+    delivery: '24h delivery',
+    price: '0.035',
+  };
+}
+
+function readableAgentName(id) {
+  return String(id || 'Receipter Agent')
+    .replaceAll('.', ' ')
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function renderDetail() {
@@ -567,6 +653,17 @@ function escapeHtml(value) {
 
 $('search').addEventListener('input', (event) => {
   state.query = event.target.value;
+  renderAgents();
+});
+$('sortSelect').addEventListener('change', (event) => {
+  state.sort = event.target.value;
+  renderAgents();
+});
+$('categoryChips').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-category]');
+  if (!button) return;
+  state.category = button.dataset.category;
+  document.querySelectorAll('[data-category]').forEach((item) => item.classList.toggle('active', item === button));
   renderAgents();
 });
 $('refreshBtn').addEventListener('click', load);

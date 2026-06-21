@@ -168,6 +168,12 @@ input:disabled { color: #8c8a82; background: #fafaf7; }
   background: var(--bg);
   opacity: var(--opacity);
 }
+.bidRow.selectable { cursor: pointer; }
+.bidRow.selectable:hover {
+  border-color: #17181c;
+  box-shadow: 0 10px 24px -20px rgba(23,24,28,.65);
+}
+.bidRow.blocked { cursor: not-allowed; }
 .bidRow main { flex: 1; min-width: 0; }
 .bidRow strong { font-family: "Archivo Black", sans-serif; font-size: 14px; }
 .badge {

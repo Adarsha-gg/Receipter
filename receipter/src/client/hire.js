@@ -33,7 +33,7 @@ const logs = [
   ['Claims checked against sources', 'checks'],
   ['Evidence bundle stored on Walrus', 'walrus'],
   ['Proof anchored on Sui', 'sui'],
-  ['Agent passport updated', 'passport'],
+  ['Passport index refreshed from receipt', 'passport'],
 ];
 
 function value(id) {
@@ -130,6 +130,22 @@ function buildRunBody() {
 
 async function ensureRun() {
   await loadMemoryIndex();
+  if (
+    state.run?.paymentIntentPlan &&
+    state.selectedBidId &&
+    state.run.workerBidBoard?.selectedBidId !== state.selectedBidId &&
+    !state.run.suiPaymentDigest
+  ) {
+    stopEventStream();
+    state.run = null;
+    state.events = [];
+    state.payDigest = null;
+    state.walrusBlobId = null;
+    state.walrusReadUrl = null;
+    state.anchorDigest = null;
+    state.passportUpdateDigest = null;
+    state.claimSupport = null;
+  }
   if (state.run?.paymentIntentPlan) return state.run;
   const created = await request('/api/runs', { method: 'POST', body: buildRunBody() });
   const run = await request(`/api/runs/${encodeURIComponent(created.runId)}`);
@@ -296,17 +312,7 @@ async function buildReceipt(runId) {
     const signing = await request(`/api/runs/${encodeURIComponent(runId)}/anchor-transaction`);
     const result = await executeWalletSigning(signing);
     setRun(result.verified.receipt || result.verified);
-    state.runStep = 5;
-    try {
-      const passportSigning = await request(`/api/runs/${encodeURIComponent(runId)}/passport-update-transaction`);
-      const passportResult = await executeWalletSigning(passportSigning);
-      state.passportUpdateDigest = passportResult.execution?.digest || passportResult.verified?.verification?.transaction || state.passportUpdateDigest;
-      setRun(passportResult.verified.receipt || passportResult.verified);
-      state.runStep = 6;
-    } catch (passportError) {
-      showError(`Receipt anchored, but AgentPassport object update needs manual signing: ${humanError(passportError)}`);
-      state.runStep = 5;
-    }
+    state.runStep = 6;
     setPhase('done');
   } catch (error) {
     showError(error);
@@ -343,9 +349,9 @@ function renderBids() {
   $('bidList').innerHTML = rows.map((bid, index) => {
     const ok = bid.verdict === 'available';
     const awarded = ok && bid.bidId === selected;
-    const badge = awarded ? 'AWARDED' : (ok ? 'in budget' : 'BLOCKED');
+    const badge = awarded ? 'SELECTED' : (ok ? 'choose' : 'BLOCKED');
     const trust = ok ? Math.max(94 - index * 8, 78) / 100 : 0.4;
-    return `<article class="bidRow" style="--bg:${awarded ? '#F4FBF6' : ok ? '#fff' : '#FCF7F7'};--border:${awarded ? '#9BD8B4' : ok ? '#ECEAE3' : '#F0D9D9'};--opacity:${awarded ? '1' : ok ? '.62' : '.5'}">
+    return `<article class="bidRow ${ok ? 'selectable' : 'blocked'}" data-bid-id="${escapeHtml(bid.bidId)}" aria-disabled="${ok ? 'false' : 'true'}" style="--bg:${awarded ? '#F4FBF6' : ok ? '#fff' : '#FCF7F7'};--border:${awarded ? '#9BD8B4' : ok ? '#ECEAE3' : '#F0D9D9'};--opacity:${awarded ? '1' : ok ? '.82' : '.5'}">
       <main>
         <strong>${escapeHtml(bid.workerAgentId || bid.bidId)}</strong>
         <span class="badge" style="--badge-color:${awarded ? '#16793B' : ok ? '#5C6470' : '#B23B3B'};--badge-bg:${awarded ? '#E4F4EA' : ok ? '#F1EFE9' : '#FBECEC'}">${badge}</span>
@@ -354,6 +360,31 @@ function renderBids() {
       <div class="bidStats"><div><b>${escapeHtml(bid.priceSui || value('amount'))} SUI</b><span>${escapeHtml(bid.sla || '~6 min')}</span></div><div><b>${trust}</b><span>trust</span></div></div>
     </article>`;
   }).join('');
+}
+
+function chooseBid(bidId) {
+  const board = state.run?.workerBidBoard;
+  const bid = board?.bids?.find((candidate) => candidate.bidId === bidId);
+  if (bid && bid.verdict !== 'available') {
+    showError(`Worker is blocked: ${bid.reason || 'policy gate failed'}`);
+    return;
+  }
+  if (state.run?.suiPaymentDigest) {
+    showError('Worker is locked after payment. Start a new run to choose a different worker.');
+    return;
+  }
+  showError(null);
+  state.selectedBidId = bidId;
+  if (state.run?.workerBidBoard) {
+    state.run = {
+      ...state.run,
+      workerBidBoard: {
+        ...state.run.workerBidBoard,
+        selectedBidId: bidId,
+      },
+    };
+  }
+  renderAll();
 }
 
 function renderPaymentFacts() {
@@ -439,26 +470,26 @@ function logDetail(key) {
   if (key === 'checks') return claims.length ? `${supported} / ${claims.length} claims supported` : 'verification manifest pending';
   if (key === 'walrus') return state.walrusBlobId ? `blob ${short(state.walrusBlobId, 8, 6)}` : 'waiting for Walrus publisher';
   if (key === 'sui') return state.anchorDigest ? `tx ${short(state.anchorDigest, 8, 6)}` : 'waiting for Sui anchor signature';
-  return state.passportUpdateDigest ? `tx ${short(state.passportUpdateDigest, 8, 6)}` : state.anchorDigest ? 'receipt anchored; waiting for AgentPassport update signature' : 'not written until anchor passes';
+  return state.passportUpdateDigest ? `owned object tx ${short(state.passportUpdateDigest, 8, 6)}` : state.anchorDigest ? 'indexed from Walrus + Sui receipt' : 'not counted until anchor passes';
 }
 
 function renderDone() {
   const anchored = Boolean(state.anchorDigest);
   const passportUpdated = Boolean(state.passportUpdateDigest);
-  $('doneBadge').textContent = passportUpdated ? 'Receipt anchored + passport updated' : anchored ? 'Verified receipt anchored' : 'Evidence stored - review required';
-  $('doneTitle').textContent = passportUpdated ? 'Done. The passport moved.' : anchored ? 'Receipt anchored. Passport update pending.' : 'Stored. Not reputation yet.';
+  $('doneBadge').textContent = passportUpdated ? 'Receipt anchored + owned passport updated' : anchored ? 'Verified receipt anchored + indexed' : 'Evidence stored - review required';
+  $('doneTitle').textContent = passportUpdated ? 'Done. The owned passport moved.' : anchored ? 'Receipt anchored. Passport index updated.' : 'Stored. Not reputation yet.';
   $('doneBody').textContent = passportUpdated
-    ? 'Your job is complete, the evidence is on Walrus, the receipt is anchored on Sui, and the Sui AgentPassport now points at the latest proof.'
+    ? 'Your job is complete, the evidence is on Walrus, the receipt is anchored on Sui, and the optional owner-held Sui AgentPassport now points at the latest proof.'
     : anchored
-      ? 'Your job is complete and the receipt is anchored on Sui. The AgentPassport object still needs its separate memory pointer update before the passport fully reflects it.'
-    : 'Receipter kept the evidence, but the verification gate did not clear it for reputation. Manual review can inspect the Walrus bundle before any passport update.';
+      ? 'Your job is complete, the evidence is on Walrus, and the receipt is anchored on Sui. The passport view is reconstructed from those public proof records, so any wallet can publish a verified receipt.'
+    : 'Receipter kept the evidence, but the verification gate did not clear it for reputation. Manual review can inspect the Walrus bundle before it counts in the passport index.';
   $('receiptTitle').textContent = value('title');
   $('receiptMeta').textContent = `${selectedWorker()} / ${state.run?.runId || 'run pending'}`;
   $('receiptStatus').textContent = anchored ? 'anchored' : 'review';
   const rows = [
     ['Walrus blob', state.walrusBlobId || 'not stored', state.walrusReadUrl || (state.walrusBlobId ? AGG + state.walrusBlobId : null)],
     ['Sui anchor tx', state.anchorDigest || 'not anchored', state.anchorDigest ? SCAN + state.anchorDigest : null],
-    ['Passport update tx', state.passportUpdateDigest || 'not updated', state.passportUpdateDigest ? SCAN + state.passportUpdateDigest : null],
+    ['Passport index', state.passportUpdateDigest || (state.anchorDigest ? 'updated from anchored receipt' : 'not updated'), state.passportUpdateDigest ? SCAN + state.passportUpdateDigest : null],
     ['Claim support', state.claimSupport == null ? 'pending' : `${state.claimSupport}%`, null],
     ['Run ID', state.run?.runId || 'pending', state.run?.runId ? `/api/runs/${encodeURIComponent(state.run.runId)}` : null],
   ];
@@ -477,7 +508,7 @@ function renderCredential() {
     </article>`;
   }).join('');
   const status = $('credentialStatus');
-  status.textContent = state.phase === 'done' ? (state.passportUpdateDigest ? 'passport updated' : state.anchorDigest ? 'anchor only' : 'review') : state.phase;
+  status.textContent = state.phase === 'done' ? (state.passportUpdateDigest ? 'owned passport updated' : state.anchorDigest ? 'indexed' : 'review') : state.phase;
   status.style.color = state.passportUpdateDigest ? '#16793b' : '#b6831c';
   status.style.background = state.passportUpdateDigest ? '#e4f4ea' : '#f6ecd6';
 }
@@ -488,7 +519,7 @@ function layerDetail(id) {
     job: [['worker sees', value('title') || 'draft'], ['private notes', state.phase === 'brief' ? 'withheld' : 'stripped / clean']],
     worker: [['agent', selectedWorker()], ['route', state.selectedBidId || 'pending']],
     evidence: [['walrus', short(state.walrusBlobId)], ['sui tx', short(state.anchorDigest)]],
-    passport: [['status', state.passportUpdateDigest ? 'updated' : state.anchorDigest ? 'anchor only' : 'pending'], ['run', short(run.runId, 8, 5)]],
+    passport: [['status', state.passportUpdateDigest ? 'owned object updated' : state.anchorDigest ? 'receipt indexed' : 'pending'], ['run', short(run.runId, 8, 5)]],
   }[id];
   return `<div class="layerDetail">${rows.map(([k, v]) => `<div><span>${escapeHtml(k)}</span><b>${escapeHtml(v)}</b></div>`).join('')}</div>`;
 }
@@ -499,7 +530,7 @@ function renderFooter() {
     routing: 'Unsafe and over-budget routes are auto-blocked.',
     approve: 'Wallet opens for one bounded Sui payment.',
     running: 'Storing on Walrus and anchoring on Sui.',
-    done: state.passportUpdateDigest ? 'Independently verifiable, passport updated.' : state.anchorDigest ? 'Receipt anchored; passport update is a separate Sui write.' : 'Manual review required before reputation writeback.',
+    done: state.passportUpdateDigest ? 'Independently verifiable, owned passport object updated.' : state.anchorDigest ? 'Receipt anchored; passport index updates from Walrus and Sui proof.' : 'Manual review required before reputation writeback.',
   }[state.phase];
   $('footNote').textContent = text;
 }
@@ -531,6 +562,11 @@ function escapeHtml(valueText) {
 
 function bind() {
   $('briefForm').addEventListener('submit', submitBrief);
+  $('bidList').addEventListener('click', (event) => {
+    const row = event.target.closest('[data-bid-id]');
+    if (!row) return;
+    chooseBid(row.dataset.bidId);
+  });
   $('advancedToggle').addEventListener('click', () => {
     $('advancedPanel').hidden = !$('advancedPanel').hidden;
   });

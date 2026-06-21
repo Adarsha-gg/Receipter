@@ -1,4 +1,4 @@
-# ReceipterReceipts
+# Receipter Sui Move Package
 
 Sui Move package for Receipter agent passports, proof receipts, and reputation stake.
 

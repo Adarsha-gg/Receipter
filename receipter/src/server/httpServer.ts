@@ -29,6 +29,7 @@ import { buildSuiReceiptAnchorPayload, buildSuiReceiptAnchorTransactionRequest }
 import { parseSuiReceiptAnchorPayload, verifySuiReceiptAnchor } from '../sui/anchorVerifier.js';
 import { buildAgentPassportUpdateTransactionData } from '../sui/agentPassportPlan.js';
 import { buildAgentPassportUpdatePayload, buildAgentPassportUpdateWalletRequest } from '../sui/agentPassportTransaction.js';
+import { executeAgentPassportUpdate } from '../sui/agentPassportExecutor.js';
 import { parseSuiAgentPassportUpdatePayload, verifySuiAgentPassportUpdate } from '../sui/agentPassportVerifier.js';
 import {
   buildAttachStakeWalletRequest,
@@ -428,7 +429,11 @@ async function route(
 
   const passportUpdateMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/passport-update$/);
   if (method === 'POST' && passportUpdateMatch) {
-    const payload = parseSuiAgentPassportUpdatePayload(await readJson<unknown>(req));
+    const body = await readJson<unknown>(req);
+    const payload =
+      isRecord(body) && body.allowCliFallback === true
+        ? await executeAutomaticAgentPassportUpdate(passportUpdateMatch[1]!, config, store, memoryStore)
+        : parseSuiAgentPassportUpdatePayload(body);
     const verification = await verifySuiAgentPassportUpdate({
       payload,
       config,
@@ -1539,6 +1544,24 @@ async function executeAutomaticSuiPayment(receipt: LiveRunReceipt, config: Recei
     return await executeSuiX402Payment(receipt, config);
   } catch (error) {
     throw httpError(502, `Automatic Sui payment failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+async function executeAutomaticAgentPassportUpdate(
+  runId: string,
+  config: ReceipterConfig,
+  store: RunStore,
+  memoryStore: MemoryStore,
+): Promise<ReturnType<typeof buildAgentPassportUpdatePayload>> {
+  if (!config.suiCliFallbackEnabled || !config.suiCliPath) {
+    throw httpError(400, 'AgentPassport CLI fallback is test-only and requires allowCliFallback plus SUI_CLI_FALLBACK_ENABLED=1.');
+  }
+  try {
+    const signing = await buildPassportUpdateSigningResponse(runId, config, store, memoryStore);
+    const execution = await executeAgentPassportUpdate(signing.updatePlan, config);
+    return buildAgentPassportUpdatePayload(signing.walletTransactionRequest, execution.digest);
+  } catch (error) {
+    throw httpError(502, `Automatic AgentPassport update failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

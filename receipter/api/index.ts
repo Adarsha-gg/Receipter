@@ -1,7 +1,8 @@
-import { cp, mkdir, readdir } from 'node:fs/promises';
+import { cp, mkdir, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createReceipterServer } from '../src/server/httpServer.js';
+import { DEMO_RECEIPTS } from './demoReceipts.js';
 
 const VERCEL_TMP_RECEIPTS_DIR = '/tmp/receipter-runs';
 
@@ -47,4 +48,16 @@ async function seedBundledReceipts(): Promise<void> {
     if (error.code === 'ENOENT') return;
     throw error;
   });
+
+  const afterCopy = await readdir(targetDir).catch(() => [] as string[]);
+  if (afterCopy.some((file) => file.endsWith('.json') && file !== 'x402-replay-ledger.json')) return;
+
+  await Promise.all(
+    DEMO_RECEIPTS.map((receipt) => writeFile(path.join(targetDir, receipt.fileName), receipt.json, { flag: 'wx' }).catch(ignoreExistingFile)),
+  );
+}
+
+function ignoreExistingFile(error: NodeJS.ErrnoException): void {
+  if (error.code === 'EEXIST') return;
+  throw error;
 }

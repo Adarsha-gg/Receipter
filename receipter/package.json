@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Walrus-native agent memory market with Sui payments, verification, and receipt finality.",
+  "description": "Walrus-backed agent receipt layer with Sui payments, verification, and portable reputation.",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
